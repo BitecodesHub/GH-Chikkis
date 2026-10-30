@@ -1,0 +1,224 @@
+import { randomUUID } from "node:crypto";
+import { closeDatabase, getDb } from "../lib/db";
+import { getSettings } from "../lib/settings";
+import { ensureOwnerUser } from "../lib/users";
+import { DEFAULT_CONTENT } from "../lib/content-schema";
+import { CONTENT_PAGES } from "../lib/types";
+import type { InventoryItem, WebsiteContent } from "../lib/types";
+import type { ProductDoc } from "../lib/products";
+import { nowIso } from "../lib/dates";
+
+interface SeedProduct {
+  slug: string;
+  name: string;
+  description: string;
+  tastingNote: string;
+  displayOrder: number;
+}
+
+const PRODUCTS: SeedProduct[] = [
+  {
+    slug: "groundnut-chikki",
+    name: "Groundnut Chikki",
+    description:
+      "Our founding variety. Groundnuts are roasted slowly and set in a dark, caramelised base, then cut into thick pieces with a clean snap. Nutty, warm and unmistakably handmade.",
+    tastingNote: "Deep roasted, toasty, with a bittersweet edge.",
+    displayOrder: 1,
+  },
+  {
+    slug: "white-til-chikki",
+    name: "White Til Chikki",
+    description:
+      "White sesame, toasted just until fragrant, set in a pale, delicate base. Lighter on the palate than the nut varieties, with a fine, even crunch.",
+    tastingNote: "Fragrant, delicate, a clean finish.",
+    displayOrder: 2,
+  },
+  {
+    slug: "black-til-chikki",
+    name: "Black Til Chikki",
+    description:
+      "Black sesame brings an earthier, deeper note. The set is dark, the crunch is fine, and the sweetness stays in the background.",
+    tastingNote: "Earthy, intense, quietly sweet.",
+    displayOrder: 3,
+  },
+  {
+    slug: "dry-fruit-chikki",
+    name: "Dry Fruit Chikki",
+    description:
+      "A richer chikki built around a mix of dry fruits. Heavier, more textured and made in smaller quantities than the everyday varieties.",
+    tastingNote: "Rich, layered, celebratory.",
+    displayOrder: 4,
+  },
+  {
+    slug: "coconut-chikki",
+    name: "Coconut Chikki",
+    description:
+      "Dried coconut folded through the base for a softer, chewier bite. A gentler sweetness, closer to a home-style sweet than a hard candy.",
+    tastingNote: "Soft, fragrant, gently sweet.",
+    displayOrder: 5,
+  },
+  {
+    slug: "mawa-chikki",
+    name: "Mawa Chikki",
+    description:
+      "Mawa gives this variety a milk-rich depth and a softer set. It is made less often and is best treated as a seasonal or special-order variety.",
+    tastingNote: "Milk-rich, rounded, tender.",
+    displayOrder: 6,
+  },
+  {
+    slug: "daliya-chikki",
+    name: "Daliya Chikki",
+    description:
+      "Cracked wheat gives this chikki its rustic texture. Hearty, less sweet than the nut varieties, and a different kind of crunch altogether.",
+    tastingNote: "Rustic, hearty, mellow.",
+    displayOrder: 7,
+  },
+];
+
+const INVENTORY_ITEMS: { name: string; category: string; unit: string }[] = [
+  { name: "Groundnuts", category: "Raw material", unit: "kg" },
+  { name: "White sesame", category: "Raw material", unit: "kg" },
+  { name: "Black sesame", category: "Raw material", unit: "kg" },
+  { name: "Dry fruit mix", category: "Raw material", unit: "kg" },
+  { name: "Desiccated coconut", category: "Raw material", unit: "kg" },
+  { name: "Mawa", category: "Raw material", unit: "kg" },
+  { name: "Daliya", category: "Raw material", unit: "kg" },
+  { name: "Jaggery", category: "Raw material", unit: "kg" },
+  { name: "Ghee", category: "Raw material", unit: "kg" },
+  { name: "Packaging boxes", category: "Packaging", unit: "pcs" },
+  { name: "Wrapping paper and labels", category: "Packaging", unit: "pcs" },
+];
+
+async function seedProducts(): Promise<number> {
+  const db = await getDb();
+  const products = db.collection<ProductDoc>("products");
+  let created = 0;
+  const now = nowIso();
+
+  for (const product of PRODUCTS) {
+    const existing = await products.findOne({ slug: product.slug });
+    if (existing) {
+      // Keep Owner edits; only repair the public listing fields.
+      await products.updateOne(
+        { _id: existing._id },
+        {
+          $set: {
+            displayOrder: product.displayOrder,
+            updatedAt: now,
+          },
+        },
+      );
+      continue;
+    }
+    await products.insertOne({
+      _id: randomUUID(),
+      slug: product.slug,
+      name: product.name,
+      description: product.description,
+      tastingNote: product.tastingNote,
+      ingredientsVerified: false,
+      active: true,
+      media: [],
+      displayOrder: product.displayOrder,
+      packaging: [
+        {
+          id: randomUUID(),
+          label: "250 g",
+          grams: 250,
+          standardPricePaise: null,
+        },
+        {
+          id: randomUUID(),
+          label: "500 g",
+          grams: 500,
+          standardPricePaise: null,
+        },
+      ],
+      createdAt: now,
+      updatedAt: now,
+    });
+    created += 1;
+  }
+  return created;
+}
+
+async function seedContent(): Promise<number> {
+  const db = await getDb();
+  const content = db.collection<Omit<WebsiteContent, "page"> & { _id: string; page: string }>(
+    "website_content",
+  );
+  let created = 0;
+  const now = nowIso();
+
+  for (const page of CONTENT_PAGES) {
+    const existing = await content.findOne({ page });
+    if (existing) continue;
+    await content.insertOne({
+      _id: randomUUID(),
+      page,
+      draft: DEFAULT_CONTENT[page],
+      published: DEFAULT_CONTENT[page],
+      version: 1,
+      updatedAt: now,
+      updatedBy: "seed",
+      updatedByName: "Initial content",
+      publishedAt: now,
+      publishedBy: "seed",
+    });
+    created += 1;
+  }
+  return created;
+}
+
+async function seedInventory(): Promise<number> {
+  const db = await getDb();
+  const items = db.collection<Omit<InventoryItem, "id"> & { _id: string }>("inventory_items");
+  let created = 0;
+  const now = nowIso();
+
+  for (const item of INVENTORY_ITEMS) {
+    const existing = await items.findOne({ name: item.name });
+    if (existing) continue;
+    await items.insertOne({
+      _id: randomUUID(),
+      name: item.name,
+      category: item.category,
+      unit: item.unit,
+      active: true,
+      currentQuantity: 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+    created += 1;
+  }
+  return created;
+}
+
+async function main() {
+  console.log("Seeding GH Chikkis…");
+  await getSettings();
+
+  const owner = await ensureOwnerUser();
+  const products = await seedProducts();
+  const content = await seedContent();
+  const inventory = await seedInventory();
+
+  console.log(
+    [
+      owner ? `Owner account ready: ${owner.email}` : "No OWNER_EMAIL set; owner account skipped.",
+      `${products} product(s) created.`,
+      `${content} content page(s) created.`,
+      `${inventory} inventory item(s) created.`,
+    ].join("\n"),
+  );
+  console.log("Seed complete. Existing records were left untouched.");
+}
+
+main()
+  .catch((error) => {
+    console.error("Seed failed:", error);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await closeDatabase();
+  });

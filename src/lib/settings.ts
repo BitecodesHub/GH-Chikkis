@@ -1,0 +1,151 @@
+import type { AppSettings } from "./types";
+import { getDb } from "./db";
+import { nowIso } from "./dates";
+
+export const DEFAULT_EXPENSE_CATEGORIES = [
+  "Ingredients/raw materials",
+  "Packaging",
+  "Labour",
+  "Transport/delivery",
+  "Marketing",
+  "Utilities",
+  "Gifting",
+  "Miscellaneous",
+];
+
+export function defaultSettings(): AppSettings {
+  return {
+    business: {
+      name: "GH Chikkis",
+      tagline: "Ghar ki Gud",
+      city: "Ahmedabad",
+      state: "Gujarat",
+      whatsappNumber: "",
+      email: "",
+      phoneDisplay: "",
+      instagramUrl: "",
+      addressLine: "",
+      gstin: "",
+    },
+    security: { idleMinutes: 60 },
+    whatsapp: {
+      liveEnabled: false,
+      paused: false,
+      pauseReason: "",
+      pausedAt: null,
+      pausedBy: "",
+      estimatedCostPerMessagePaise: 0,
+      monthlySpendThresholdPaise: 0,
+      alertPercent: 80,
+    },
+    invoice: {
+      thankYou: "Thank you for choosing GH Chikkis! We truly appreciate your support.",
+      footerNote: "Please retain this invoice for your records.",
+    },
+    expenseCategories: DEFAULT_EXPENSE_CATEGORIES,
+    backup: { retentionDays: 30 },
+    updatedAt: nowIso(),
+    updatedBy: "system",
+  };
+}
+
+export async function getSettings(): Promise<AppSettings> {
+  const db = await getDb();
+  const collection = db.collection<AppSettings & { _id: string }>("system_settings");
+  const existing = await collection.findOne({ _id: "global" });
+  if (existing) {
+    const { _id, ...settings } = existing;
+    void _id;
+    return { ...defaultSettings(), ...settings, business: { ...defaultSettings().business, ...settings.business }, security: { ...defaultSettings().security, ...settings.security }, whatsapp: { ...defaultSettings().whatsapp, ...settings.whatsapp }, invoice: { ...defaultSettings().invoice, ...settings.invoice }, backup: { ...defaultSettings().backup, ...settings.backup } };
+  }
+  const defaults = defaultSettings();
+  await collection.updateOne(
+    { _id: "global" },
+    { $setOnInsert: { _id: "global", ...defaults } },
+    { upsert: true },
+  );
+  return defaults;
+}
+
+export interface SettingsPatch {
+  business?: Partial<AppSettings["business"]>;
+  security?: Partial<AppSettings["security"]>;
+  whatsapp?: Partial<AppSettings["whatsapp"]>;
+  invoice?: Partial<AppSettings["invoice"]>;
+  expenseCategories?: string[];
+  backup?: Partial<AppSettings["backup"]>;
+}
+
+export async function updateSettings(
+  patch: SettingsPatch,
+  actor: string,
+): Promise<AppSettings> {
+  const db = await getDb();
+  const collection = db.collection<AppSettings & { _id: string }>("system_settings");
+  const set: Record<string, unknown> = {
+    updatedAt: nowIso(),
+    updatedBy: actor,
+  };
+  for (const [section, value] of Object.entries(patch)) {
+    if (value === undefined) continue;
+    if (section === "expenseCategories") {
+      set.expenseCategories = value;
+      continue;
+    }
+    if (section === "backup") {
+      for (const [key, field] of Object.entries(value)) {
+        set[`backup.${key}`] = field;
+      }
+      continue;
+    }
+    for (const [key, field] of Object.entries(value as Record<string, unknown>)) {
+      set[`${section}.${key}`] = field;
+    }
+  }
+  await collection.updateOne(
+    { _id: "global" },
+    {
+      $set: set,
+      $setOnInsert: { _id: "global", ...defaultSettings() },
+    },
+    { upsert: true },
+  );
+  return getSettings();
+}
+
+export async function pauseWhatsApp(
+  reason: string,
+  actorEmail: string,
+): Promise<void> {
+  await updateSettings(
+    {
+      whatsapp: {
+        paused: true,
+        pauseReason: reason.slice(0, 500),
+        pausedAt: nowIso(),
+        pausedBy: actorEmail,
+      },
+    },
+    actorEmail,
+  );
+}
+
+export async function resumeWhatsApp(actorEmail: string): Promise<void> {
+  await updateSettings(
+    {
+      whatsapp: {
+        paused: false,
+        pauseReason: "",
+        pausedAt: null,
+        pausedBy: actorEmail,
+      },
+    },
+    actorEmail,
+  );
+}
+
+export function publicBusiness(
+  settings: AppSettings,
+): AppSettings["business"] {
+  return settings.business;
+}
