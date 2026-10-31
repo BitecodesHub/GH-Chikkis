@@ -3,11 +3,18 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createPkcePair, createState, googleAuthUrl } from "@/lib/auth/google";
+import { verifyPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import { recordAudit } from "@/lib/audit";
 import { env, googleConfigured } from "@/lib/env";
 import { rateLimit, requestIp } from "@/lib/rate-limit";
-import { ensureOwnerUser, getUserByEmail, mapUser } from "@/lib/users";
+import {
+  ensureBootstrapAdmin,
+  ensureOwnerUser,
+  getUserByEmail,
+  mapUser,
+  recordSignIn,
+} from "@/lib/users";
 
 export async function startGoogleSignIn(): Promise<void> {
   if (!googleConfigured) redirect("/login?error=google-off");
@@ -24,6 +31,42 @@ export async function startGoogleSignIn(): Promise<void> {
   cookieStore.set("gh_oauth_state", state, options);
   cookieStore.set("gh_oauth_verifier", verifier, options);
   redirect(googleAuthUrl(state, challenge));
+}
+
+export async function passwordSignIn(formData: FormData): Promise<void> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+  if (!email || !password) redirect("/login?error=password");
+
+  const requestHeaders = await headers();
+  const limit = await rateLimit({
+    scope: "login:password",
+    identifier: requestIp(requestHeaders),
+    limit: 8,
+    windowSeconds: 900,
+  });
+  if (!limit.allowed) redirect("/login?error=rate");
+
+  await ensureBootstrapAdmin();
+  const user = await getUserByEmail(email);
+  if (!user || !verifyPassword(password, user.passwordHash)) {
+    redirect("/login?error=password");
+  }
+  if (!user.active) redirect("/login?error=not-allowed");
+
+  await createSession(user._id, {
+    ip: requestIp(requestHeaders),
+    userAgent: requestHeaders.get("user-agent") ?? undefined,
+  });
+  await recordSignIn(user._id);
+  await recordAudit({
+    actor: mapUser(user),
+    action: "auth.signin",
+    entityType: "session",
+    entityId: user._id,
+    summary: `Signed in with email and password as ${user.email}`,
+  });
+  redirect("/admin");
 }
 
 export async function devSignIn(formData: FormData): Promise<void> {
@@ -51,6 +94,7 @@ export async function devSignIn(formData: FormData): Promise<void> {
     ip: requestIp(requestHeaders),
     userAgent: requestHeaders.get("user-agent") ?? undefined,
   });
+  await recordSignIn(user._id);
   await recordAudit({
     actor: mapUser(user),
     action: "auth.signin",

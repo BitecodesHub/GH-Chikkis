@@ -224,7 +224,7 @@ function NavContent({
                       <li key={item.href}>
                         <span
                           aria-disabled="true"
-                          className="flex cursor-not-allowed items-center gap-3 rounded-sm px-3 py-2 text-[0.875rem] text-paper/35"
+                          className="flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2 text-[0.875rem] text-paper/35"
                         >
                           <Icon aria-hidden="true" className="size-4" />
                           <span className="flex-1">{item.label}</span>
@@ -242,10 +242,10 @@ function NavContent({
                         onClick={onNavigate}
                         aria-current={active ? "page" : undefined}
                         className={cn(
-                          "flex items-center gap-3 rounded-sm px-3 py-2 text-[0.875rem] transition-colors",
+                          "flex items-center gap-3 rounded-xl px-3 py-2 text-[0.875rem] transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
                           active
-                            ? "bg-paper/10 text-paper"
-                            : "text-paper/65 hover:bg-paper/5 hover:text-paper",
+                            ? "bg-paper/14 text-paper shadow-[inset_0_1px_0_0_rgba(246,241,230,0.14)]"
+                            : "text-paper/65 hover:translate-x-0.5 hover:bg-paper/8 hover:text-paper",
                         )}
                       >
                         <Icon aria-hidden="true" className="size-4 shrink-0" />
@@ -270,10 +270,19 @@ function NavContent({
             <p className="truncate text-[0.75rem] text-paper/45">{user.email}</p>
           </div>
         </div>
+        <Link
+          href="/"
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[0.8125rem] text-paper/55 transition-colors hover:bg-paper/8 hover:text-paper"
+        >
+          <ExternalLink aria-hidden="true" className="size-4" />
+          View the website
+        </Link>
         <form action="/api/auth/logout" method="post" onSubmit={onSignOut}>
           <button
             type="submit"
-            className="mt-3 flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-[0.8125rem] text-paper/55 transition-colors hover:bg-paper/5 hover:text-paper"
+            className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[0.8125rem] text-paper/55 transition-colors hover:bg-paper/8 hover:text-paper"
           >
             <LogOut aria-hidden="true" className="size-4" />
             Sign out
@@ -311,41 +320,62 @@ export function AdminShell({
   }, [menuOpen]);
 
   return (
-    <div className="min-h-dvh bg-paper">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 bg-olive-deep lg:block">
-        <NavContent user={user} pathname={pathname} />
+    <div className="flex min-h-dvh bg-paper">
+      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 p-3 lg:block">
+        <div className="glass-deep flex h-full flex-col overflow-hidden rounded-[1.75rem]">
+          <NavContent user={user} pathname={pathname} />
+        </div>
       </aside>
 
-      <div className="lg:pl-64">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-line bg-paper px-4 sm:px-6">
-          <button
-            type="button"
-            onClick={() => setMenuOpen(true)}
-            className="btn btn-quiet -ml-2 px-2 lg:hidden"
-            aria-label="Open workspace menu"
-            aria-expanded={menuOpen}
-          >
-            <Menu aria-hidden="true" className="size-5" />
-          </button>
-
-          <div className="lg:hidden">
-            <Wordmark tone="ink" />
+      <div className="min-w-0 flex-1">
+        {user.usesDefaultPassword ? (
+          <div className="mx-auto w-full max-w-7xl px-4 pt-4 sm:px-6 lg:px-8">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border-2 border-terracotta bg-paper-raised px-4 py-3">
+              <p className="text-[0.8125rem] leading-snug">
+                <span className="font-semibold">
+                  This account still uses the default password.
+                </span>{" "}
+                Change it before leaving the workspace open to the internet.
+              </p>
+              <Link
+                href="/admin/settings#your-sign-in"
+                className="btn btn-ink btn-sm ml-auto"
+              >
+                Change it now
+              </Link>
+            </div>
           </div>
+        ) : null}
 
-          <div className="ml-auto flex items-center gap-3">
-            <a
-              href="/"
-              target="_blank"
-              rel="noreferrer"
-              className="hidden items-center gap-1.5 text-[0.8125rem] text-ink-soft transition-colors hover:text-ink sm:flex"
+        <header className="sticky top-0 z-30 px-3 pt-3 sm:px-4 lg:hidden">
+          <div className="glass flex h-14 items-center gap-3 rounded-full px-4">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              className="btn btn-quiet -ml-2 px-2"
+              aria-label="Open workspace menu"
+              aria-expanded={menuOpen}
             >
-              View site
-              <ExternalLink aria-hidden="true" className="size-3.5" />
-            </a>
-            <span className="hidden h-5 w-px bg-line sm:block" />
-            <span className="grid size-8 place-items-center rounded-full border border-line-strong text-[0.6875rem] font-semibold text-ink-soft">
-              {initials(user.name)}
-            </span>
+              <Menu aria-hidden="true" className="size-5" />
+            </button>
+
+            <Wordmark tone="ink" />
+
+            <div className="ml-auto flex items-center gap-3">
+              <a
+                href="/"
+                target="_blank"
+                rel="noreferrer"
+                className="hidden items-center gap-1.5 text-[0.8125rem] text-ink-soft transition-colors hover:text-ink sm:flex"
+              >
+                View site
+                <ExternalLink aria-hidden="true" className="size-3.5" />
+              </a>
+              <span className="hidden h-5 w-px bg-line sm:block" />
+              <span className="grid size-8 place-items-center rounded-full border border-line-strong bg-white/60 text-[0.6875rem] font-semibold text-ink-soft">
+                {initials(user.name)}
+              </span>
+            </div>
           </div>
         </header>
 
@@ -366,13 +396,13 @@ export function AdminShell({
             role="dialog"
             aria-modal="true"
             aria-label="Workspace navigation"
-            className="absolute inset-y-0 left-0 w-[17rem] max-w-[85vw] bg-olive-deep"
+            className="glass-deep absolute inset-y-2 left-2 flex w-[17rem] max-w-[85vw] flex-col overflow-hidden rounded-[1.75rem] lg:hidden"
           >
             <button
               type="button"
               autoFocus
               onClick={() => setMenuOpen(false)}
-              className="absolute top-4 right-3 z-10 grid size-9 place-items-center rounded-sm text-paper/60 hover:bg-paper/10 hover:text-paper"
+              className="absolute top-4 right-3 z-10 grid size-9 place-items-center rounded-full text-paper/60 transition-colors hover:bg-paper/10 hover:text-paper"
               aria-label="Close menu"
             >
               <X aria-hidden="true" className="size-5" />

@@ -65,7 +65,7 @@ export default async function StoryPage() {
             </div>
 
             <div className="mt-12 border-l-2 border-brass pl-6">
-              <p className="font-display text-[clamp(1.5rem,3vw,2rem)] italic leading-snug text-ink">
+              <p className="font-display text-[clamp(1.5rem,3vw,2rem)] font-medium leading-snug text-ink">
                 Two sisters, one kitchen, and a family recipe kept at the centre since
                 2018.
               </p>

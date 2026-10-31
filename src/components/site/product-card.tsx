@@ -8,7 +8,7 @@ export function ProductCard({ product }: { product: Product }) {
   return (
     <Link
       href={`/collection/${product.slug}`}
-      className="group block border border-line bg-paper-raised transition-colors hover:border-line-strong"
+      className="lift group block overflow-hidden rounded-3xl border border-line bg-paper-raised hover:border-line-strong"
     >
       <div className="relative aspect-square overflow-hidden bg-paper-deep">
         {primary ? (
@@ -17,18 +17,21 @@ export function ProductCard({ product }: { product: Product }) {
             alt={primary.alt}
             fill
             sizes="(min-width: 1024px) 30vw, (min-width: 640px) 45vw, 46vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+            className="object-cover transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04]"
           />
         ) : (
           <ProductArt slug={product.slug} />
         )}
       </div>
-      <div className="border-t border-line p-3 sm:p-5">
+      <div className="p-3 sm:p-5">
         <div className="flex items-baseline justify-between gap-2 sm:gap-4">
-          <h3 className="text-[1.0625rem] leading-tight font-medium sm:text-2xl sm:font-normal sm:[font-family:var(--font-display)]">
+          <h3 className="text-[1.0625rem] leading-tight font-medium sm:text-2xl sm:font-semibold sm:[font-family:var(--font-display)]">
             {product.name}
           </h3>
-          <span aria-hidden="true" className="text-brass">
+          <span
+            aria-hidden="true"
+            className="text-brass transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-1"
+          >
             →
           </span>
         </div>

@@ -5,7 +5,7 @@ import { getSessionContext } from "@/lib/auth/session";
 import { Wordmark } from "@/components/site/wordmark";
 import { Diamond } from "@/components/ui/diamond";
 import { env, googleConfigured } from "@/lib/env";
-import { devSignIn, startGoogleSignIn } from "./actions";
+import { devSignIn, passwordSignIn, startGoogleSignIn } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -16,12 +16,13 @@ export const metadata: Metadata = {
 };
 
 const ERRORS: Record<string, string> = {
-  "not-allowed":
-    "That Google account is not approved for this workspace. Ask the Owner to add you.",
+  "not-allowed": "That account is approved but currently deactivated. Ask the Owner.",
   denied: "Sign-in was cancelled.",
   state: "That sign-in link expired. Please try again.",
   "google-off": "Google sign-in is not configured yet.",
   "google-failed": "Google sign-in could not be completed. Please try again.",
+  password: "That email and password combination did not match an account.",
+  rate: "Too many sign-in attempts. Please wait a few minutes.",
   "dev-off": "Development sign-in is not enabled.",
   "dev-email": "Enter the email of an approved account.",
   "dev-rate": "Too many sign-in attempts. Please wait a few minutes.",
@@ -85,13 +86,14 @@ export default async function LoginPage({
             <p className="eyebrow">Staff sign in</p>
             <h2 className="display-m mt-4">Welcome back.</h2>
             <p className="mt-3 text-[0.9375rem] leading-relaxed text-ink-soft">
-              Sign in with the Google account the Owner has approved for you.
+              Sign in with the email and password the Owner set up for you, or
+              with an approved Google account.
             </p>
 
             {notice ? (
               <p
                 role="status"
-                className="mt-6 border border-line-strong bg-paper-raised px-4 py-3 text-[0.875rem] leading-relaxed text-ink-soft"
+                className="surface mt-6 rounded-2xl px-4 py-3 text-[0.875rem] leading-relaxed text-ink-soft"
               >
                 {notice}
               </p>
@@ -99,36 +101,74 @@ export default async function LoginPage({
             {error ? (
               <p
                 role="alert"
-                className="mt-6 border border-terracotta bg-paper-raised px-4 py-3 text-[0.875rem] leading-relaxed text-ink"
+                className="mt-6 rounded-2xl border border-terracotta bg-paper-raised px-4 py-3 text-[0.875rem] leading-relaxed text-ink"
               >
                 {error}
               </p>
             ) : null}
 
-            <div className="mt-8">
-              {googleConfigured ? (
+            <form action={passwordSignIn} className="mt-8 space-y-4">
+              <div>
+                <label className="label" htmlFor="login-email">
+                  Email
+                </label>
+                <input
+                  id="login-email"
+                  name="email"
+                  type="email"
+                  className="field"
+                  autoComplete="username"
+                  placeholder="name@example.com"
+                  required
+                />
+              </div>
+              <div>
+                <label className="label" htmlFor="login-password">
+                  Password
+                </label>
+                <input
+                  id="login-password"
+                  name="password"
+                  type="password"
+                  className="field"
+                  autoComplete="current-password"
+                  required
+                />
+              </div>
+              <button type="submit" className="btn btn-solid w-full">
+                Sign in
+              </button>
+            </form>
+
+            {googleConfigured ? (
+              <>
+                <div className="my-7 flex items-center gap-4">
+                  <span aria-hidden="true" className="h-px flex-1 bg-line" />
+                  <span className="meta uppercase tracking-[0.14em]">or</span>
+                  <span aria-hidden="true" className="h-px flex-1 bg-line" />
+                </div>
                 <form action={startGoogleSignIn}>
-                  <button type="submit" className="btn btn-solid w-full">
+                  <button type="submit" className="btn btn-outline w-full">
                     Continue with Google
                   </button>
                 </form>
-              ) : (
-                <div className="surface-deep px-4 py-4 text-[0.875rem] leading-relaxed text-ink-soft">
-                  Google sign-in is not configured yet. Add{" "}
-                  <code className="font-mono text-[0.8125rem]">
-                    GOOGLE_CLIENT_ID
-                  </code>{" "}
-                  and{" "}
-                  <code className="font-mono text-[0.8125rem]">
-                    GOOGLE_CLIENT_SECRET
-                  </code>{" "}
-                  to enable it.
-                </div>
-              )}
-            </div>
+              </>
+            ) : (
+              <p className="help mt-5">
+                Google sign-in is off until{" "}
+                <code className="font-mono text-[0.8125rem]">
+                  GOOGLE_CLIENT_ID
+                </code>{" "}
+                and{" "}
+                <code className="font-mono text-[0.8125rem]">
+                  GOOGLE_CLIENT_SECRET
+                </code>{" "}
+                are added.
+              </p>
+            )}
 
             {env.devAuthEnabled ? (
-              <div className="mt-8 border border-dashed border-line-strong px-4 py-5">
+              <div className="mt-8 rounded-2xl border border-dashed border-line-strong px-4 py-5">
                 <p className="text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-brass-ink">
                   Local development
                 </p>

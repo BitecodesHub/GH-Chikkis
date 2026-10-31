@@ -3,13 +3,43 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/lib/auth/session";
+import { passwordProblem, verifyPassword } from "@/lib/auth/password";
 import { recordAudit } from "@/lib/audit";
 import { getSettings, updateSettings } from "@/lib/settings";
+import { getUserById, setPasswordForUser } from "@/lib/users";
 import { cleanSingleLine, cleanText } from "@/lib/text";
 import { normalizePhone } from "@/lib/phone";
 
 function fail(message: string): never {
   redirect(`/admin/settings?error=${encodeURIComponent(message)}`);
+}
+
+export async function changeMyPasswordAction(formData: FormData): Promise<void> {
+  const { user } = await requirePermission("settings.manage");
+  const current = String(formData.get("current") ?? "");
+  const next = String(formData.get("next") ?? "");
+  if (next !== String(formData.get("confirm") ?? "")) {
+    fail("The new passwords do not match.");
+  }
+  const problem = passwordProblem(next);
+  if (problem) fail(problem);
+
+  const target = await getUserById(user.id);
+  if (!target) fail("Your account could not be found.");
+  if (target.passwordHash && !verifyPassword(current, target.passwordHash)) {
+    fail("That is not your current password.");
+  }
+
+  await setPasswordForUser(target._id, next);
+  await recordAudit({
+    actor: { id: user.id, email: user.email },
+    action: "user.update",
+    entityType: "user",
+    entityId: target._id,
+    summary: "Changed their own sign-in password",
+  });
+  revalidatePath("/admin/settings");
+  redirect("/admin/settings?password=1");
 }
 
 export async function saveSettingsAction(formData: FormData): Promise<void> {

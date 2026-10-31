@@ -63,7 +63,7 @@ export default async function AdminCustomersPage({
                 Search
               </label>
               <div className="flex">
-                <span className="grid place-items-center border border-r-0 border-line bg-paper-raised px-3">
+                <span className="field-adorn">
                   <Search aria-hidden="true" className="size-4 text-ink-muted" />
                 </span>
                 <input

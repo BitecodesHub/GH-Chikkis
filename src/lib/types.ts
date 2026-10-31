@@ -91,6 +91,8 @@ export interface User {
   permissions: Permission[];
   active: boolean;
   picture?: string;
+  canUsePassword: boolean;
+  usesDefaultPassword: boolean;
   createdAt: ISODate;
   lastSignInAt?: ISODate;
 }

@@ -2,12 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { passwordProblem } from "@/lib/auth/password";
 import { requirePermission } from "@/lib/auth/session";
 import { recordAudit } from "@/lib/audit";
 import {
   createTeamUser,
   getUserById,
   revokeSessionsForUser,
+  setPasswordForUser,
   updateUserAccess,
   type UserDoc,
 } from "@/lib/users";
@@ -22,10 +24,19 @@ function permissionsFrom(formData: FormData): string[] {
   return formData.getAll("permissions").map(String);
 }
 
+function passwordFrom(formData: FormData): string | null {
+  const password = String(formData.get("password") ?? "");
+  if (!password.trim()) return null;
+  const problem = passwordProblem(password);
+  if (problem) fail(problem, formData.get("id") ? String(formData.get("id")) : undefined);
+  return password;
+}
+
 export async function createUserAction(formData: FormData): Promise<void> {
   const { user } = await requirePermission("users.manage");
   const email = String(formData.get("email") ?? "");
   const name = cleanSingleLine(String(formData.get("name") ?? ""), 120);
+  const password = passwordFrom(formData);
   if (!name) fail("Enter a name for this team member.");
   try {
     const created = await createTeamUser({
@@ -33,13 +44,16 @@ export async function createUserAction(formData: FormData): Promise<void> {
       name,
       role: "TEAM",
       permissions: permissionsFrom(formData),
+      password: password ?? undefined,
     });
     await recordAudit({
       actor: { id: user.id, email: user.email },
       action: "user.create",
       entityType: "user",
       entityId: created._id,
-      summary: `Created team access for ${created.name} (${created.email})`,
+      summary: `Created team access for ${created.name} (${created.email})${
+        password ? " with password sign-in" : ""
+      }`,
     });
   } catch (error) {
     if (error instanceof Error) fail(error.message);
@@ -63,6 +77,7 @@ export async function updateUserAction(formData: FormData): Promise<void> {
   }
   const permissions = permissionsFrom(formData);
   const name = cleanSingleLine(String(formData.get("name") ?? ""), 120);
+  const password = passwordFrom(formData);
   let updated: UserDoc | null = null;
   try {
     updated = await updateUserAccess(id, {
@@ -76,7 +91,10 @@ export async function updateUserAction(formData: FormData): Promise<void> {
     throw error;
   }
   if (!updated) fail("That user could not be saved.", id);
-  if (!active) {
+  if (password) {
+    await setPasswordForUser(id, password);
+  }
+  if (!active || password) {
     await revokeSessionsForUser(id);
   }
   await recordAudit({
@@ -86,7 +104,7 @@ export async function updateUserAction(formData: FormData): Promise<void> {
     entityId: id,
     summary: `Updated access for ${target.name} · ${active ? "active" : "inactive"} · ${
       permissions.length
-    } permission(s)${!active ? " · sessions revoked" : ""}`,
+    } permission(s)${!active ? " · sessions revoked" : ""}${password ? " · password set" : ""}`,
     diff: [
       {
         field: "active",

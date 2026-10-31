@@ -93,7 +93,7 @@ export function CustomerPicker({
           Search customers
         </label>
         <div className="flex">
-          <span className="grid place-items-center border border-r-0 border-line bg-paper-raised px-3">
+          <span className="field-adorn">
             {loading && searching ? (
               <LoaderCircle aria-hidden="true" className="size-4 animate-spin text-ink-muted" />
             ) : (

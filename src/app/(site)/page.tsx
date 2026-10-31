@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Diamond } from "@/components/ui/diamond";
-import { ChikkiPlate } from "@/components/site/product-art";
+import { ChikkiStack } from "@/components/site/product-art";
 import { ProductCard } from "@/components/site/product-card";
 import { ArrowLink } from "@/components/site/page-header";
 import { JsonLd } from "@/components/site/json-ld";
@@ -79,19 +79,24 @@ export default async function HomePage() {
       <JsonLd data={organization} />
       <JsonLd data={website} />
 
-      <section className="border-b border-line">
-        <div className="container-page grid items-center gap-12 py-14 md:py-20 lg:grid-cols-[1.08fr_0.92fr] lg:gap-16">
+      <section className="relative overflow-hidden">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-24 -top-24 size-[34rem] rounded-full bg-[radial-gradient(circle_at_center,rgba(184,92,52,0.13),transparent_65%)]"
+        />
+        <div className="container-page relative grid items-center gap-10 py-12 md:py-16 lg:grid-cols-[1.02fr_0.98fr] lg:gap-14">
           <div>
-            <p className="eyebrow">{contentText(content, "heroEyebrow")}</p>
-            <h1 className="display-xl mt-6">
-              {contentText(content, "heroTitle")}
-              <br />
-              <em className="font-normal italic text-terracotta">
+            <p className="eyebrow enter">{contentText(content, "heroEyebrow")}</p>
+            <h1 className="display-xl enter enter-1 mt-5">
+              {contentText(content, "heroTitle")}{" "}
+              <span className="text-terracotta">
                 {contentText(content, "heroTitleAccent")}
-              </em>
+              </span>
             </h1>
-            <p className="lede mt-7 max-w-lg">{contentText(content, "heroIntro")}</p>
-            <div className="mt-9 flex flex-wrap gap-3">
+            <p className="lede enter enter-2 mt-6 max-w-lg">
+              {contentText(content, "heroIntro")}
+            </p>
+            <div className="enter enter-3 mt-8 flex flex-wrap gap-3">
               <Link href="/collection" className="btn btn-solid">
                 Explore the collection
               </Link>
@@ -99,11 +104,16 @@ export default async function HomePage() {
                 Our story
               </Link>
             </div>
-            <p className="meta mt-7 max-w-md border-l border-brass pl-4">
+            <p className="glass enter enter-4 mt-9 max-w-md rounded-2xl px-4 py-3 text-[0.875rem] leading-relaxed text-ink-soft">
               {contentText(content, "heroNote")}
             </p>
           </div>
-          <ChikkiPlate className="mx-auto w-full max-w-[32rem]" />
+
+          <div className="enter enter-2 relative">
+            <div className="glass rounded-[2rem] p-4 sm:p-7">
+              <ChikkiStack className="mx-auto w-full max-w-[30rem]" />
+            </div>
+          </div>
         </div>
       </section>
 

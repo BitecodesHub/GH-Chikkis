@@ -23,8 +23,9 @@ function Notice({ params }: { params: Record<string, string | string[] | undefin
   }
   if (params.created === "1") {
     return (
-      <p role="status" className="border border-olive bg-paper-raised px-4 py-3 text-[0.875rem]">
-        Team access created. The person can sign in with Google using this email address.
+      <p role="status" className="rounded-2xl border border-olive bg-paper-raised px-4 py-3 text-[0.875rem]">
+        Team access created. They can now sign in with the password you set, or
+        with Google if that email is approved.
       </p>
     );
   }
@@ -46,7 +47,7 @@ export default async function AdminUsersPage({
       <AdminPageHeader
         eyebrow="Admin"
         title="Users & access"
-        description="Only people listed here can open the dashboard, and only with the permissions you grant. Sign-in stays closed to every other Google account."
+        description="Only people listed here can open the dashboard, and only with the permissions you grant. Everyone else stays out, whether they use a password or Google."
       />
 
       <Notice params={params} />
@@ -115,8 +116,8 @@ export default async function AdminUsersPage({
             Add a team member
           </h2>
           <p className="mt-2 text-[0.875rem] text-ink-soft">
-            Enter the Google email they will sign in with. Grant only what their work needs; you
-            can change it later.
+            Grant only what their work needs; you can change it later. They can
+            sign in with a password, with Google, or both.
           </p>
           <form action={createUserAction} className="mt-5 space-y-4">
             <div>
@@ -127,7 +128,7 @@ export default async function AdminUsersPage({
             </div>
             <div>
               <label htmlFor="user-email" className="label">
-                Google email
+                Email
               </label>
               <input
                 id="user-email"
@@ -137,6 +138,24 @@ export default async function AdminUsersPage({
                 autoComplete="off"
                 className="field"
               />
+            </div>
+            <div>
+              <label htmlFor="user-password" className="label">
+                Password <span className="font-normal text-ink-muted">(optional)</span>
+              </label>
+              <input
+                id="user-password"
+                name="password"
+                type="text"
+                minLength={8}
+                autoComplete="off"
+                placeholder="Leave empty for Google-only sign-in"
+                className="field"
+              />
+              <p className="help">
+                At least 8 characters. Share it with them directly — it is shown
+                once and never stored as plain text.
+              </p>
             </div>
             <PermissionPicker
               allowed={teamPermissions}

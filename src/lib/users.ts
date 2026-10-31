@@ -1,9 +1,13 @@
 import { randomUUID } from "node:crypto";
 import type { Permission, Role, User } from "./types";
+import { hashPassword } from "./auth/password";
 import { getDb } from "./db";
 import { nowIso } from "./dates";
 import { env } from "./env";
 import { normalizePermissions } from "./permissions";
+
+export const BOOTSTRAP_EMAIL = "admin@gmail.com";
+export const BOOTSTRAP_PASSWORD = "admin";
 
 export interface UserDoc {
   _id: string;
@@ -14,6 +18,8 @@ export interface UserDoc {
   permissions: Permission[];
   active: boolean;
   picture?: string;
+  passwordHash?: string;
+  usesDefaultPassword?: boolean;
   createdAt: string;
   updatedAt: string;
   lastSignInAt?: string;
@@ -28,6 +34,8 @@ export function mapUser(doc: UserDoc): User {
     permissions: doc.permissions ?? [],
     active: doc.active,
     picture: doc.picture,
+    canUsePassword: Boolean(doc.passwordHash),
+    usesDefaultPassword: doc.usesDefaultPassword === true,
     createdAt: doc.createdAt,
     lastSignInAt: doc.lastSignInAt,
   };
@@ -75,6 +83,35 @@ export async function ensureOwnerUser(): Promise<UserDoc | null> {
   return doc;
 }
 
+/**
+ * Creates the password sign-in account the owner uses before Google is wired up.
+ * Deactivating it is permanent — the row is never re-enabled or re-created.
+ */
+export async function ensureBootstrapAdmin(): Promise<UserDoc | null> {
+  const existing = await getUserByEmail(BOOTSTRAP_EMAIL);
+  if (existing) return existing.active ? existing : null;
+  const db = await getDb();
+  const now = nowIso();
+  const doc: UserDoc = {
+    _id: randomUUID(),
+    email: BOOTSTRAP_EMAIL,
+    name: "Admin",
+    role: "OWNER",
+    permissions: [],
+    active: true,
+    passwordHash: hashPassword(BOOTSTRAP_PASSWORD),
+    usesDefaultPassword: true,
+    createdAt: now,
+    updatedAt: now,
+  };
+  try {
+    await db.collection<UserDoc>("users").insertOne(doc);
+  } catch {
+    return getUserByEmail(BOOTSTRAP_EMAIL);
+  }
+  return doc;
+}
+
 export async function signInAllowedUser(input: {
   email: string;
   googleSub?: string;
@@ -103,11 +140,20 @@ export async function signInAllowedUser(input: {
   return { ...user, ...update };
 }
 
+export async function recordSignIn(id: string): Promise<void> {
+  const db = await getDb();
+  const now = nowIso();
+  await db
+    .collection<UserDoc>("users")
+    .updateOne({ _id: id }, { $set: { lastSignInAt: now, updatedAt: now } });
+}
+
 export async function createTeamUser(input: {
   email: string;
   name: string;
   role: Role;
   permissions: string[];
+  password?: string;
 }): Promise<UserDoc> {
   const db = await getDb();
   const email = input.email.trim().toLowerCase();
@@ -127,6 +173,7 @@ export async function createTeamUser(input: {
     createdAt: now,
     updatedAt: now,
   };
+  if (input.password) doc.passwordHash = hashPassword(input.password);
   await db.collection<UserDoc>("users").insertOne(doc);
   return doc;
 }
@@ -159,6 +206,22 @@ export async function updateUserAccess(
   if (input.name !== undefined) update.name = input.name.trim().slice(0, 120);
   await db.collection<UserDoc>("users").updateOne({ _id: id }, { $set: update });
   return { ...existing, ...update };
+}
+
+export async function setPasswordForUser(id: string, password: string): Promise<void> {
+  const db = await getDb();
+  await db
+    .collection<UserDoc>("users")
+    .updateOne(
+      { _id: id },
+      {
+        $set: {
+          passwordHash: hashPassword(password),
+          usesDefaultPassword: false,
+          updatedAt: nowIso(),
+        },
+      },
+    );
 }
 
 export async function revokeSessionsForUser(userId: string): Promise<void> {

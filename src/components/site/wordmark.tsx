@@ -29,7 +29,7 @@ export function Wordmark({
         className={tone === "paper" ? "bg-paper" : undefined}
       />
       <span className="flex flex-col leading-none">
-        <span className="font-display text-[1.7rem] font-normal leading-[0.9] tracking-[-0.03em]">
+        <span className="font-display text-[1.6rem] font-semibold leading-[0.9] tracking-[-0.045em]">
           GH
         </span>
         <span

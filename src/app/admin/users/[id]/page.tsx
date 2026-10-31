@@ -117,6 +117,29 @@ export default async function EditUserPage({
                   </span>
                 </span>
               </label>
+              <div>
+                <label htmlFor="edit-user-password" className="label">
+                  Password
+                </label>
+                <input
+                  id="edit-user-password"
+                  name="password"
+                  type="text"
+                  minLength={8}
+                  autoComplete="off"
+                  placeholder={
+                    target.passwordHash
+                      ? "Already set — type a new one to replace it"
+                      : "Leave empty to keep password sign-in off"
+                  }
+                  className="field"
+                />
+                <p className="help">
+                  {target.passwordHash
+                    ? "Setting a new password immediately signs this person out of every device."
+                    : "At least 8 characters. Only set it if they will not sign in with Google."}
+                </p>
+              </div>
               <PermissionPicker
                 allowed={assignablePermissions("TEAM")}
                 selected={target.permissions}

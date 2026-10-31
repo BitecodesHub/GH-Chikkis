@@ -1,18 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, Fraunces } from "next/font/google";
+import { Archivo } from "next/font/google";
 import { env } from "@/lib/env";
 import "./globals.css";
 
 const archivo = Archivo({
   subsets: ["latin"],
   variable: "--font-archivo",
-  display: "swap",
-});
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  style: ["normal", "italic"],
-  variable: "--font-fraunces",
   display: "swap",
 });
 
@@ -63,11 +56,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="en-IN"
-      className={`${archivo.variable} ${fraunces.variable}`}
-      suppressHydrationWarning
-    >
+    <html lang="en-IN" className={archivo.variable} suppressHydrationWarning>
       <body>{children}</body>
     </html>
   );

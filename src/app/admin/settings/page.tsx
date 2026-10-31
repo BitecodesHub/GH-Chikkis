@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   Building2,
   DatabaseBackup,
+  KeyRound,
   PlugZap,
   ReceiptText,
   Save,
@@ -18,7 +19,7 @@ import {
   whatsappConfigured,
 } from "@/lib/env";
 import { getSettings } from "@/lib/settings";
-import { saveSettingsAction } from "./actions";
+import { changeMyPasswordAction, saveSettingsAction } from "./actions";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -26,14 +27,21 @@ function Notice({ params }: { params: Record<string, string | string[] | undefin
   const error = typeof params.error === "string" ? params.error : "";
   if (error) {
     return (
-      <p role="alert" className="border border-terracotta bg-paper-raised px-4 py-3 text-[0.875rem] text-terracotta">
+      <p role="alert" className="rounded-2xl border border-terracotta bg-paper-raised px-4 py-3 text-[0.875rem] text-terracotta">
         {error}
+      </p>
+    );
+  }
+  if (params.password === "1") {
+    return (
+      <p role="status" className="rounded-2xl border border-olive bg-paper-raised px-4 py-3 text-[0.875rem]">
+        Your sign-in password is updated. Use it next time you sign in.
       </p>
     );
   }
   if (params.saved === "1") {
     return (
-      <p role="status" className="border border-olive bg-paper-raised px-4 py-3 text-[0.875rem]">
+      <p role="status" className="rounded-2xl border border-olive bg-paper-raised px-4 py-3 text-[0.875rem]">
         Settings saved. New invoices and public pages pick up the changes immediately.
       </p>
     );
@@ -60,7 +68,7 @@ export default async function AdminSettingsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requirePermission("settings.manage");
+  const { user } = await requirePermission("settings.manage");
   const params = await searchParams;
   const settings = await getSettings();
   const business = settings.business;
@@ -340,6 +348,80 @@ export default async function AdminSettingsPage({
           </button>
         </div>
       </form>
+
+      <section
+        id="your-sign-in"
+        className="surface p-5 sm:p-6"
+        aria-labelledby="your-sign-in-heading"
+      >
+        <h2
+          id="your-sign-in-heading"
+          className="flex items-center gap-2 font-[family-name:var(--font-display)] text-xl"
+        >
+          <KeyRound aria-hidden="true" className="size-4 text-brass" />
+          Your sign-in
+        </h2>
+        <p className="mt-2 text-[0.875rem] text-ink-soft">
+          Signed in as <span className="font-medium">{user.email}</span>
+          {user.canUsePassword
+            ? " using a password."
+            : " — this account has no password yet, so it signs in with Google only."}
+        </p>
+        <form action={changeMyPasswordAction} className="mt-5 grid gap-4 sm:grid-cols-3">
+          {user.canUsePassword ? (
+            <div>
+              <label htmlFor="current-password" className="label">
+                Current password
+              </label>
+              <input
+                id="current-password"
+                name="current"
+                type="password"
+                autoComplete="current-password"
+                className="field"
+                required
+              />
+            </div>
+          ) : null}
+          <div>
+            <label htmlFor="new-password" className="label">
+              New password
+            </label>
+            <input
+              id="new-password"
+              name="next"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              className="field"
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="confirm-password" className="label">
+              Repeat new password
+            </label>
+            <input
+              id="confirm-password"
+              name="confirm"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              className="field"
+              required
+            />
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 sm:col-span-3">
+            <p className="help">
+              At least 8 characters. Other people you add get their password set
+              for them on the Users page.
+            </p>
+            <button type="submit" className="btn btn-solid btn-sm">
+              Update password
+            </button>
+          </div>
+        </form>
+      </section>
 
       <section className="surface" aria-labelledby="integration-status">
         <div className="border-b border-line px-5 py-4">
