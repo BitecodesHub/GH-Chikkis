@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { cn } from "@/lib/cn";
 
 const OLIVE = "var(--color-olive)";
@@ -242,161 +243,34 @@ export function ProductArt({ slug, className }: { slug: string; className?: stri
   );
 }
 
-type Nut = { x: number; y: number; rx: number; ry: number; rotate: number };
+const PHOTOS: Record<string, string> = {
+  "groundnut-chikki": "Groundnut chikki cut into squares in a cream bowl",
+  "dry-fruit-chikki": "Dry fruit chikki with almonds, cashews and pistachios",
+  "coconut-chikki": "Coconut and sesame chikki cut into squares in a cream bowl",
+};
 
-const PEANUTS: Nut[] = [
-  { x: 46, y: 30, rx: 17, ry: 11, rotate: -14 },
-  { x: 92, y: 52, rx: 16, ry: 10, rotate: 22 },
-  { x: 138, y: 26, rx: 18, ry: 11, rotate: 8 },
-  { x: 186, y: 48, rx: 15, ry: 10, rotate: -26 },
-  { x: 232, y: 28, rx: 17, ry: 11, rotate: 16 },
-  { x: 70, y: 70, rx: 14, ry: 9, rotate: 34 },
-  { x: 160, y: 74, rx: 15, ry: 9, rotate: -8 },
-  { x: 258, y: 62, rx: 13, ry: 8, rotate: 26 },
-];
-
-const SESAME: Nut[] = [
-  { x: 34, y: 22, rx: 5, ry: 2.6, rotate: 18 },
-  { x: 62, y: 44, rx: 5, ry: 2.6, rotate: -32 },
-  { x: 96, y: 20, rx: 5, ry: 2.6, rotate: 62 },
-  { x: 124, y: 56, rx: 5, ry: 2.6, rotate: 8 },
-  { x: 152, y: 30, rx: 5, ry: 2.6, rotate: -48 },
-  { x: 182, y: 66, rx: 5, ry: 2.6, rotate: 28 },
-  { x: 210, y: 24, rx: 5, ry: 2.6, rotate: -12 },
-  { x: 238, y: 52, rx: 5, ry: 2.6, rotate: 44 },
-  { x: 266, y: 30, rx: 5, ry: 2.6, rotate: -26 },
-  { x: 48, y: 66, rx: 5, ry: 2.6, rotate: 52 },
-];
-
-function NutShape({ nut, dark }: { nut: Nut; dark: boolean }) {
+export function ProductPhoto({
+  slug,
+  className,
+  sizes = "(min-width: 1024px) 30vw, (min-width: 640px) 45vw, 46vw",
+  priority = false,
+}: {
+  slug: string;
+  className?: string;
+  sizes?: string;
+  priority?: boolean;
+}) {
+  const alt = PHOTOS[slug];
+  if (!alt) return <ProductArt slug={slug} className={className} />;
   return (
-    <ellipse
-      cx={nut.x}
-      cy={nut.y}
-      rx={nut.rx}
-      ry={nut.ry}
-      transform={`rotate(${nut.rotate} ${nut.x} ${nut.y})`}
-      fill={dark ? "#3f2a12" : "url(#chikki-nut)"}
-      stroke={dark ? "#2b1c0b" : "#a4702e"}
-      strokeWidth={dark ? 0.8 : 1.1}
-      opacity={dark ? 0.85 : 1}
+    <Image
+      src={`/products/${slug}.jpg`}
+      alt={alt}
+      fill
+      priority={priority}
+      sizes={sizes}
+      className={cn("object-cover", className)}
     />
   );
 }
 
-function Bar({
-  transform,
-  width = 300,
-  height = 96,
-  dark,
-  seeds,
-}: {
-  transform: string;
-  width?: number;
-  height?: number;
-  dark: boolean;
-  seeds: Nut[];
-}) {
-  return (
-    <g transform={transform}>
-      <rect
-        x={4}
-        y={height - 14}
-        width={width - 8}
-        height={22}
-        rx={12}
-        fill="url(#chikki-edge)"
-      />
-      <rect x={0} y={0} width={width} height={height} rx={16} fill="url(#chikki-face)" />
-      <rect
-        x={0}
-        y={0}
-        width={width}
-        height={height}
-        rx={16}
-        fill="none"
-        stroke="#8a5a24"
-        strokeWidth={1.6}
-        opacity={0.55}
-      />
-      <rect x={12} y={7} width={width - 24} height={9} rx={5} fill="#fff" opacity={0.16} />
-      {seeds.map((nut, index) => (
-        <NutShape key={index} nut={nut} dark={dark} />
-      ))}
-    </g>
-  );
-}
-
-export function ChikkiStack({ className }: { className?: string }) {
-  return (
-    <figure className={cn("", className)}>
-      <svg
-        viewBox="0 0 520 460"
-        role="img"
-        aria-label="Illustration of handmade chikki bars with peanuts and sesame"
-        className="h-auto w-full"
-      >
-        <defs>
-          <linearGradient id="chikki-face" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#dda45c" />
-            <stop offset="48%" stopColor="#c5813a" />
-            <stop offset="100%" stopColor="#a2652a" />
-          </linearGradient>
-          <linearGradient id="chikki-edge" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#8a5a24" />
-            <stop offset="100%" stopColor="#63401a" />
-          </linearGradient>
-          <linearGradient id="chikki-nut" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#fdf4e2" />
-            <stop offset="100%" stopColor="#e8d3a8" />
-          </linearGradient>
-          <radialGradient id="chikki-glow" cx="50%" cy="40%" r="62%">
-            <stop offset="0%" stopColor="#fff7e6" />
-            <stop offset="70%" stopColor="#f3e6ca" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#f3e6ca" stopOpacity="0" />
-          </radialGradient>
-        </defs>
-
-        <ellipse cx="260" cy="222" rx="248" ry="206" fill="url(#chikki-glow)" />
-        <ellipse cx="256" cy="386" rx="182" ry="24" fill="#c2ab84" opacity="0.4" />
-
-        <Bar transform="translate(96 132) rotate(-7)" dark={false} seeds={PEANUTS} />
-        <Bar
-          transform="translate(148 232) rotate(4)"
-          width={244}
-          height={78}
-          dark
-          seeds={SESAME}
-        />
-
-        <g transform="translate(372 300) rotate(26)">
-          <rect x={2} y={30} width={84} height={14} rx={7} fill="url(#chikki-edge)" />
-          <rect x={0} y={0} width={88} height={40} rx={12} fill="url(#chikki-face)" />
-          <path d="M0 0L34 0L22 40L0 40Z" fill="#f6f1e6" opacity="0.5" />
-          <ellipse cx={58} cy={18} rx={12} ry={8} transform="rotate(-12 58 18)" fill="url(#chikki-nut)" stroke="#a4702e" strokeWidth={1.1} />
-          <ellipse cx={34} cy={28} rx={5} ry={2.6} transform="rotate(30 34 28)" fill="#3f2a12" opacity={0.8} />
-        </g>
-
-        <g fill="#b98a4a" opacity="0.75">
-          <circle cx="126" cy="356" r="4" />
-          <circle cx="150" cy="372" r="2.6" />
-          <circle cx="404" cy="368" r="3.4" />
-          <circle cx="428" cy="352" r="2.2" />
-          <circle cx="196" cy="386" r="2" />
-        </g>
-
-        <rect
-          x="255"
-          y="42"
-          width="9"
-          height="9"
-          transform="rotate(45 259.5 46.5)"
-          fill={BRASS}
-        />
-      </svg>
-      <figcaption className="meta mt-4 text-center">
-        An illustrated study of the cut — not a photograph of a batch.
-      </figcaption>
-    </figure>
-  );
-}

@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Product } from "@/lib/types";
-import { ProductArt } from "./product-art";
+import { ProductPhoto } from "./product-art";
 
 export function ProductCard({ product }: { product: Product }) {
   const primary = product.media[0];
@@ -20,7 +20,10 @@ export function ProductCard({ product }: { product: Product }) {
             className="object-cover transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04]"
           />
         ) : (
-          <ProductArt slug={product.slug} />
+          <ProductPhoto
+            slug={product.slug}
+            className="transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04]"
+          />
         )}
       </div>
       <div className="p-3 sm:p-5">

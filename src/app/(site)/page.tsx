@@ -109,14 +109,14 @@ export default async function HomePage() {
             </p>
           </div>
 
-          <div className="enter enter-2 relative mx-auto w-full max-w-[31rem]">
-            <div className="hero-frame aspect-square">
+          <div className="enter enter-2 relative mx-auto w-full max-w-[28rem]">
+            <div className="hero-frame aspect-[4/5]">
               <Image
-                src="/hero/chikki-plate.jpg"
-                alt="Peanut chikki cut into squares and laid on a grey plate"
-                width={530}
-                height={576}
-                sizes="(min-width: 1024px) 31rem, (min-width: 640px) 28rem, 92vw"
+                src="/products/groundnut-chikki.jpg"
+                alt="Groundnut chikki cut into squares in a cream bowl"
+                width={800}
+                height={945}
+                sizes="(min-width: 1024px) 28rem, (min-width: 640px) 26rem, 92vw"
                 priority
                 className="hero-photo size-full object-cover"
               />
@@ -124,11 +124,11 @@ export default async function HomePage() {
 
             <div className="absolute -bottom-10 -left-4 aspect-[3/4] w-[37%] -rotate-3 overflow-hidden rounded-2xl border-[5px] border-paper-raised shadow-[0_26px_52px_-26px_rgba(34,29,22,0.66)] sm:-left-9">
               <Image
-                src="/hero/chikki-stack.jpg"
-                alt="Round chikki discs tied with twine on a wooden board"
-                width={532}
-                height={730}
-                sizes="12rem"
+                src="/products/dry-fruit-chikki.jpg"
+                alt="Dry fruit chikki with almonds, cashews and pistachios"
+                width={800}
+                height={945}
+                sizes="11rem"
                 className="size-full object-cover"
               />
             </div>

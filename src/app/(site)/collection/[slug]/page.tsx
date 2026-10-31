@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/site/json-ld";
-import { ProductArt } from "@/components/site/product-art";
+import { ProductPhoto } from "@/components/site/product-art";
 import { ProductCard } from "@/components/site/product-card";
 import { ProductEnquiryActions } from "@/components/site/product-enquiry-actions";
 import { ArrowLink } from "@/components/site/page-header";
@@ -111,7 +111,7 @@ export default async function ProductPage({ params }: PageProps) {
                   className="object-cover"
                 />
               ) : (
-                <ProductArt slug={product.slug} />
+                <ProductPhoto slug={product.slug} priority sizes="(min-width: 1024px) 45vw, 100vw" />
               )}
             </div>
             <dl className="mt-6 grid grid-cols-3 divide-x divide-line border-y border-line text-center">
