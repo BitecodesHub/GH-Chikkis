@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { Diamond } from "@/components/ui/diamond";
-import { ChikkiStack } from "@/components/site/product-art";
 import { ProductCard } from "@/components/site/product-card";
 import { ArrowLink } from "@/components/site/page-header";
 import { JsonLd } from "@/components/site/json-ld";
@@ -109,9 +109,40 @@ export default async function HomePage() {
             </p>
           </div>
 
-          <div className="enter enter-2 relative">
-            <div className="glass rounded-[2rem] p-4 sm:p-7">
-              <ChikkiStack className="mx-auto w-full max-w-[30rem]" />
+          <div className="enter enter-2 relative mx-auto w-full max-w-[31rem]">
+            <div className="hero-frame aspect-square">
+              <Image
+                src="/hero/chikki-plate.jpg"
+                alt="Peanut chikki cut into squares and laid on a grey plate"
+                width={530}
+                height={576}
+                sizes="(min-width: 1024px) 31rem, (min-width: 640px) 28rem, 92vw"
+                priority
+                className="hero-photo size-full object-cover"
+              />
+            </div>
+
+            <div className="absolute -bottom-10 -left-4 aspect-[3/4] w-[37%] -rotate-3 overflow-hidden rounded-2xl border-[5px] border-paper-raised shadow-[0_26px_52px_-26px_rgba(34,29,22,0.66)] sm:-left-9">
+              <Image
+                src="/hero/chikki-stack.jpg"
+                alt="Round chikki discs tied with twine on a wooden board"
+                width={532}
+                height={730}
+                sizes="12rem"
+                className="size-full object-cover"
+              />
+            </div>
+
+            <div className="absolute bottom-5 right-4 grid size-[5.25rem] place-content-center rounded-full bg-paper-raised text-center shadow-[0_14px_30px_-16px_rgba(20,16,10,0.75)] sm:right-5">
+              <span
+                aria-hidden="true"
+                className="absolute inset-[5px] rounded-full border border-line-strong/70"
+              />
+              <p className="text-[0.5625rem] font-semibold uppercase leading-[1.45] tracking-[0.16em] text-ink-soft">
+                Since
+                <br />
+                2018
+              </p>
             </div>
           </div>
         </div>
