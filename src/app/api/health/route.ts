@@ -14,6 +14,19 @@ function reason(error: unknown): string {
   return "unknown";
 }
 
+// Reports only whether the stored value is well formed, never any part of it.
+function shape(value: string) {
+  return {
+    startsWithScheme: /^(mongodb:\/\/|mongodb\+srv:\/\/)/i.test(value),
+    hasEnvKeyPrefix: /^MONGODB_URI\s*=/i.test(value),
+    wrappedInQuotes: /^["']|["']$/.test(value),
+    hasBackticks: value.includes("`"),
+    hasInvisibleCharacter: /[\u00A0\u2000-\u200B\u2060\uFEFF]/.test(value),
+    hasLeadingOrTrailingComma: /^[,;]|[,;]$/.test(value),
+    length: value.length,
+  };
+}
+
 export async function GET() {
   const headers = { "Cache-Control": "no-store" };
   try {
@@ -22,8 +35,14 @@ export async function GET() {
     return NextResponse.json({ status: "ok", database: "connected" }, { headers });
   } catch (error) {
     console.error("Health check failed", error);
+    const code = reason(error);
     return NextResponse.json(
-      { status: "error", database: "unavailable", reason: reason(error) },
+      {
+        status: "error",
+        database: "unavailable",
+        reason: code,
+        ...(code === "malformed_uri" ? { uriShape: shape(env.mongodbUri) } : {}),
+      },
       { status: 503, headers },
     );
   }
