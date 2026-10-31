@@ -12,11 +12,11 @@ function nonce(): string {
 
 function contentSecurityPolicy(nonceValue: string): string {
   const scriptSrc = isProduction
-    ? `'self' 'nonce-${nonceValue}' 'strict-dynamic' https://www.googletagmanager.com`
-    : `'self' 'nonce-${nonceValue}' 'strict-dynamic' 'unsafe-eval' https://www.googletagmanager.com`;
+    ? `'self' 'nonce-${nonceValue}' 'strict-dynamic' https://www.googletagmanager.com https://challenges.cloudflare.com`
+    : `'self' 'nonce-${nonceValue}' 'strict-dynamic' 'unsafe-eval' https://www.googletagmanager.com https://challenges.cloudflare.com`;
   const connectSrc = isProduction
-    ? "'self' https://api.cloudinary.com https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com https://graph.facebook.com https://oauth2.googleapis.com https://openidconnect.googleapis.com"
-    : "'self' ws: wss: http://localhost:* https://api.cloudinary.com https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com https://graph.facebook.com https://oauth2.googleapis.com https://openidconnect.googleapis.com";
+    ? "'self' https://api.cloudinary.com https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com https://graph.facebook.com https://oauth2.googleapis.com https://openidconnect.googleapis.com https://challenges.cloudflare.com"
+    : "'self' ws: wss: http://localhost:* https://api.cloudinary.com https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com https://graph.facebook.com https://oauth2.googleapis.com https://openidconnect.googleapis.com https://challenges.cloudflare.com";
   return [
     "default-src 'self'",
     `script-src ${scriptSrc}`,

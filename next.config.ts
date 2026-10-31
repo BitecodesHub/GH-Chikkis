@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ["localhost", "127.0.0.1"],
   devIndicators: false,
   poweredByHeader: false,
   images: {
@@ -13,6 +14,14 @@ const nextConfig: NextConfig = {
     ],
   },
   serverExternalPackages: ["mongodb"],
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "4mb",
+    },
+  },
+  outputFileTracingIncludes: {
+    "/admin/orders/**": ["./src/assets/fonts/**"],
+  },
   turbopack: {
     rules: {
       "*.css": {

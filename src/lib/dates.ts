@@ -118,6 +118,18 @@ export function dateRangeForPreset(
   return { preset, from: `${today.slice(0, 4)}-01-01`, to: today };
 }
 
+const DATE_PRESETS: DatePreset[] = ["today", "7d", "month", "year", "custom"];
+
+export function dateRangeFromParams(
+  params: Record<string, string | string[] | undefined>,
+): DateRange {
+  const value = (key: string) => (typeof params[key] === "string" ? (params[key] as string) : "");
+  const preset = DATE_PRESETS.includes(value("preset") as DatePreset)
+    ? (value("preset") as DatePreset)
+    : "month";
+  return dateRangeForPreset(preset, new Date(), { from: value("from"), to: value("to") });
+}
+
 export function eachDay(from: BusinessDate, to: BusinessDate): BusinessDate[] {
   const days: BusinessDate[] = [];
   let cursor = from;

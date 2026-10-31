@@ -57,8 +57,9 @@ export function SiteHeader() {
             })}
           </nav>
 
-          <Link href="/contact#enquiry" className="btn btn-solid btn-sm hidden lg:inline-flex">
-            Start an enquiry
+          <Link href="/contact#enquiry" className="btn btn-solid btn-sm">
+            <span className="lg:hidden">Enquire</span>
+            <span className="hidden lg:inline">Start an enquiry</span>
           </Link>
 
           <button

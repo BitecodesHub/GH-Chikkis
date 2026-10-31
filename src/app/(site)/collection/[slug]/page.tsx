@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/site/json-ld";
@@ -27,6 +28,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title: `${product.name} — GH Chikkis`,
       description: product.description.slice(0, 155),
       url: `/collection/${product.slug}`,
+      images: product.media[0] ? [{ url: product.media[0].url, alt: product.media[0].alt }] : undefined,
     },
   };
 }
@@ -57,6 +59,9 @@ export default async function ProductPage({ params }: PageProps) {
   if (!product || !product.active) notFound();
 
   const related = products.filter((item) => item.slug !== product.slug).slice(0, 3);
+  const primary = product.media[0];
+  const hasVerifiedIngredients =
+    product.ingredientsVerified && Boolean(product.ingredients || product.allergens);
   const packaging = product.packaging.map((option) => ({
     id: option.id,
     label: option.label,
@@ -71,6 +76,9 @@ export default async function ProductPage({ params }: PageProps) {
     brand: { "@type": "Brand", name: "GH Chikkis" },
     category: "Chikki",
     countryOfOrigin: "IN",
+    ...(product.media.length > 0
+      ? { image: product.media.map((asset) => asset.url) }
+      : {}),
   };
 
   return (
@@ -92,8 +100,19 @@ export default async function ProductPage({ params }: PageProps) {
 
         <div className="mt-8 grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16">
           <div>
-            <div className="border border-line">
-              <ProductArt slug={product.slug} />
+            <div className="relative aspect-square overflow-hidden border border-line bg-paper-deep">
+              {primary ? (
+                <Image
+                  src={primary.url}
+                  alt={primary.alt}
+                  fill
+                  priority
+                  sizes="(min-width: 1024px) 45vw, 100vw"
+                  className="object-cover"
+                />
+              ) : (
+                <ProductArt slug={product.slug} />
+              )}
             </div>
             <dl className="mt-6 grid grid-cols-3 divide-x divide-line border-y border-line text-center">
               <div className="px-3 py-4">
@@ -130,15 +149,52 @@ export default async function ProductPage({ params }: PageProps) {
             />
 
             <div className="surface mt-9 p-5">
-              <h2 className="text-[0.9375rem] font-semibold">Ingredients & allergens</h2>
-              <p className="mt-2 text-[0.875rem] leading-relaxed text-ink-soft">
-                We share the current ingredients and allergen information for each variety
-                directly, so you have verified details before you order. Ask us and we will
-                confirm for the batch you are considering.
-              </p>
-              <Link href="/faqs" className="link-underline mt-3 inline-block text-[0.875rem] font-semibold">
-                Read common questions
-              </Link>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-[0.9375rem] font-semibold">Ingredients & allergens</h2>
+                {hasVerifiedIngredients ? (
+                  <span className="pill border-olive-soft text-olive">
+                    Checked by the kitchen
+                  </span>
+                ) : null}
+              </div>
+              {hasVerifiedIngredients ? (
+                <>
+                  {product.ingredients ? (
+                    <div className="mt-4">
+                      <h3 className="meta">Ingredients</h3>
+                      <p className="mt-1 whitespace-pre-line text-[0.875rem] leading-relaxed text-ink-soft">
+                        {product.ingredients}
+                      </p>
+                    </div>
+                  ) : null}
+                  {product.allergens ? (
+                    <div className="mt-4">
+                      <h3 className="meta">Allergens</h3>
+                      <p className="mt-1 whitespace-pre-line text-[0.875rem] leading-relaxed text-ink-soft">
+                        {product.allergens}
+                      </p>
+                    </div>
+                  ) : null}
+                  <p className="mt-4 text-[0.75rem] leading-relaxed text-ink-muted">
+                    Storage guidance is confirmed with your order. Ask us if you need
+                    details for a specific batch.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="mt-2 text-[0.875rem] leading-relaxed text-ink-soft">
+                    We share the current ingredients and allergen information for each
+                    variety directly, so you have verified details before you order. Ask
+                    us and we will confirm for the batch you are considering.
+                  </p>
+                  <Link
+                    href="/faqs"
+                    className="link-underline mt-3 inline-block text-[0.875rem] font-semibold"
+                  >
+                    Read common questions
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -167,7 +223,7 @@ export default async function ProductPage({ params }: PageProps) {
             <h2 className="display-m">More varieties</h2>
             <ArrowLink href="/collection">View all</ArrowLink>
           </div>
-          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-8 grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3">
             {related.map((item) => (
               <ProductCard key={item.id} product={item} />
             ))}

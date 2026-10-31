@@ -7,6 +7,7 @@ import { getProductBySlug } from "@/lib/products";
 import { businessToday, formatDateDDMMYYYY, parseBusinessDate } from "@/lib/dates";
 import { normalizePhone } from "@/lib/phone";
 import { rateLimit, requestIp } from "@/lib/rate-limit";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 
 export interface EnquiryFormState {
   ok: boolean;
@@ -32,10 +33,16 @@ const schema = z.object({
     .max(100000, "That quantity looks too large — please tell us directly."),
   expectedDate: z.string().trim().max(20).default(""),
   notSure: z.string().optional(),
+  details: z
+    .string()
+    .trim()
+    .max(1500, "Please keep your message under 1500 characters.")
+    .default(""),
   product: z.string().trim().max(120).default(""),
   packaging: z.string().trim().max(80).default(""),
   startedAt: z.string(),
   website: z.string().max(500).optional().default(""),
+  turnstileToken: z.string().max(4096).optional().default(""),
 });
 
 const FEEDBACK = {
@@ -43,6 +50,7 @@ const FEEDBACK = {
     "Thank you — your enquiry has reached us. We will reply on the number you shared.",
   spam: "Thank you — your enquiry has reached us.",
   rate: "Too many enquiries from here in a short time. Please try again later, or message us on WhatsApp.",
+  verify: "Please complete the quick verification and send your enquiry again.",
   generic: "We could not send your enquiry just now. Please try again, or message us on WhatsApp.",
 };
 
@@ -114,6 +122,10 @@ export async function submitEnquiry(
     return { ok: false, message: FEEDBACK.rate };
   }
 
+  if (!(await verifyTurnstileToken(data.turnstileToken, ip))) {
+    return { ok: false, message: FEEDBACK.verify };
+  }
+
   let notes: string | undefined;
   if (data.product) {
     const product = await getProductBySlug(data.product);
@@ -121,6 +133,9 @@ export async function submitEnquiry(
       const packaging = product.packaging.find((option) => option.label === data.packaging);
       notes = `Website enquiry: ${product.name}${packaging ? ` — ${packaging.label}` : ""}`;
     }
+  }
+  if (data.details) {
+    notes = [notes, data.details].filter(Boolean).join("\n");
   }
 
   try {

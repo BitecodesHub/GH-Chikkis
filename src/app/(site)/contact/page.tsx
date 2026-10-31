@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { PageHeader } from "@/components/site/page-header";
 import { EnquiryForm } from "@/components/site/enquiry-form";
 import { contentText, getPublishedContent } from "@/lib/content";
+import { env } from "@/lib/env";
 import { getProductBySlug } from "@/lib/products";
 import { getSettings } from "@/lib/settings";
 import {
@@ -24,10 +26,11 @@ interface PageProps {
 }
 
 export default async function ContactPage({ searchParams }: PageProps) {
-  const [content, settings, params] = await Promise.all([
+  const [content, settings, params, requestHeaders] = await Promise.all([
     getPublishedContent("contact"),
     getSettings(),
     searchParams,
+    headers(),
   ]);
 
   const business = settings.business;
@@ -73,6 +76,8 @@ export default async function ContactPage({ searchParams }: PageProps) {
                 whatsappHref={whatsappHref}
                 productContext={productContext}
                 formNote={contentText(content, "formNote")}
+                turnstileSiteKey={env.turnstile.siteKey || undefined}
+                turnstileNonce={requestHeaders.get("x-nonce") ?? undefined}
               />
             </div>
           </div>

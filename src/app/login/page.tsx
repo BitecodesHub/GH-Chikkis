@@ -161,7 +161,7 @@ export default async function LoginPage({
               access, speak to the Owner directly.
             </p>
             <Link href="/" className="meta link-underline mt-6 inline-block">
-              Return to ghchikkis.com
+              Return to the website
             </Link>
           </div>
         </div>

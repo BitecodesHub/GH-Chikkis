@@ -106,7 +106,7 @@ export async function updateSettings(
     { _id: "global" },
     {
       $set: set,
-      $setOnInsert: { _id: "global", ...defaultSettings() },
+      $setOnInsert: { _id: "global" },
     },
     { upsert: true },
   );

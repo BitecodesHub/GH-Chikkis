@@ -6,28 +6,115 @@ import { submitEnquiry, type EnquiryFormState } from "@/app/(site)/contact/actio
 
 const INITIAL: EnquiryFormState = { ok: false };
 
+interface TurnstileApi {
+  render(
+    container: HTMLElement,
+    options: {
+      sitekey: string;
+      size: "flexible";
+      theme: "light";
+      callback: (token: string) => void;
+      "expired-callback": () => void;
+      "error-callback": () => void;
+    },
+  ): string;
+  reset(widgetId: string): void;
+  remove(widgetId: string): void;
+}
+
+function turnstileApi(): TurnstileApi | null {
+  return (window as unknown as { turnstile?: TurnstileApi }).turnstile ?? null;
+}
+
 export function EnquiryForm({
   startedAt,
   today,
   whatsappHref,
   productContext,
   formNote,
+  turnstileSiteKey,
+  turnstileNonce,
 }: {
   startedAt: string;
   today: string;
   whatsappHref: string | null;
   productContext: { slug: string; packaging: string; label: string } | null;
   formNote: string;
+  turnstileSiteKey?: string;
+  turnstileNonce?: string;
 }) {
   const [state, formAction, pending] = useActionState(submitEnquiry, INITIAL);
   const [notSure, setNotSure] = useState(false);
   const statusRef = useRef<HTMLDivElement>(null);
+  const turnstileContainer = useRef<HTMLDivElement>(null);
+  const turnstileInput = useRef<HTMLInputElement>(null);
+  const turnstileWidget = useRef<string | null>(null);
 
   useEffect(() => {
     if (state.message || state.errors) {
       statusRef.current?.focus();
     }
   }, [state]);
+
+  useEffect(() => {
+    if (!turnstileSiteKey) return;
+    const container = turnstileContainer.current;
+    if (!container) return;
+    let cancelled = false;
+
+    const render = () => {
+      if (cancelled || turnstileWidget.current) return;
+      const api = turnstileApi();
+      if (!api) return;
+      turnstileWidget.current = api.render(container, {
+        sitekey: turnstileSiteKey,
+        size: "flexible",
+        theme: "light",
+        callback: (token) => {
+          if (turnstileInput.current) turnstileInput.current.value = token;
+        },
+        "expired-callback": () => {
+          if (turnstileInput.current) turnstileInput.current.value = "";
+        },
+        "error-callback": () => {
+          if (turnstileInput.current) turnstileInput.current.value = "";
+        },
+      });
+    };
+
+    let script: HTMLScriptElement | null = null;
+    if (turnstileApi()) {
+      render();
+    } else {
+      script = document.querySelector<HTMLScriptElement>("script[data-gh-turnstile]");
+      if (!script) {
+        script = document.createElement("script");
+        script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+        script.async = true;
+        script.defer = true;
+        script.dataset.ghTurnstile = "true";
+        if (turnstileNonce) script.nonce = turnstileNonce;
+        document.head.appendChild(script);
+      }
+      script.addEventListener("load", render);
+    }
+
+    return () => {
+      cancelled = true;
+      script?.removeEventListener("load", render);
+      const api = turnstileApi();
+      if (turnstileWidget.current && api) api.remove(turnstileWidget.current);
+      turnstileWidget.current = null;
+    };
+  }, [turnstileSiteKey, turnstileNonce]);
+
+  useEffect(() => {
+    if (!turnstileSiteKey || state.ok) return;
+    if (!state.message && !state.errors) return;
+    const api = turnstileApi();
+    if (api && turnstileWidget.current) api.reset(turnstileWidget.current);
+    if (turnstileInput.current) turnstileInput.current.value = "";
+  }, [state, turnstileSiteKey]);
 
   if (state.ok) {
     return (
@@ -242,6 +329,39 @@ export function EnquiryForm({
           </label>
         </div>
       </div>
+
+      <div className="mt-5">
+        <label className="label" htmlFor="details">
+          Details <span className="font-normal text-ink-muted">(optional)</span>
+        </label>
+        <textarea
+          className={errors.details ? "field field-error" : "field"}
+          id="details"
+          name="details"
+          rows={4}
+          maxLength={1500}
+          placeholder="Varieties you like, the occasion, packaging, your city…"
+          aria-invalid={errors.details ? true : undefined}
+          aria-describedby={errors.details ? "details-error" : "details-help"}
+        />
+        {errors.details ? (
+          <p className="error-text" id="details-error">
+            {errors.details}
+          </p>
+        ) : (
+          <p className="help" id="details-help">
+            The more you tell us, the faster we can confirm price and availability.
+          </p>
+        )}
+      </div>
+
+      {turnstileSiteKey ? (
+        <div className="mt-6">
+          <p className="meta">Quick verification</p>
+          <div ref={turnstileContainer} className="mt-2 min-h-[65px]" />
+          <input ref={turnstileInput} type="hidden" name="turnstileToken" defaultValue="" />
+        </div>
+      ) : null}
 
       <div className="mt-6 flex flex-col gap-3 border-t border-line pt-5 sm:flex-row sm:items-center sm:justify-between">
         <p className="meta max-w-xs">

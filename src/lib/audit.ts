@@ -54,22 +54,67 @@ export async function recordAudit(input: AuditInput): Promise<void> {
   await db.collection<AuditDoc>("audit_logs").insertOne(doc);
 }
 
-export async function listAudit(options: {
+export interface AuditQuery {
   limit?: number;
+  offset?: number;
   entityType?: string;
+  entityId?: string;
   actorId?: string;
-}): Promise<AuditEntry[]> {
-  const db = await getDb();
+  actor?: string;
+  action?: string;
+  query?: string;
+  from?: string;
+  to?: string;
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function auditFilter(options: AuditQuery): Record<string, unknown> {
   const filter: Record<string, unknown> = {};
   if (options.entityType) filter.entityType = options.entityType;
+  if (options.entityId) filter.entityId = options.entityId;
   if (options.actorId) filter.actorId = options.actorId;
+  if (options.actor) {
+    filter.actorEmail = { $regex: escapeRegex(options.actor), $options: "i" };
+  }
+  if (options.action) {
+    filter.action = { $regex: escapeRegex(options.action), $options: "i" };
+  }
+  if (options.query) {
+    const regex = { $regex: escapeRegex(options.query.slice(0, 80)), $options: "i" };
+    filter.$or = [
+      { summary: regex },
+      { action: regex },
+      { entityId: regex },
+      { actorEmail: regex },
+    ];
+  }
+  if (options.from || options.to) {
+    filter.at = {
+      ...(options.from ? { $gte: options.from } : {}),
+      ...(options.to ? { $lte: options.to } : {}),
+    };
+  }
+  return filter;
+}
+
+export async function listAudit(options: AuditQuery): Promise<AuditEntry[]> {
+  const db = await getDb();
   const docs = await db
     .collection<AuditDoc>("audit_logs")
-    .find(filter)
+    .find(auditFilter(options))
     .sort({ at: -1 })
-    .limit(options.limit ?? 100)
+    .skip(options.offset ?? 0)
+    .limit(Math.min(options.limit ?? 100, 200))
     .toArray();
   return docs.map(({ _id, ...entry }) => ({ id: _id, ...entry }));
+}
+
+export async function countAudit(options: AuditQuery): Promise<number> {
+  const db = await getDb();
+  return db.collection("audit_logs").countDocuments(auditFilter(options));
 }
 
 export async function listAuditForEntity(

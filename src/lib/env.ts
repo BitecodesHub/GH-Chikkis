@@ -42,6 +42,7 @@ export const env = {
     graphVersion: clean(process.env.WHATSAPP_GRAPH_VERSION) || "v23.0",
   },
   gmail: {
+    mode: clean(process.env.GMAIL_MODE).toLowerCase() === "live" ? "live" : "simulate",
     clientId: clean(process.env.GMAIL_CLIENT_ID),
     clientSecret: clean(process.env.GMAIL_CLIENT_SECRET),
     refreshToken: clean(process.env.GMAIL_REFRESH_TOKEN),

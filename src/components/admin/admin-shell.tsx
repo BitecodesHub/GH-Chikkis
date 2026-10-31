@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   BarChart3,
+  Bell,
   Boxes,
   DatabaseBackup,
   ExternalLink,
@@ -45,7 +46,10 @@ interface NavItem {
 const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Overview",
-    items: [{ label: "Dashboard", href: "/admin", icon: LayoutDashboard, exact: true }],
+    items: [
+      { label: "Dashboard", href: "/admin", icon: LayoutDashboard, exact: true },
+      { label: "Alerts", href: "/admin/alerts", icon: Bell },
+    ],
   },
   {
     label: "Sales",
@@ -55,21 +59,18 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
         href: "/admin/enquiries",
         icon: Inbox,
         permission: "enquiries.manage",
-        soon: true,
       },
       {
         label: "Orders",
         href: "/admin/orders",
         icon: ShoppingBag,
         permission: "orders.view",
-        soon: true,
       },
       {
         label: "Customers",
         href: "/admin/customers",
         icon: Users,
         permission: "customers.view",
-        soon: true,
       },
     ],
   },
@@ -81,21 +82,18 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
         href: "/admin/products",
         icon: Package,
         permission: "catalogue.manage",
-        soon: true,
       },
       {
         label: "Website content",
         href: "/admin/content",
         icon: FileText,
         permission: "content.edit",
-        soon: true,
       },
       {
         label: "Inventory",
         href: "/admin/inventory",
         icon: Boxes,
         permission: "inventory.manage",
-        soon: true,
       },
     ],
   },
@@ -107,14 +105,12 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
         href: "/admin/expenses",
         icon: ReceiptText,
         permission: "expenses.manage",
-        soon: true,
       },
       {
         label: "Reports",
         href: "/admin/reports",
         icon: BarChart3,
         permission: "reports.view",
-        soon: true,
       },
     ],
   },
@@ -126,14 +122,12 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
         href: "/admin/whatsapp",
         icon: MessageCircle,
         permission: "messaging.manage",
-        soon: true,
       },
       {
         label: "Emails",
         href: "/admin/emails",
         icon: Mail,
-        permission: "orders.view",
-        soon: true,
+        permission: "messaging.manage",
       },
     ],
   },
@@ -145,35 +139,30 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
         href: "/admin/users",
         icon: ShieldCheck,
         permission: "users.manage",
-        soon: true,
       },
       {
         label: "Settings",
         href: "/admin/settings",
         icon: Settings,
         permission: "settings.manage",
-        soon: true,
       },
       {
         label: "Audit log",
         href: "/admin/audit",
         icon: History,
         permission: "audit.view",
-        soon: true,
       },
       {
         label: "Backups",
         href: "/admin/backups",
         icon: DatabaseBackup,
         permission: "backups.manage",
-        soon: true,
       },
       {
         label: "Imports",
         href: "/admin/imports",
         icon: Upload,
         permission: "customers.manage",
-        soon: true,
       },
     ],
   },
@@ -321,13 +310,6 @@ export function AdminShell({
     };
   }, [menuOpen]);
 
-  const current = NAV_GROUPS.flatMap((group) => group.items)
-    .filter((item) => !item.soon)
-    .filter((item) =>
-      item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`),
-    )
-    .sort((a, b) => b.href.length - a.href.length)[0];
-
   return (
     <div className="min-h-dvh bg-paper">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 bg-olive-deep lg:block">
@@ -349,9 +331,6 @@ export function AdminShell({
           <div className="lg:hidden">
             <Wordmark tone="ink" />
           </div>
-          <p className="hidden text-[0.9375rem] font-medium text-ink lg:block">
-            {current?.label ?? "Workspace"}
-          </p>
 
           <div className="ml-auto flex items-center gap-3">
             <a

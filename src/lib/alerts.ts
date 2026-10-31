@@ -57,6 +57,24 @@ export async function listAlertsForUser(
     .map(({ _id, ...alert }) => ({ id: _id, ...alert }));
 }
 
+export async function getAlertForUser(
+  id: string,
+  user: User,
+): Promise<SystemAlert | null> {
+  const db = await getDb();
+  const doc = await db.collection<AlertDoc>("system_alerts").findOne({ _id: id });
+  if (!doc) return null;
+  if (
+    doc.permission &&
+    !hasPermission(user, doc.permission) &&
+    user.role !== "OWNER"
+  ) {
+    return null;
+  }
+  const { _id, ...alert } = doc;
+  return { id: _id, ...alert };
+}
+
 export async function resolveAlert(
   id: string,
   user: User,

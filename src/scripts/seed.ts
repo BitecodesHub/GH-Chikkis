@@ -3,6 +3,7 @@ import { closeDatabase, getDb } from "../lib/db";
 import { getSettings } from "../lib/settings";
 import { ensureOwnerUser } from "../lib/users";
 import { DEFAULT_CONTENT } from "../lib/content-schema";
+import { ensureDefaultTemplates } from "../lib/message-templates";
 import { CONTENT_PAGES } from "../lib/types";
 import type { InventoryItem, WebsiteContent } from "../lib/types";
 import type { ProductDoc } from "../lib/products";
@@ -76,17 +77,17 @@ const PRODUCTS: SeedProduct[] = [
 ];
 
 const INVENTORY_ITEMS: { name: string; category: string; unit: string }[] = [
-  { name: "Groundnuts", category: "Raw material", unit: "kg" },
-  { name: "White sesame", category: "Raw material", unit: "kg" },
-  { name: "Black sesame", category: "Raw material", unit: "kg" },
-  { name: "Dry fruit mix", category: "Raw material", unit: "kg" },
-  { name: "Desiccated coconut", category: "Raw material", unit: "kg" },
-  { name: "Mawa", category: "Raw material", unit: "kg" },
-  { name: "Daliya", category: "Raw material", unit: "kg" },
-  { name: "Jaggery", category: "Raw material", unit: "kg" },
-  { name: "Ghee", category: "Raw material", unit: "kg" },
-  { name: "Packaging boxes", category: "Packaging", unit: "pcs" },
-  { name: "Wrapping paper and labels", category: "Packaging", unit: "pcs" },
+  { name: "Groundnuts", category: "Ingredients/raw materials", unit: "kg" },
+  { name: "White sesame", category: "Ingredients/raw materials", unit: "kg" },
+  { name: "Black sesame", category: "Ingredients/raw materials", unit: "kg" },
+  { name: "Dry fruit mix", category: "Ingredients/raw materials", unit: "kg" },
+  { name: "Desiccated coconut", category: "Ingredients/raw materials", unit: "kg" },
+  { name: "Mawa", category: "Ingredients/raw materials", unit: "kg" },
+  { name: "Daliya", category: "Ingredients/raw materials", unit: "kg" },
+  { name: "Jaggery", category: "Ingredients/raw materials", unit: "kg" },
+  { name: "Ghee", category: "Ingredients/raw materials", unit: "kg" },
+  { name: "Packaging boxes", category: "Packaging", unit: "pieces" },
+  { name: "Wrapping paper and labels", category: "Packaging", unit: "pieces" },
 ];
 
 async function seedProducts(): Promise<number> {
@@ -202,6 +203,7 @@ async function main() {
   const products = await seedProducts();
   const content = await seedContent();
   const inventory = await seedInventory();
+  await ensureDefaultTemplates();
 
   console.log(
     [
@@ -209,6 +211,7 @@ async function main() {
       `${products} product(s) created.`,
       `${content} content page(s) created.`,
       `${inventory} inventory item(s) created.`,
+      "WhatsApp templates ready.",
     ].join("\n"),
   );
   console.log("Seed complete. Existing records were left untouched.");

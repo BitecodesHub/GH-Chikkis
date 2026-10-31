@@ -10,12 +10,22 @@ const globalForMongo = globalThis as unknown as {
 export function getMongoClient(): Promise<MongoClient> {
   if (!globalForMongo.mongoClientPromise) {
     const client = new MongoClient(env.mongodbUri, {
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 8000,
+      maxPoolSize: 5,
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 5000,
       retryWrites: true,
     });
     globalForMongo.mongoClient = client;
-    globalForMongo.mongoClientPromise = client.connect();
+    const connecting = client.connect().catch((error) => {
+      // A failed connect must not be cached, or every later request on this
+      // instance replays the same stale error instead of retrying.
+      if (globalForMongo.mongoClientPromise === connecting) {
+        globalForMongo.mongoClientPromise = undefined;
+        globalForMongo.mongoClient = undefined;
+      }
+      throw error;
+    });
+    globalForMongo.mongoClientPromise = connecting;
   }
   return globalForMongo.mongoClientPromise;
 }
@@ -41,7 +51,7 @@ export async function ensureIndexes(db: Db): Promise<void> {
         { key: { expiresAt: 1 }, expireAfterSeconds: 0, name: "sessions_ttl" },
       ]),
       db.collection("customers").createIndexes([
-        { key: { phone: 1 }, name: "customers_phone" },
+        { key: { phone: 1 }, unique: true, name: "customers_phone_unique" },
         { key: { name: 1 }, name: "customers_name" },
         { key: { archived: 1, updatedAt: -1 }, name: "customers_active_recent" },
       ]),
@@ -71,6 +81,10 @@ export async function ensureIndexes(db: Db): Promise<void> {
         { key: { orderId: 1 }, name: "refunds_order" },
         { key: { date: -1 }, name: "refunds_date" },
         { key: { idempotencyKey: 1 }, unique: true, sparse: true, name: "refunds_idem_unique" },
+      ]),
+      db.collection("invoice_versions").createIndexes([
+        { key: { orderId: 1, version: -1 }, unique: true, name: "invoice_versions_order_version" },
+        { key: { ref: 1 }, name: "invoice_versions_ref" },
       ]),
       db.collection("expenses").createIndexes([
         { key: { date: -1 }, name: "expenses_date" },
@@ -106,6 +120,12 @@ export async function ensureIndexes(db: Db): Promise<void> {
       ]),
       db.collection("website_content").createIndexes([
         { key: { page: 1 }, unique: true, name: "content_page_unique" },
+      ]),
+      db.collection("content_versions").createIndexes([
+        { key: { page: 1, version: -1 }, unique: true, name: "content_versions_page_version" },
+      ]),
+      db.collection("media_assets").createIndexes([
+        { key: { createdAt: -1 }, name: "media_recent" },
       ]),
       db.collection("audit_logs").createIndexes([
         { key: { at: -1 }, name: "audit_recent" },

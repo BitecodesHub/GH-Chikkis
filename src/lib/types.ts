@@ -120,6 +120,8 @@ export interface Customer {
   whatsappConsent?: ConsentState;
   consentSource?: string;
   consentAt?: ISODate;
+  importBatchId?: string;
+  importRow?: number;
 }
 
 export type ConsentState = "GRANTED" | "WITHDRAWN" | "NONE";
@@ -170,7 +172,12 @@ export interface Enquiry {
   notSure: boolean;
   submittedAt: ISODate;
   notes?: string;
+  internalNotes?: string;
   whatsappConsent: boolean;
+  linkedOrderId?: string;
+  updatedAt?: ISODate;
+  updatedBy?: string;
+  updatedByName?: string;
 }
 
 export const ORDER_STATUSES = ["NEW", "CONFIRMED", "COMPLETED", "CANCELLED"] as const;
@@ -234,6 +241,8 @@ export interface OrderItem {
   adjustmentPaise: number;
   lineTotalPaise: number;
   notes?: string;
+  imported?: boolean;
+  quantityLabel?: string;
 }
 
 export interface OrderDelivery {
@@ -259,6 +268,7 @@ export interface OrderStatusChange {
   status: OrderStatus;
   at: ISODate;
   by: string;
+  byName?: string;
   note?: string;
 }
 
@@ -274,6 +284,8 @@ export interface InvoiceSnapshot {
   subtotalPaise: number;
   totalPaise: number;
   business: InvoiceBusinessSnapshot;
+  thankYou?: string;
+  footerNote?: string;
 }
 
 export interface InvoiceBusinessSnapshot {
@@ -308,13 +320,31 @@ export interface Order {
   createdAt: ISODate;
   updatedAt: ISODate;
   createdBy: string;
+  createdByName?: string;
   updatedBy: string;
+  updatedByName?: string;
   paymentStatus: PaymentStatus;
   paidPaise: number;
   refundedPaise: number;
   balancePaise: number;
   whatsappConsent?: ConsentState;
   notificationSummary?: { total: number; failed: number; lastStatus?: NotificationStatus };
+  enquiryId?: string;
+  idempotencyKey?: string;
+  importBatchId?: string;
+  importRow?: number;
+}
+
+export interface InvoiceVersion {
+  id: string;
+  orderId: string;
+  ref: string;
+  version: number;
+  snapshot: InvoiceSnapshot;
+  createdAt: ISODate;
+  createdBy: string;
+  createdByName?: string;
+  supersededAt?: ISODate;
 }
 
 export interface Payment {
@@ -329,7 +359,9 @@ export interface Payment {
   voidedAt?: ISODate;
   voidReason?: string;
   createdBy: string;
+  createdByName?: string;
   createdAt: ISODate;
+  idempotencyKey?: string;
 }
 
 export interface Refund {
@@ -342,7 +374,9 @@ export interface Refund {
   date: BusinessDate;
   reason: string;
   createdBy: string;
+  createdByName?: string;
   createdAt: ISODate;
+  idempotencyKey?: string;
 }
 
 export interface Expense {
@@ -384,6 +418,7 @@ export interface InventoryMovement {
   notes?: string;
   expenseId?: string;
   createdBy: string;
+  createdByName?: string;
   createdAt: ISODate;
 }
 
@@ -432,6 +467,16 @@ export interface WebsiteContent {
   updatedByName?: string;
   publishedAt?: ISODate;
   publishedBy?: string;
+}
+
+export interface ContentVersion {
+  id: string;
+  page: ContentPageKey;
+  version: number;
+  content: PageContent;
+  publishedAt: ISODate;
+  publishedBy: string;
+  publishedByName?: string;
 }
 
 export interface BusinessSettings {
@@ -497,12 +542,16 @@ export interface NotificationJob {
   templateId?: string;
   templateName?: string;
   templateVersion?: number;
+  templateLanguage?: string;
+  metaTemplateName?: string;
+  templateParams?: string[];
   body: string;
   status: NotificationStatus;
   mode: MessageMode;
   idempotencyKey: string;
   attempts: number;
   nextAttemptAt?: ISODate;
+  lastAttemptAt?: ISODate;
   needsReview: boolean;
   holdReason?: string;
   blockedReason?: string;
@@ -510,9 +559,14 @@ export interface NotificationJob {
   approvedBy?: string;
   providerMessageId?: string;
   lastError?: string;
+  orderUpdatedAt?: ISODate;
+  customMessage?: string;
   createdAt: ISODate;
   updatedAt: ISODate;
   createdBy: string;
+  sentAt?: ISODate;
+  deliveredAt?: ISODate;
+  readAt?: ISODate;
   events?: NotificationEvent[];
 }
 
@@ -576,8 +630,10 @@ export interface EmailMessage {
   providerId?: string;
   error?: string;
   createdBy: string;
+  createdByName?: string;
   createdAt: ISODate;
   sentAt?: ISODate;
+  retryOfId?: string;
 }
 
 export interface AuditEntry {
@@ -597,6 +653,7 @@ export type AlertType =
   | "NEW_ENQUIRY"
   | "WHATSAPP_FAILED"
   | "WHATSAPP_SPEND"
+  | "WHATSAPP_PAUSED"
   | "BACKUP_FAILED"
   | "SYSTEM_ERROR"
   | "CANCELLED_ORDER_PAYMENT";
@@ -633,7 +690,7 @@ export interface BackupRun {
 }
 
 export type ImportKind = "CUSTOMERS" | "ORDERS";
-export type ImportStatus = "UPLOADED" | "READY" | "IMPORTED" | "FAILED";
+export type ImportStatus = "UPLOADED" | "READY" | "PROCESSING" | "IMPORTED" | "FAILED";
 
 export interface ImportBatch {
   id: string;
@@ -643,10 +700,20 @@ export interface ImportBatch {
   rows: string[][];
   mapping?: Record<string, string>;
   status: ImportStatus;
-  summary?: { imported: number; skipped: number; failed: number; errors: string[] };
+  summary?: {
+    imported: number;
+    skipped: number;
+    failed: number;
+    errors: string[];
+    customersCreated?: number;
+    ordersCreated?: number;
+  };
   checksum: string;
   createdAt: ISODate;
   createdBy: string;
+  createdByName?: string;
+  updatedAt?: ISODate;
+  completedAt?: ISODate;
 }
 
 export type DatePreset = "today" | "7d" | "month" | "year" | "custom";
@@ -691,7 +758,12 @@ export interface ReportBreakdown {
 export interface ReportData {
   range: DateRange;
   metrics: ReportMetrics;
+  previous: {
+    range: DateRange;
+    metrics: ReportMetrics;
+  };
   series: ReportSeriesPoint[];
+  monthly: ReportSeriesPoint[];
   salesByProduct: ReportBreakdown[];
   expensesByCategory: ReportBreakdown[];
   paymentsByMethod: ReportBreakdown[];

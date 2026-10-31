@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto";
+import { cache } from "react";
 import type { Enquiry } from "./types";
 import { getDb } from "./db";
-import { nowIso } from "./dates";
+import { formatDateDDMMYYYY, nowIso } from "./dates";
 import { createAlert } from "./alerts";
 import { recordAudit } from "./audit";
+import { cleanText } from "./text";
 
 interface EnquiryDoc extends Omit<Enquiry, "id"> {
   _id: string;
@@ -43,7 +45,7 @@ export async function createEnquiry(input: CreateEnquiryInput): Promise<Enquiry>
       severity: "INFO",
       title: `New enquiry from ${doc.name}`,
       message: `${doc.quantityKg} kg${
-        doc.expectedDate ? ` · expected ${doc.expectedDate}` : " · date not decided"
+        doc.expectedDate ? ` · expected ${formatDateDDMMYYYY(doc.expectedDate)}` : " · date not decided"
       }`,
       permission: "enquiries.manage",
       link: "/admin/enquiries",
@@ -77,4 +79,86 @@ export async function countEnquiries(sinceIso?: string): Promise<number> {
   return db
     .collection("enquiries")
     .countDocuments(sinceIso ? { submittedAt: { $gte: sinceIso } } : {});
+}
+
+function enquiryFilter(query: string): Record<string, unknown> {
+  const trimmed = query.trim();
+  if (!trimmed) return {};
+  const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const digits = trimmed.replace(/\D/g, "");
+  const filters: Record<string, unknown>[] = [
+    { name: { $regex: escaped, $options: "i" } },
+    { email: { $regex: escaped, $options: "i" } },
+  ];
+  if (digits.length >= 3) {
+    filters.push({ phone: { $regex: digits, $options: "i" } });
+    filters.push({ phoneOriginal: { $regex: escaped, $options: "i" } });
+  }
+  return { $or: filters };
+}
+
+export interface EnquiryListResult {
+  items: Enquiry[];
+  total: number;
+}
+
+export async function listEnquiries(options: {
+  query?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<EnquiryListResult> {
+  const db = await getDb();
+  const filter = enquiryFilter(options.query ?? "");
+  const limit = Math.min(Math.max(options.limit ?? 30, 1), 100);
+  const offset = Math.max(options.offset ?? 0, 0);
+  const [docs, total] = await Promise.all([
+    db
+      .collection<EnquiryDoc>("enquiries")
+      .find(filter)
+      .sort({ submittedAt: -1 })
+      .skip(offset)
+      .limit(limit)
+      .toArray(),
+    db.collection("enquiries").countDocuments(filter),
+  ]);
+  return {
+    items: docs.map(({ _id, ...enquiry }) => ({ id: _id, ...enquiry })),
+    total,
+  };
+}
+
+export const getEnquiry = cache(async (id: string): Promise<Enquiry | null> => {
+  const db = await getDb();
+  const doc = await db.collection<EnquiryDoc>("enquiries").findOne({ _id: id });
+  if (!doc) return null;
+  const { _id, ...enquiry } = doc;
+  return { id: _id, ...enquiry };
+});
+
+export async function updateEnquiryNotes(
+  id: string,
+  internalNotes: string,
+  actor: { id: string; name: string; email: string },
+): Promise<void> {
+  const db = await getDb();
+  const notes = cleanText(internalNotes, 4000);
+  const result = await db.collection<EnquiryDoc>("enquiries").updateOne(
+    { _id: id },
+    {
+      $set: {
+        internalNotes: notes,
+        updatedAt: nowIso(),
+        updatedBy: actor.id,
+        updatedByName: actor.name,
+      },
+    },
+  );
+  if (result.matchedCount === 0) throw new Error("That enquiry could not be found.");
+  await recordAudit({
+    actor: { id: actor.id, email: actor.email },
+    action: "enquiry.notes",
+    entityType: "enquiry",
+    entityId: id,
+    summary: "Updated internal enquiry notes",
+  });
 }
