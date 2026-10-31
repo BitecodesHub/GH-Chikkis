@@ -7,6 +7,7 @@ export const runtime = "nodejs";
 
 function reason(error: unknown): string {
   const message = error instanceof Error ? error.message : "";
+  if (/Invalid scheme|must start with|connection string/i.test(message)) return "malformed_uri";
   if (/getaddrinfo|ENOTFOUND|SRV|querySrv/i.test(message)) return "dns";
   if (/timed out|timeout/i.test(message)) return "unreachable";
   if (/Authenticat/i.test(message)) return "auth";
