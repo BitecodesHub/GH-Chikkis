@@ -44,8 +44,8 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 px-3 pt-3 sm:px-4">
       <div className="container-page">
         <div
-          className={`glass relative flex items-center justify-between gap-3 rounded-full pl-4 pr-2 transition-[height,box-shadow] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-            scrolled ? "h-14" : "h-16"
+          className={`relative flex items-center justify-between gap-3 rounded-full pl-4 pr-2 transition-[height,background-color,box-shadow,border-color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+            scrolled ? "glass-strong h-14" : "h-16"
           }`}
         >
           <Wordmark />
