@@ -183,6 +183,24 @@ export default async function AdminSettingsPage({
               />
             </div>
             <div>
+              <label htmlFor="business-google-review" className="label">
+                Google review link
+              </label>
+              <input
+                id="business-google-review"
+                name="googleReviewUrl"
+                type="url"
+                maxLength={300}
+                defaultValue={business.googleReviewUrl}
+                placeholder="https://g.page/r/…/review"
+                className="field"
+              />
+              <p className="help">
+                From your Google business profile, use the Share reviews link. Customers
+                land straight on the review form. Leave blank to hide the link.
+              </p>
+            </div>
+            <div>
               <label htmlFor="business-city" className="label">
                 City
               </label>

@@ -56,6 +56,7 @@ export async function saveSettingsAction(formData: FormData): Promise<void> {
     email: cleanSingleLine(formData.get("email"), 160),
     phoneDisplay: cleanSingleLine(formData.get("phoneDisplay"), 40),
     instagramUrl: cleanSingleLine(formData.get("instagramUrl"), 300),
+    googleReviewUrl: cleanSingleLine(formData.get("googleReviewUrl"), 300),
     addressLine: cleanSingleLine(formData.get("addressLine"), 300),
     gstin: cleanSingleLine(formData.get("gstin"), 20).toUpperCase(),
   };
@@ -75,6 +76,16 @@ export async function saveSettingsAction(formData: FormData): Promise<void> {
       }
     } catch {
       fail("Enter a full Instagram URL beginning with https://instagram.com/.");
+    }
+  }
+  if (business.googleReviewUrl) {
+    try {
+      const url = new URL(business.googleReviewUrl);
+      if (url.protocol !== "https:" || !/(^|\.)(google\.com|google\.co\.in|g\.page)$/i.test(url.hostname)) {
+        fail("Enter a Google review link beginning with https:// — paste it from your Google business profile.");
+      }
+    } catch {
+      fail("Enter a Google review link beginning with https:// — paste it from your Google business profile.");
     }
   }
   if (business.gstin && !/^[0-9A-Z]{15}$/.test(business.gstin)) {

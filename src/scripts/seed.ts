@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { closeDatabase, getDb } from "../lib/db";
-import { getSettings } from "../lib/settings";
+import { defaultSettings, getSettings, updateSettings } from "../lib/settings";
 import { ensureOwnerUser } from "../lib/users";
 import { DEFAULT_CONTENT } from "../lib/content-schema";
 import { ensureDefaultTemplates } from "../lib/message-templates";
 import { CONTENT_PAGES } from "../lib/types";
-import type { InventoryItem, WebsiteContent } from "../lib/types";
+import type { BusinessSettings, InventoryItem, WebsiteContent } from "../lib/types";
 import type { ProductDoc } from "../lib/products";
 import { nowIso } from "../lib/dates";
 
@@ -219,6 +219,22 @@ async function seedInventory(): Promise<number> {
   return created;
 }
 
+/**
+ * The Owner's real contact links. Settings merge stored documents over the
+ * defaults, so a record saved before these existed would keep showing blanks.
+ */
+async function seedBusinessLinks(): Promise<number> {
+  const settings = await getSettings();
+  const defaults = defaultSettings().business;
+  const business: Partial<BusinessSettings> = {};
+  for (const key of ["email", "instagramUrl", "googleReviewUrl"] as const) {
+    if (!settings.business[key]?.trim()) business[key] = defaults[key];
+  }
+  const filled = Object.keys(business).length;
+  if (filled > 0) await updateSettings({ business }, "seed");
+  return filled;
+}
+
 async function main() {
   console.log("Seeding GH Chikkis…");
   await getSettings();
@@ -227,6 +243,7 @@ async function main() {
   const products = await seedProducts();
   const content = await seedContent();
   const inventory = await seedInventory();
+  const links = await seedBusinessLinks();
   await ensureDefaultTemplates();
 
   console.log(
@@ -235,6 +252,7 @@ async function main() {
       `${products} product(s) created.`,
       `${content} content page(s) created.`,
       `${inventory} inventory item(s) created.`,
+      `${links} business link(s) filled in.`,
       "WhatsApp templates ready.",
     ].join("\n"),
   );

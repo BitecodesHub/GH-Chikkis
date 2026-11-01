@@ -491,6 +491,7 @@ export interface BusinessSettings {
   email: string;
   phoneDisplay: string;
   instagramUrl: string;
+  googleReviewUrl: string;
   addressLine: string;
   gstin: string;
 }

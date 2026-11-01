@@ -88,10 +88,15 @@ we will confirm" fallback — that is deliberate, not a bug.
 - Per-variety ingredient lists are supplied by the business and entered in
   **Admin › Products**, where each product has an "ingredients verified" tick
   before the detail shows publicly.
+- Business email, Instagram URL and Google review link live in
+  **Admin › Settings › Business details** and render in the footer "Reach us"
+  list. Blank means the link is hidden, so nothing half-finished shows up.
 - Google reviews: enter the business's Google Place ID in **Admin › Settings**,
   tick "Show Google reviews on the website" and set
   `GOOGLE_PLACES_API_KEY`. Until then the band renders nothing — the site never
-  shows an invented review.
+  shows an invented review. The `g.page/r/…/review` share link is not enough to
+  find it: that code decodes to the internal listing number, not a Place ID.
+  Open the listing in Google Maps and copy the `ChIJ…` part of its URL.
 
 ## Deploying
 

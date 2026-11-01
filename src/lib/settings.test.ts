@@ -7,11 +7,16 @@ describe("default settings", () => {
     expect(defaultSettings().business.name).toBe("GH Chikkis");
   });
 
-  it("leaves real contact details blank instead of inventing them", () => {
+  it("ships the contact links the owner supplied", () => {
+    const { business } = defaultSettings();
+    expect(business.email).toBe("ghchikkis@gmail.com");
+    expect(business.instagramUrl).toBe("https://www.instagram.com/ghchikkis");
+    expect(business.googleReviewUrl).toMatch(/^https:\/\/(www\.)?(g\.page|google\.com)\//);
+  });
+
+  it("leaves details we have not been given blank instead of inventing them", () => {
     const { business } = defaultSettings();
     expect(business.whatsappNumber).toBe("");
-    expect(business.email).toBe("");
-    expect(business.instagramUrl).toBe("");
     expect(business.addressLine).toBe("");
     expect(business.gstin).toBe("");
   });

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AtSign, Mail, MapPin } from "lucide-react";
+import { AtSign, Mail, MapPin, Star } from "lucide-react";
 import type { BusinessSettings } from "@/lib/types";
 import { Wordmark } from "./wordmark";
 
@@ -96,6 +96,19 @@ export function SiteFooter({
                 >
                   <AtSign aria-hidden="true" className="size-4 text-paper/60" />
                   {instagramHandle(business.instagramUrl)}
+                </a>
+              </li>
+            ) : null}
+            {business.googleReviewUrl ? (
+              <li>
+                <a
+                  href={business.googleReviewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 transition-colors hover:text-paper"
+                >
+                  <Star aria-hidden="true" className="size-4 text-paper/60" />
+                  Reviews on Google
                 </a>
               </li>
             ) : null}
