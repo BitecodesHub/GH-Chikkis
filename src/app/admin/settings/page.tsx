@@ -141,6 +141,10 @@ export default async function AdminSettingsPage({
                 placeholder="+91 98765 43210"
                 className="field"
               />
+              <p className="help mt-1">
+                Where the “Open in WhatsApp” invoice handoff goes, and the number behind the
+                WhatsApp buttons on the website.
+              </p>
             </div>
             <div>
               <label htmlFor="business-phone-display" className="label">

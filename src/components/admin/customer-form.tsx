@@ -30,7 +30,6 @@ export function CustomerForm({
   next?: string;
 }) {
   const [state, formAction, pending] = useActionState(saveCustomerAction, EMPTY_STATE);
-  const address = customer?.addresses[0];
   const errors = state.errors ?? {};
 
   return (
@@ -131,90 +130,6 @@ export function CustomerForm({
               className="field"
             />
             <p className="help">Entered manually only when the customer provides it.</p>
-          </div>
-        </div>
-      </section>
-
-      <section className="surface p-5 sm:p-6" aria-labelledby="customer-address">
-        <h2 id="customer-address" className="font-[family-name:var(--font-display)] text-xl">
-          Address
-        </h2>
-        <p className="mt-1 text-[0.875rem] text-ink-soft">
-          Optional. Useful for deliveries; collection orders do not need it.
-        </p>
-        <div className="mt-5 grid gap-5 md:grid-cols-2">
-          <div className="md:col-span-2">
-            <label htmlFor="address-line1" className="label">
-              Address line 1
-            </label>
-            <input
-              id="address-line1"
-              name="addressLine1"
-              defaultValue={address?.line1 ?? ""}
-              maxLength={160}
-              className="field"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label htmlFor="address-line2" className="label">
-              Address line 2 (optional)
-            </label>
-            <input
-              id="address-line2"
-              name="addressLine2"
-              defaultValue={address?.line2 ?? ""}
-              maxLength={160}
-              className="field"
-            />
-          </div>
-          <div>
-            <label htmlFor="address-city" className="label">
-              City
-            </label>
-            <input
-              id="address-city"
-              name="addressCity"
-              defaultValue={address?.city ?? ""}
-              maxLength={80}
-              className="field"
-            />
-          </div>
-          <div>
-            <label htmlFor="address-state" className="label">
-              State
-            </label>
-            <input
-              id="address-state"
-              name="addressState"
-              defaultValue={address?.state ?? ""}
-              maxLength={80}
-              className="field"
-            />
-          </div>
-          <div>
-            <label htmlFor="address-pincode" className="label">
-              PIN code
-            </label>
-            <input
-              id="address-pincode"
-              name="addressPincode"
-              inputMode="numeric"
-              defaultValue={address?.pincode ?? ""}
-              maxLength={10}
-              className="field"
-            />
-          </div>
-          <div>
-            <label htmlFor="address-label" className="label">
-              Address label
-            </label>
-            <input
-              id="address-label"
-              name="addressLabel"
-              defaultValue={address?.label ?? "Delivery"}
-              maxLength={40}
-              className="field"
-            />
           </div>
         </div>
       </section>

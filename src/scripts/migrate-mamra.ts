@@ -46,7 +46,7 @@ const OLD_INVENTORY_NAME = "Mawa";
 const NEW_INVENTORY_NAME = "Mamra (flattened rice)";
 
 /** Every wording the shipped defaults have carried, oldest first. */
-const LEGACY_TAGLINES = ["Ghar ki Gud", "Ghar ki Gud-crafted Chikki's"];
+const LEGACY_TAGLINES = ["Ghar ki Gud", "Ghar ki Gudcrafted Chikki's"];
 const NEW_TAGLINE = defaultSettings().business.tagline;
 
 const dryRun = process.argv.includes("--dry-run");

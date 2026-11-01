@@ -3,15 +3,29 @@ import path from "node:path";
 
 const BRAND_DIR = path.join("public", "brand");
 const IMAGE_EXTENSIONS = ["png", "svg", "jpg", "jpeg", "webp"] as const;
+const PROBE_TTL_MS = 30_000;
 
-/** Returns the served path of the first matching `public/brand/<base>.<ext>`. */
+const probes = new Map<string, { src: string | null; expiresAt: number }>();
+
+/**
+ * Returns the served path of the first matching `public/brand/<base>.<ext>`.
+ *
+ * Three layouts probe the same handful of names on every request, so a result
+ * is held briefly. The window is short because the Owner drops files in by
+ * hand and expects the new artwork to show up without a redeploy.
+ */
 function firstImage(base: string): string | null {
+  const cached = probes.get(base);
+  if (cached && cached.expiresAt > Date.now()) return cached.src;
+  let src: string | null = null;
   for (const ext of IMAGE_EXTENSIONS) {
     if (existsSync(path.join(process.cwd(), BRAND_DIR, `${base}.${ext}`))) {
-      return `/brand/${base}.${ext}`;
+      src = `/brand/${base}.${ext}`;
+      break;
     }
   }
-  return null;
+  probes.set(base, { src, expiresAt: Date.now() + PROBE_TTL_MS });
+  return src;
 }
 
 /**

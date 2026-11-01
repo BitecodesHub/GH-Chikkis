@@ -6,7 +6,8 @@ import { recordAudit } from "./audit";
 import { createAlert } from "./alerts";
 import { getSettings, pauseWhatsApp, resumeWhatsApp } from "./settings";
 import { formatINR } from "./money";
-import { normalizePhone } from "./phone";
+import { weightAside } from "./quantity";
+import { normalizePhone, waLink } from "./phone";
 import { cleanSingleLine, cleanText } from "./text";
 import { env, whatsappConfigured } from "./env";
 import { TEMPLATE_DEFAULTS, ensureDefaultTemplates, type TemplateDefault } from "./message-templates";
@@ -203,6 +204,23 @@ export async function getTemplate(id: string): Promise<MessageTemplate | null> {
   return doc ? mapTemplate(doc) : null;
 }
 
+// A manual handoff: opens WhatsApp addressed to the kitchen's own number with
+// the invoice text already typed, so the owner only presses send.
+export async function invoiceHandoff(
+  order: Order,
+): Promise<{ href: string; text: string; destination: string } | null> {
+  const settings = await getSettings();
+  const destination = settings.business.whatsappNumber;
+  if (!destination.replace(/\D/g, "")) return null;
+  try {
+    const template = await getTemplateForType("INVOICE_DETAILS");
+    const { body } = composeMessage("INVOICE_DETAILS", template, order, settings);
+    return { href: waLink(destination, body), text: body, destination };
+  } catch {
+    return null;
+  }
+}
+
 export async function listTemplateVersions(templateId: string): Promise<TemplateVersion[]> {
   const db = await getDb();
   const docs = await db
@@ -355,9 +373,7 @@ function completedItemLines(order: Order): string {
   return order.items
     .map(
       (item) =>
-        `- ${item.quantity} × ${item.productName} — ${item.packagingLabel} (${item.actualWeightGrams} g ${
-          item.weightBasis === "PER_UNIT" ? "each" : "total"
-        })`,
+        `- ${item.quantity} × ${item.productName} — ${item.packagingLabel}${weightAside(item)}`,
     )
     .join("\n");
 }
@@ -366,7 +382,7 @@ export function invoiceItemLines(order: Pick<Order, "items">): string {
   return order.items
     .map(
       (item) =>
-        `- ${item.quantity} × ${item.productName} — ${item.packagingLabel} (${item.actualWeightGrams} g) @ ${formatINR(
+        `- ${item.quantity} × ${item.productName} — ${item.packagingLabel}${weightAside(item)} @ ${formatINR(
           item.ratePerGramPaise,
           { alwaysPaise: true },
         )}/g = ${formatINR(item.lineTotalPaise)}`,

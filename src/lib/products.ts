@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { cache } from "react";
 import { getDb } from "./db";
 import { nowIso } from "./dates";
+import { invalidateReads, readThrough, READ_TTL } from "./read-cache";
 import type { MediaAsset, PackagingOption, Product } from "./types";
 
 export interface ProductDoc extends Omit<Product, "id"> {
@@ -42,39 +43,51 @@ const DUPLICATE_SLUG_MESSAGE =
   "That website address (slug) is already used by another variety.";
 
 export const listActiveProducts = cache(async (): Promise<Product[]> => {
-  const db = await getDb();
-  const docs = await db
-    .collection<ProductDoc>("products")
-    .find({ active: true })
-    .sort({ displayOrder: 1, name: 1 })
-    .toArray();
-  return docs.map(mapProduct);
+  return readThrough("products:active", READ_TTL.content, async () => {
+    const db = await getDb();
+    const docs = await db
+      .collection<ProductDoc>("products")
+      .find({ active: true })
+      .sort({ displayOrder: 1, name: 1 })
+      .toArray();
+    return docs.map(mapProduct);
+  });
 });
 
 export const getProductBySlug = cache(
   async (slug: string): Promise<Product | null> => {
-    const db = await getDb();
-    const doc = await db
-      .collection<ProductDoc>("products")
-      .findOne({ slug });
-    return doc ? mapProduct(doc) : null;
+    const products = await listActiveProducts();
+    const match = products.find((product) => product.slug === slug);
+    if (match) return match;
+    return readThrough(`product:${slug}`, READ_TTL.content, async () => {
+      const db = await getDb();
+      const doc = await db.collection<ProductDoc>("products").findOne({ slug });
+      return doc ? mapProduct(doc) : null;
+    });
   },
 );
 
 export const listProducts = cache(async (): Promise<Product[]> => {
-  const db = await getDb();
-  const docs = await db
-    .collection<ProductDoc>("products")
-    .find({})
-    .sort({ active: -1, displayOrder: 1, name: 1 })
-    .toArray();
-  return docs.map(mapProduct);
+  return readThrough("products:all", READ_TTL.content, async () => {
+    const db = await getDb();
+    const docs = await db
+      .collection<ProductDoc>("products")
+      .find({})
+      .sort({ active: -1, displayOrder: 1, name: 1 })
+      .toArray();
+    return docs.map(mapProduct);
+  });
 });
 
 export const getProductById = cache(async (id: string): Promise<Product | null> => {
-  const db = await getDb();
-  const doc = await db.collection<ProductDoc>("products").findOne({ _id: id });
-  return doc ? mapProduct(doc) : null;
+  const products = await listProducts();
+  const match = products.find((product) => product.id === id);
+  if (match) return match;
+  return readThrough(`product:id:${id}`, READ_TTL.content, async () => {
+    const db = await getDb();
+    const doc = await db.collection<ProductDoc>("products").findOne({ _id: id });
+    return doc ? mapProduct(doc) : null;
+  });
 });
 
 export async function createProduct(input: ProductWriteInput): Promise<Product> {
@@ -97,6 +110,7 @@ export async function createProduct(input: ProductWriteInput): Promise<Product> 
     if (isDuplicateKey(error)) throw new Error(DUPLICATE_SLUG_MESSAGE);
     throw error;
   }
+  invalidateReads("product");
   return mapProduct(doc);
 }
 
@@ -122,6 +136,7 @@ export async function updateProduct(
     if (isDuplicateKey(error)) throw new Error(DUPLICATE_SLUG_MESSAGE);
     throw error;
   }
+  invalidateReads("product");
   return mapProduct({ ...existing, ...update });
 }
 

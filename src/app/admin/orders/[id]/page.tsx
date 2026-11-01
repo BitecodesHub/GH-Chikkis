@@ -17,6 +17,7 @@ import {
   Truck,
 } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/page-header";
+import { OrderDeleteButton } from "@/components/admin/order-delete-button";
 import { requirePermission } from "@/lib/auth/session";
 import { cn } from "@/lib/cn";
 import { formatDateDDMMYYYY, formatDateTime, businessToday } from "@/lib/dates";
@@ -33,10 +34,12 @@ import {
   NOTIFICATION_STATUS_LABELS,
   NOTIFICATION_TYPE_LABELS,
   getWhatsAppConsent,
+  invoiceHandoff,
   listOrderNotifications,
   messagingModeInfo,
 } from "@/lib/messaging";
 import { buildInvoiceEmailDraft, emailModeInfo, listOrderEmails } from "@/lib/email";
+import { expenseCategories } from "@/lib/expenses";
 import { hasPermission } from "@/lib/permissions";
 import {
   DELIVERY_METHOD_LABELS,
@@ -50,6 +53,7 @@ import {
   type OrderStatus,
 } from "@/lib/types";
 import {
+  addOrderExpenseAction,
   addPaymentAction,
   addRefundAction,
   changeOrderStatusAction,
@@ -111,7 +115,11 @@ export default async function OrderDetailPage({
 
   const isGift = order.type === "GIFT";
   const isSales = order.type === "SALES";
-  const [customer, enquiry, payments, refunds, versions, notifications, emails, consent, emailDraft] =
+  const canManage = hasPermission(user, "orders.manage");
+  const canPayments = hasPermission(user, "payments.manage");
+  const canRecordCost = hasPermission(user, "expenses.manage");
+  const canMessage = hasPermission(user, "messaging.manage");
+  const [customer, enquiry, payments, refunds, versions, notifications, emails, consent, emailDraft, handoff] =
     await Promise.all([
       order.customerId ? getCustomer(order.customerId) : Promise.resolve(null),
       order.enquiryId ? getEnquiry(order.enquiryId) : Promise.resolve(null),
@@ -124,11 +132,15 @@ export default async function OrderDetailPage({
       isSales && order.invoice
         ? buildInvoiceEmailDraft(order.id).catch(() => null)
         : Promise.resolve(null),
+      isSales && canMessage ? invoiceHandoff(order) : Promise.resolve(null),
     ]);
 
-  const canManage = hasPermission(user, "orders.manage");
-  const canPayments = hasPermission(user, "payments.manage");
-  const canMessage = hasPermission(user, "messaging.manage");
+  const costCategories = canRecordCost ? await expenseCategories() : [];
+  // A cost against an order is almost always the porter or a courier slip.
+  const costDefaultCategory =
+    costCategories.find((category) => /transport/i.test(category)) ??
+    costCategories.find((category) => /misc/i.test(category)) ??
+    "";
   const canReviewMessages = hasPermission(user, "messaging.review");
   const messageMode = messagingModeInfo();
   const mailMode = emailModeInfo();
@@ -137,13 +149,17 @@ export default async function OrderDetailPage({
   const errorMessage = first(notices.error);
 
   const notice = (() => {
-    if (notices.created === "1") return "Order created.";
+    if (notices.created === "1")
+      return handoff
+        ? "Order created. Use “Open in WhatsApp” above to send the invoice."
+        : "Order created.";
     if (notices.saved === "1")
       return isSales
         ? "Order saved. A new invoice version was issued only if the content changed."
         : "Gift record saved.";
     if (notices.paid === "1") return "Payment recorded.";
     if (notices.refunded === "1") return "Refund recorded.";
+    if (notices.expense === "1") return "Cost recorded and visible in Expenses.";
     if (notices.status === "1") return "Order status updated.";
     if (notices.message === "1") {
       const state = first(notices.state);
@@ -239,6 +255,9 @@ export default async function OrderDetailPage({
                 Edit
               </Link>
             ) : null}
+            {canManage && !order.historical ? (
+              <OrderDeleteButton orderId={order.id} orderRef={order.ref} />
+            ) : null}
             {isSales && order.invoice ? (
               <a
                 href={`/admin/orders/${order.id}/invoice/${order.invoice.version}`}
@@ -246,6 +265,17 @@ export default async function OrderDetailPage({
               >
                 <Download aria-hidden="true" className="size-4" />
                 Invoice PDF
+              </a>
+            ) : null}
+            {handoff ? (
+              <a
+                href={handoff.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-outline btn-sm"
+              >
+                <MessageCircle aria-hidden="true" className="size-4" />
+                Open in WhatsApp
               </a>
             ) : null}
           </>
@@ -512,7 +542,7 @@ export default async function OrderDetailPage({
                 </div>
               )}
 
-              {canPayments ? (
+              {canPayments || canRecordCost ? (
                 <div className="grid gap-6 border-t border-line px-5 py-5 md:grid-cols-2">
                   {order.status !== "CANCELLED" && outstanding > 0 ? (
                     <form action={addPaymentAction} className="space-y-4">
@@ -653,6 +683,92 @@ export default async function OrderDetailPage({
                       </div>
                       <button type="submit" className="btn btn-outline btn-sm">
                         Record refund
+                      </button>
+                    </form>
+                  ) : null}
+
+                  {canRecordCost ? (
+                    <form action={addOrderExpenseAction} className="space-y-4">
+                      <input type="hidden" name="orderId" value={order.id} />
+                      <h3 className="font-medium">Add a cost for this order</h3>
+                      <p className="text-[0.8125rem] text-ink-muted">
+                        Something you paid out for this order — a courier slip, extra boxes. It
+                        lands in Expenses tagged {order.ref}.
+                      </p>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <label htmlFor="order-cost-amount" className="label">
+                            Amount (₹)
+                          </label>
+                          <input
+                            id="order-cost-amount"
+                            name="amount"
+                            inputMode="decimal"
+                            required
+                            className="field"
+                            placeholder="0.00"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="order-cost-date" className="label">
+                            Paid on
+                          </label>
+                          <input
+                            id="order-cost-date"
+                            name="date"
+                            type="date"
+                            defaultValue={businessToday()}
+                            max={businessToday()}
+                            className="field"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="order-cost-category" className="label">
+                            Category
+                          </label>
+                          <select id="order-cost-category" name="category" defaultValue={costDefaultCategory} className="field">
+                            {costCategories.map((category) => (
+                              <option key={category} value={category}>
+                                {category}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label htmlFor="order-cost-method" className="label">
+                            Paid by (optional)
+                          </label>
+                          <select id="order-cost-method" name="method" defaultValue="" className="field">
+                            <option value="">Not recorded</option>
+                            {PAYMENT_METHODS.map((method) => (
+                              <option key={method.value} value={method.value}>
+                                {method.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label htmlFor="order-cost-description" className="label">
+                            What was it?
+                          </label>
+                          <input
+                            id="order-cost-description"
+                            name="description"
+                            maxLength={300}
+                            className="field"
+                            placeholder="Courier to Andheri, gift ribbon…"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label htmlFor="order-cost-supplier" className="label">
+                            Supplier or payee (optional)
+                          </label>
+                          <input id="order-cost-supplier" name="supplier" maxLength={120} className="field" />
+                        </div>
+                      </div>
+                      <button type="submit" className="btn btn-outline btn-sm">
+                        <ReceiptText aria-hidden="true" className="size-4" />
+                        Record cost
                       </button>
                     </form>
                   ) : null}

@@ -4,7 +4,6 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   BarChart3,
-  Boxes,
   Gift,
   Minus,
   ReceiptText,
@@ -19,7 +18,6 @@ import { hasPermission } from "@/lib/permissions";
 import { getReportData } from "@/lib/reports";
 import { dateRangeFromParams, formatDateDDMMYYYY, rangeLabel } from "@/lib/dates";
 import { formatINR } from "@/lib/money";
-import { stockLabel } from "@/lib/quantity";
 import type { ReportBreakdown } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Reports" };
@@ -425,95 +423,59 @@ export default async function AdminReportsPage({
         </section>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className="surface" aria-labelledby="gift-records">
-          <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-5 py-4">
-            <h2 id="gift-records" className="flex items-center gap-2 font-[family-name:var(--font-display)] text-xl">
-              <Gift aria-hidden="true" className="size-4 text-brass" />
-              Gift records
-            </h2>
-            <span className="meta">{formatINR(metrics.giftingCostPaise)} cost in period</span>
-          </div>
-          {data.giftOrdersList.length === 0 ? (
-            <p className="px-5 py-10 text-center text-[0.875rem] text-ink-muted">
-              No gift orders in this period.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-[0.9375rem]">
-                <thead>
-                  <tr className="border-b border-line text-[0.6875rem] uppercase tracking-[0.14em] text-ink-muted">
-                    <th scope="col" className="px-5 py-3 font-semibold">
-                      Gift
-                    </th>
-                    <th scope="col" className="hidden px-5 py-3 font-semibold sm:table-cell">
-                      Date
-                    </th>
-                    <th scope="col" className="px-5 py-3 text-right font-semibold">
-                      Cost
-                    </th>
+      <section className="surface" aria-labelledby="gift-records">
+        <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-5 py-4">
+          <h2 id="gift-records" className="flex items-center gap-2 font-[family-name:var(--font-display)] text-xl">
+            <Gift aria-hidden="true" className="size-4 text-brass" />
+            Gift records
+          </h2>
+          <span className="meta">{formatINR(metrics.giftingCostPaise)} cost in period</span>
+        </div>
+        {data.giftOrdersList.length === 0 ? (
+          <p className="px-5 py-10 text-center text-[0.875rem] text-ink-muted">
+            No gift orders in this period.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[0.9375rem]">
+              <thead>
+                <tr className="border-b border-line text-[0.6875rem] uppercase tracking-[0.14em] text-ink-muted">
+                  <th scope="col" className="px-5 py-3 font-semibold">
+                    Gift
+                  </th>
+                  <th scope="col" className="hidden px-5 py-3 font-semibold sm:table-cell">
+                    Date
+                  </th>
+                  <th scope="col" className="px-5 py-3 text-right font-semibold">
+                    Cost
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {data.giftOrdersList.map((gift) => (
+                  <tr key={gift.orderId} className="hover:bg-paper-raised/60">
+                    <td className="px-5 py-3">
+                      <Link
+                        href={`/admin/orders/${gift.orderId}`}
+                        className="font-medium hover:underline"
+                      >
+                        {gift.ref}
+                      </Link>
+                      <p className="text-[0.8125rem] text-ink-soft">{gift.recipient}</p>
+                    </td>
+                    <td className="hidden px-5 py-3 whitespace-nowrap text-ink-soft sm:table-cell">
+                      {formatDateDDMMYYYY(gift.orderDate)}
+                    </td>
+                    <td className="px-5 py-3 text-right whitespace-nowrap">
+                      {formatINR(gift.costPaise)}
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-line">
-                  {data.giftOrdersList.map((gift) => (
-                    <tr key={gift.orderId} className="hover:bg-paper-raised/60">
-                      <td className="px-5 py-3">
-                        <Link
-                          href={`/admin/orders/${gift.orderId}`}
-                          className="font-medium hover:underline"
-                        >
-                          {gift.ref}
-                        </Link>
-                        <p className="text-[0.8125rem] text-ink-soft">{gift.recipient}</p>
-                      </td>
-                      <td className="hidden px-5 py-3 whitespace-nowrap text-ink-soft sm:table-cell">
-                        {formatDateDDMMYYYY(gift.orderDate)}
-                      </td>
-                      <td className="px-5 py-3 text-right whitespace-nowrap">
-                        {formatINR(gift.costPaise)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-
-        <section className="surface" aria-labelledby="inventory-on-hand">
-          <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-5 py-4">
-            <h2 id="inventory-on-hand" className="flex items-center gap-2 font-[family-name:var(--font-display)] text-xl">
-              <Boxes aria-hidden="true" className="size-4 text-brass" />
-              Inventory on hand
-            </h2>
-            <span className="meta">{data.inventory.length} items</span>
+                ))}
+              </tbody>
+            </table>
           </div>
-          {data.inventory.length === 0 ? (
-            <p className="px-5 py-10 text-center text-[0.875rem] text-ink-muted">
-              No inventory items yet. Add them from the Inventory page.
-            </p>
-          ) : (
-            <ul className="divide-y divide-line">
-              {data.inventory.map((item) => (
-                <li key={item.itemId} className="flex items-baseline justify-between gap-4 px-5 py-3">
-                  <div className="min-w-0">
-                    <Link
-                      href={`/admin/inventory/${item.itemId}`}
-                      className="truncate text-[0.9375rem] font-medium hover:underline"
-                    >
-                      {item.name}
-                    </Link>
-                    <p className="text-[0.75rem] text-ink-muted">{item.category}</p>
-                  </div>
-                  <span className="text-[0.9375rem] whitespace-nowrap">
-                    {stockLabel(item.quantity, item.unit)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
+        )}
+      </section>
 
       <div className="space-y-1 text-[0.75rem] text-ink-muted">
         <p>

@@ -4,6 +4,7 @@ import { getDb } from "./db";
 import { nowIso, formatDateDDMMYYYY } from "./dates";
 import { recordAudit } from "./audit";
 import { formatINR } from "./money";
+import { weightAside } from "./quantity";
 import { cleanSingleLine, cleanText } from "./text";
 import { GmailSendError, gmailMode, gmailSenderAddress, sendGmailMessage } from "./gmail";
 import { getOrder } from "./orders";
@@ -51,7 +52,7 @@ function invoiceLines(snapshotItems: Order["items"]): string {
   return snapshotItems
     .map(
       (item) =>
-        `- ${item.quantity} × ${item.productName} — ${item.packagingLabel} (${item.actualWeightGrams} g) — ${formatINR(
+        `- ${item.quantity} × ${item.productName} — ${item.packagingLabel}${weightAside(item)} — ${formatINR(
           item.lineTotalPaise,
         )}`,
     )

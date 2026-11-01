@@ -16,9 +16,11 @@ interface SearchResult {
 export function CustomerPicker({
   createHref,
   orderQuery,
+  recent = [],
 }: {
   createHref: string;
   orderQuery?: string;
+  recent?: { id: string; name: string; phone: string; orders: number }[];
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -57,7 +59,7 @@ export function CustomerPicker({
   const searching = query.trim().length >= 2;
   const visibleResults = searching ? results : [];
 
-  const hrefFor = (customer: SearchResult) => {
+  const hrefFor = (customer: { id: string }) => {
     const search = new URLSearchParams();
     search.set("customerId", customer.id);
     if (orderQuery) {
@@ -116,6 +118,30 @@ export function CustomerPicker({
         </p>
       </div>
 
+      {recent.length > 0 && !searching ? (
+        <div className="mt-5">
+          <p className="meta">Order again</p>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {recent.map((customer) => (
+              <li key={customer.id}>
+                <Link
+                  href={hrefFor(customer)}
+                  className="flex items-center gap-2 rounded-full border border-line bg-paper-raised py-1.5 pl-1.5 pr-3 transition-colors hover:border-brass hover:bg-paper-deep"
+                >
+                  <span className="grid size-7 shrink-0 place-items-center rounded-full bg-olive/10 text-[0.6875rem] font-semibold text-olive-deep">
+                    {customer.name.trim().charAt(0).toUpperCase() || "?"}
+                  </span>
+                  <span className="text-[0.875rem] font-medium">{customer.name}</span>
+                  <span className="text-[0.75rem] text-ink-muted">
+                    {customer.orders} {customer.orders === 1 ? "order" : "orders"}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {error && searching ? (
         <p role="alert" className="error-text mt-3">
           {error}
@@ -167,8 +193,7 @@ export function CustomerPicker({
       ) : null}
 
       <p className="mt-5 border-t border-line pt-4 text-[0.8125rem] text-ink-muted">
-        Step 2 — add the products and weights, choose delivery or collection, and record any
-        payment already taken.
+        Step 2 — tap the varieties, set how many, and record any money already taken.
       </p>
     </section>
   );

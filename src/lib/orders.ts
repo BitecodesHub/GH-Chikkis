@@ -7,7 +7,7 @@ import { nowIso, businessToday, isValidBusinessDate } from "./dates";
 import { recordAudit } from "./audit";
 import { createAlert } from "./alerts";
 import { getCustomer } from "./customers";
-import { calculateLineAmount, paymentStatusFor, balanceFor } from "./money";
+import { calculateLineAmount, paymentStatusFor, balanceFor, formatINR } from "./money";
 import { formatPhoneDisplay } from "./phone";
 import { getSettings } from "./settings";
 import { cleanSingleLine, cleanText } from "./text";
@@ -630,6 +630,36 @@ export async function countOrders(options?: { status?: OrderStatus }): Promise<n
   return db.collection("orders").countDocuments(options?.status ? { status: options.status } : {});
 }
 
+// The customers who order most often, so a busy day of repeat orders can be
+// logged without typing a name each time.
+export async function listRepeatCustomers(
+  limit = 8,
+): Promise<{ id: string; name: string; phone: string; orders: number }[]> {
+  const db = await getDb();
+  const docs = await db
+    .collection<OrderDoc>("orders")
+    .find({ customerId: { $type: "string" } })
+    .sort({ orderDate: -1 })
+    .limit(Math.min(Math.max(limit, 1), 20) * 12)
+    .toArray();
+  const seen = new Map<string, { id: string; name: string; phone: string; orders: number }>();
+  for (const doc of docs) {
+    const id = doc.customerId as string;
+    const entry = seen.get(id);
+    if (entry) {
+      entry.orders += 1;
+      continue;
+    }
+    seen.set(id, {
+      id,
+      name: doc.customerSnapshot?.name ?? "Customer",
+      phone: doc.customerSnapshot?.phone ?? "",
+      orders: 1,
+    });
+  }
+  return [...seen.values()].sort((a, b) => b.orders - a.orders).slice(0, limit);
+}
+
 export interface CustomerOrderStats {
   count: number;
   totalPaise: number;
@@ -1141,6 +1171,54 @@ export async function changeOrderStatus(
   const updated = await getOrder(orderId);
   if (!updated) throw new OrderError("The order could not be updated.");
   return updated;
+}
+
+// Removes a mis-keyed order outright; anything that took money or was imported
+// keeps its record, because an issued invoice number has to stay explainable.
+export async function deleteOrder(orderId: string, actor: OrderActor): Promise<void> {
+  const order = await getOrder(orderId);
+  if (!order) throw new OrderError("That order could not be found.");
+  if (order.historical) {
+    throw new OrderError("Imported historical orders cannot be deleted. Their source file stands as the record.");
+  }
+  if (order.paidPaise - order.refundedPaise > 0) {
+    throw new OrderError(
+      "Money is recorded against this order, so it cannot be deleted. Cancel it and refund the payment instead.",
+    );
+  }
+
+  const db = await getDb();
+  await Promise.all([
+    db.collection("invoice_versions").deleteMany({ orderId }),
+    db.collection("payments").deleteMany({ orderId }),
+    db.collection("refunds").deleteMany({ orderId }),
+    order.gift?.expenseId
+      ? db.collection<{ _id: string }>("expenses").deleteOne({ _id: order.gift.expenseId })
+      : Promise.resolve(),
+    order.enquiryId
+      ? db
+          .collection<Omit<Enquiry, "id"> & { _id: string }>("enquiries")
+          .updateOne(
+            { _id: order.enquiryId, linkedOrderId: orderId },
+            { $unset: { linkedOrderId: "" } },
+          )
+      : Promise.resolve(),
+  ]);
+  await db.collection<OrderDoc>("orders").deleteOne({ _id: orderId });
+
+  try {
+    await flagOrderJobsForReview(orderId, "Order was deleted.");
+  } catch (error) {
+    console.error("Could not flag queued messages after deletion", error);
+  }
+
+  await recordAudit({
+    actor: { id: actor.id, email: actor.email },
+    action: "order.delete",
+    entityType: "order",
+    entityId: orderId,
+    summary: `Deleted order ${order.ref} for ${order.customerSnapshot.name} — ${itemsSummary(order.items)}, ${formatINR(order.totalPaise)}`,
+  });
 }
 
 async function insertPayment(

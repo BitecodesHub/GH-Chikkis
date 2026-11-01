@@ -8,7 +8,8 @@ import { cloudinaryConfigured, env } from "./env";
 import { cleanSingleLine } from "./text";
 import type { MediaAsset } from "./types";
 
-const MAX_UPLOAD_BYTES = 6 * 1024 * 1024;
+export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+export const IMAGE_TOO_LARGE = `Images must be ${MAX_UPLOAD_BYTES / (1024 * 1024)} MB or smaller.`;
 const CLOUDINARY_FOLDER = "gh-chikkis";
 
 const ALLOWED_EXTENSIONS: Record<string, string> = {
@@ -124,7 +125,7 @@ export async function storeImageUpload(
     throw new MediaUploadError("The selected file is empty.");
   }
   if (file.size > MAX_UPLOAD_BYTES) {
-    throw new MediaUploadError("Images must be 6 MB or smaller.");
+    throw new MediaUploadError(IMAGE_TOO_LARGE);
   }
   const alt = cleanSingleLine(input.alt, 240);
   if (alt.length < 2) {

@@ -44,8 +44,11 @@ export function ExpenseForm({
 
       <section className="surface p-5 sm:p-6" aria-labelledby="expense-details">
         <h2 id="expense-details" className="font-[family-name:var(--font-display)] text-xl">
-          Expense details
+          Other expense
         </h2>
+        <p className="mt-1 text-[0.875rem] text-ink-soft">
+          Labour, transport, utilities, marketing — anything that is not stock you count.
+        </p>
         <div className="mt-5 grid gap-5 md:grid-cols-2">
           <div>
             <label htmlFor="expense-date" className="label">
@@ -153,14 +156,6 @@ export function ExpenseForm({
           </div>
         </div>
       </section>
-
-      <p className="border border-line bg-paper-raised px-4 py-3 text-[0.875rem] text-ink-soft">
-        Buying raw materials or packaging?{" "}
-        <Link href="/admin/inventory" className="link-underline">
-          Record the purchase from Inventory
-        </Link>{" "}
-        so stock and the expense stay linked. Usage never creates a second expense.
-      </p>
 
       <div className="flex flex-wrap gap-3">
         <button type="submit" className="btn btn-solid" disabled={pending}>

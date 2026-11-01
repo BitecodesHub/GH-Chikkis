@@ -11,7 +11,7 @@ import {
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { requirePermission } from "@/lib/auth/session";
 import { hasPermission } from "@/lib/permissions";
-import { listImportBatches } from "@/lib/imports";
+import { listImportBatches, MAX_IMPORT_MB, MAX_IMPORT_ROWS } from "@/lib/imports";
 import { formatDateTime } from "@/lib/dates";
 import { cn } from "@/lib/cn";
 import type { ImportBatch, ImportStatus } from "@/lib/types";
@@ -173,9 +173,10 @@ export default async function AdminImportsPage({
       <div className="flex items-start gap-3 border border-line bg-paper-raised px-4 py-3 text-[0.8125rem] text-ink-soft">
         <FileSpreadsheet aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-brass" />
         <p>
-          Up to 2 MB and 2,000 rows per file. Dates use DD/MM/YYYY, amounts are in rupees, and the
-          first row must contain column names. Nothing is saved until you map the columns, review
-          the checked rows and confirm the import.
+          Up to {MAX_IMPORT_MB} MB and {MAX_IMPORT_ROWS.toLocaleString("en-IN")} rows per file.
+          Dates use DD/MM/YYYY, amounts are in rupees, and the first row must contain column names.
+          Nothing is saved until you map the columns, review the checked rows and confirm the
+          import.
         </p>
       </div>
 

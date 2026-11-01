@@ -33,7 +33,11 @@ export function getMongoClient(): Promise<MongoClient> {
 export async function getDb(): Promise<Db> {
   const client = await getMongoClient();
   const db = client.db(env.mongodbDb);
-  await ensureIndexes(db);
+  // Building the indexes used to sit in front of every cold instance: 28
+  // round trips to Atlas before the first row of the page could be read. They
+  // are a one-off setup job, so the work runs alongside the request instead of
+  // gating it. `npm run indexes` does it up front and waits.
+  void ensureIndexes(db).catch(() => {});
   return db;
 }
 

@@ -3,6 +3,50 @@ import type { BusinessDate, DatePreset, DateRange } from "./types";
 export const TIME_ZONE = "Asia/Kolkata";
 const IST_OFFSET_MINUTES = 330;
 
+// Building an Intl formatter is one of the expensive things in V8, and these
+// run for every row of every admin list, so they are made once per process.
+const BUSINESS_DAY_FORMAT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const DAY_FORMAT = new Intl.DateTimeFormat("en-GB", {
+  timeZone: TIME_ZONE,
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
+const DATE_TIME_FORMAT = new Intl.DateTimeFormat("en-GB", {
+  timeZone: TIME_ZONE,
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+const TIME_FORMAT = new Intl.DateTimeFormat("en-GB", {
+  timeZone: TIME_ZONE,
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+const MONTH_LABEL_FORMAT = new Intl.DateTimeFormat("en-IN", {
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+const DAY_LABEL_FORMAT = new Intl.DateTimeFormat("en-IN", {
+  day: "numeric",
+  month: "short",
+  timeZone: "UTC",
+});
+
+function part(parts: Intl.DateTimeFormatPart[], type: string): string {
+  return parts.find((item) => item.type === type)?.value ?? "00";
+}
+
 function isValidDateParts(year: number, month: number, day: number): boolean {
   const date = new Date(Date.UTC(year, month - 1, day));
   return (
@@ -13,14 +57,8 @@ function isValidDateParts(year: number, month: number, day: number): boolean {
 }
 
 export function businessToday(now: Date = new Date()): BusinessDate {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(now);
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
-  return `${get("year")}-${get("month")}-${get("day")}`;
+  const parts = BUSINESS_DAY_FORMAT.formatToParts(now);
+  return `${part(parts, "year")}-${part(parts, "month")}-${part(parts, "day")}`;
 }
 
 export function toBusinessDate(value: Date | string): BusinessDate {
@@ -58,41 +96,21 @@ export function formatDateDDMMYYYY(value: Date | string | null | undefined): str
   }
   const date = typeof value === "string" ? new Date(value) : value;
   if (Number.isNaN(date.getTime())) return "—";
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: TIME_ZONE,
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).formatToParts(date);
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
-  return `${get("day")}/${get("month")}/${get("year")}`;
+  const parts = DAY_FORMAT.formatToParts(date);
+  return `${part(parts, "day")}/${part(parts, "month")}/${part(parts, "year")}`;
 }
 
 export function formatDateTime(value: Date | string | null | undefined): string {
   if (!value) return "—";
   const date = typeof value === "string" ? new Date(value) : value;
   if (Number.isNaN(date.getTime())) return "—";
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: TIME_ZONE,
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(date);
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
-  return `${get("day")}/${get("month")}/${get("year")}, ${get("hour")}:${get("minute")}`;
+  const parts = DATE_TIME_FORMAT.formatToParts(date);
+  return `${part(parts, "day")}/${part(parts, "month")}/${part(parts, "year")}, ${part(parts, "hour")}:${part(parts, "minute")}`;
 }
 
 export function formatTime(value: Date | string): string {
   const date = typeof value === "string" ? new Date(value) : value;
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: TIME_ZONE,
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(date);
+  return TIME_FORMAT.format(date);
 }
 
 export function addDays(date: BusinessDate, days: number): BusinessDate {
@@ -162,21 +180,13 @@ export function isInBusinessRange(
 }
 
 export function monthLabel(date: BusinessDate): string {
-  const [year, month] = date.split("-").map(Number);
-  return new Intl.DateTimeFormat("en-IN", {
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(Date.UTC(year, month - 1, 1)));
+  const [year, month] = date.slice(0, 7).split("-").map(Number);
+  return MONTH_LABEL_FORMAT.format(new Date(Date.UTC(year, month - 1, 1)));
 }
 
 export function dayLabel(date: BusinessDate): string {
   const [year, month, day] = date.split("-").map(Number);
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  }).format(new Date(Date.UTC(year, month - 1, day)));
+  return DAY_LABEL_FORMAT.format(new Date(Date.UTC(year, month - 1, day)));
 }
 
 export function rangeLabel(range: DateRange): string {

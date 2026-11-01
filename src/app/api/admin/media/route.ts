@@ -1,6 +1,11 @@
 import { getSessionContext } from "@/lib/auth/session";
 import { hasPermission } from "@/lib/permissions";
-import { MediaUploadError, storeImageUpload } from "@/lib/media";
+import {
+  IMAGE_TOO_LARGE,
+  MAX_UPLOAD_BYTES,
+  MediaUploadError,
+  storeImageUpload,
+} from "@/lib/media";
 import { rateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +25,10 @@ export async function POST(request: Request) {
   const origin = request.headers.get("origin");
   if (origin) {
     try {
-      if (new URL(origin).host !== new URL(request.url).host) {
+      // Dev is reachable as both localhost and 127.0.0.1, and the browser
+      // reports whichever the page was opened at; they are the same machine.
+      const loopback = (host: string) => host.replace(/^127\.0\.0\.1/, "localhost");
+      if (loopback(new URL(origin).host) !== loopback(new URL(request.url).host)) {
         return Response.json({ error: "Request blocked." }, { status: 403 });
       }
     } catch {
@@ -41,9 +49,11 @@ export async function POST(request: Request) {
     );
   }
 
+  // The declared length covers the multipart envelope as well as the image, so
+  // this rejects early with a useful message instead of a truncated body.
   const declaredLength = Number(request.headers.get("content-length") ?? "0");
-  if (Number.isFinite(declaredLength) && declaredLength > 7 * 1024 * 1024) {
-    return Response.json({ error: "Images must be 6 MB or smaller." }, { status: 413 });
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_UPLOAD_BYTES + 5 * 1024 * 1024) {
+    return Response.json({ error: IMAGE_TOO_LARGE }, { status: 413 });
   }
 
   let formData: FormData;

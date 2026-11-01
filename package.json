@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "indexes": "tsx --env-file-if-exists=.env.local src/scripts/indexes.ts",
     "seed": "tsx --env-file-if-exists=.env.local src/scripts/seed.ts",
     "backup": "tsx --env-file-if-exists=.env.local src/scripts/backup.ts",
     "restore": "tsx --env-file-if-exists=.env.local src/scripts/restore.ts",

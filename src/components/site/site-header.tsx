@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Wordmark } from "./wordmark";
 
@@ -15,6 +15,11 @@ const NAV_ITEMS = [
   { href: "/contact", label: "Contact" },
 ] as const;
 
+// Over the first 140px of the home hero the badge shrinks to its in-bar size
+// and the pill goes glass at the same moment, so the two read as one move.
+const LOGO_RAMP_PX = 140;
+const GLASS_AT_LOGO_SETTLE = LOGO_RAMP_PX - 20;
+
 function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -23,6 +28,8 @@ export function SiteHeader({ logoSrc }: { logoSrc?: string | null }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const logoRef = useRef<HTMLDivElement>(null);
+  const home = pathname === "/";
 
   useEffect(() => {
     if (!open) return;
@@ -34,21 +41,45 @@ export function SiteHeader({ logoSrc }: { logoSrc?: string | null }) {
   }, [open]);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
-    onScroll();
+    if (!home) logoRef.current?.style.removeProperty("transform");
+    let frame = 0;
+    const apply = () => {
+      frame = 0;
+      const offset = window.scrollY;
+      setScrolled(offset > (home ? GLASS_AT_LOGO_SETTLE : 12));
+      if (!home) return;
+      const node = logoRef.current;
+      if (!node) return;
+      // 1.4 over the hero, 1 by the time the bar has gone glass. Written
+      // straight to the node so scrolling never re-renders the header.
+      const progress = Math.min(1, offset / LOGO_RAMP_PX);
+      node.style.transform = `scale(${(1.4 - 0.4 * progress).toFixed(4)})`;
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(apply);
+    };
+    frame = requestAnimationFrame(apply);
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [home]);
 
   return (
     <header className="sticky top-0 z-40 px-3 pt-3 sm:px-4">
       <div className="container-page">
         <div
           className={`relative flex items-center justify-between gap-3 rounded-full pl-4 pr-2 transition-[height,background-color,box-shadow,border-color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-            scrolled ? "glass-strong h-14" : "h-16"
+            scrolled ? "glass-strong h-14" : home ? "h-[4.75rem]" : "h-16"
           }`}
         >
-          <Wordmark logoSrc={logoSrc} />
+          <div
+            ref={logoRef}
+            className="flex origin-left will-change-transform"
+          >
+            <Wordmark logoSrc={logoSrc} />
+          </div>
 
           <nav aria-label="Main" className="nav-segment absolute left-1/2 hidden -translate-x-1/2 items-center lg:flex">
             {NAV_ITEMS.map((item) => (

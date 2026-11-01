@@ -75,7 +75,7 @@ function validate(input: CustomerInput): {
   company?: string;
   gstin?: string;
   notes?: string;
-  address: Address | null;
+  address?: Address | null;
 } {
   const name = cleanSingleLine(input.name, 120);
   if (name.length < 2) {
@@ -100,7 +100,7 @@ function validate(input: CustomerInput): {
     company: cleanSingleLine(input.company, 160) || undefined,
     gstin: cleanSingleLine(input.gstin, 20) || undefined,
     notes: notes || undefined,
-    address: cleanAddress(input.address),
+    address: input.address === undefined ? undefined : cleanAddress(input.address),
   };
 }
 
@@ -275,7 +275,14 @@ export async function updateCustomer(
     phone: data.phone.phone,
     phoneOriginal: data.phone.phoneOriginal,
     email: data.email,
-    addresses: data.address ? [data.address] : [],
+    // The form no longer collects an address, so an absent field must not
+    // discard one that an import or an older screen already stored.
+    addresses:
+      data.address === undefined
+        ? existing.addresses
+        : data.address
+          ? [data.address]
+          : [],
     company: data.company,
     gstin: data.gstin,
     notes: data.notes,

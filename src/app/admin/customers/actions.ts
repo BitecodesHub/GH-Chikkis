@@ -10,35 +10,12 @@ import {
   updateCustomer,
 } from "@/lib/customers";
 import { MessagingError, setWhatsAppConsent } from "@/lib/messaging";
-import type { Address } from "@/lib/types";
 
 export interface CustomerFormState {
   ok: boolean;
   message?: string;
   errors?: Record<string, string>;
   existingId?: string;
-}
-
-function readAddress(formData: FormData): Address | null {
-  const address: Address = {
-    label: String(formData.get("addressLabel") ?? ""),
-    line1: String(formData.get("addressLine1") ?? ""),
-    line2: String(formData.get("addressLine2") ?? ""),
-    city: String(formData.get("addressCity") ?? ""),
-    state: String(formData.get("addressState") ?? ""),
-    pincode: String(formData.get("addressPincode") ?? ""),
-  };
-  if (
-    !address.label.trim() &&
-    !address.line1.trim() &&
-    !address.line2?.trim() &&
-    !address.city.trim() &&
-    !address.state.trim() &&
-    !address.pincode.trim()
-  ) {
-    return null;
-  }
-  return address;
 }
 
 export async function saveCustomerAction(
@@ -57,7 +34,6 @@ export async function saveCustomerAction(
     company: String(formData.get("company") ?? ""),
     gstin: String(formData.get("gstin") ?? ""),
     notes: String(formData.get("notes") ?? ""),
-    address: readAddress(formData),
     archived: formData.get("archived") === "on",
   };
 

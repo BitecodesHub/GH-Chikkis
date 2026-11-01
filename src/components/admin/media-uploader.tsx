@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { ImageUp, LoaderCircle } from "lucide-react";
 import type { MediaAsset } from "@/lib/types";
 
-const MAX_BYTES = 6 * 1024 * 1024;
+const MAX_BYTES = 50 * 1024 * 1024;
+const MAX_MB = MAX_BYTES / (1024 * 1024);
 
 export function MediaUploader({
   onUploaded,
@@ -33,7 +34,7 @@ export function MediaUploader({
       return;
     }
     if (file.size > MAX_BYTES) {
-      setError("Images must be 6 MB or smaller.");
+      setError(`Images must be ${MAX_MB} MB or smaller.`);
       return;
     }
     if (alt.trim().length < 2) {
@@ -88,7 +89,7 @@ export function MediaUploader({
           }}
           className="block w-full text-[0.875rem] text-ink-soft file:mr-3 file:cursor-pointer file:rounded-sm file:border file:border-line-strong file:bg-paper file:px-3 file:py-1.5 file:text-[0.8125rem] file:font-medium file:text-ink hover:file:border-ink"
         />
-        <p className="help">JPG, PNG, WebP or AVIF · up to 6 MB.</p>
+        <p className="help">JPG, PNG, WebP or AVIF · up to {MAX_MB} MB.</p>
       </div>
 
       <div>

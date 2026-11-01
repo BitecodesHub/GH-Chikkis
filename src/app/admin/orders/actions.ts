@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/lib/auth/session";
+import { ExpenseError, createExpense } from "@/lib/expenses";
 import { parseRupeesToPaise } from "@/lib/money";
 import {
   OrderError,
@@ -11,6 +12,8 @@ import {
   addRefund,
   changeOrderStatus,
   createOrder,
+  deleteOrder,
+  getOrder,
   updateOrder,
   type OrderInput,
   type OrderItemInput,
@@ -221,6 +224,29 @@ export async function changeOrderStatusAction(formData: FormData): Promise<void>
   redirect(`/admin/orders/${orderId}?status=1`);
 }
 
+export async function deleteOrderAction(formData: FormData): Promise<void> {
+  const { user } = await requirePermission("orders.manage");
+  const orderId = String(formData.get("orderId") ?? "");
+  if (!orderId) redirect("/admin/orders");
+  try {
+    const order = await getOrder(orderId);
+    if (!order) redirect("/admin/orders");
+    const expected = order.ref.trim().toUpperCase();
+    if (String(formData.get("confirmRef") ?? "").trim().toUpperCase() !== expected) {
+      throw new OrderError(`Type ${order.ref} exactly to delete this order.`, "confirmRef");
+    }
+    await deleteOrder(orderId, actorFrom(user));
+  } catch (error) {
+    if (error instanceof OrderError) {
+      redirect(`/admin/orders/${orderId}?error=${encodeURIComponent(error.message)}`);
+    }
+    throw error;
+  }
+  revalidateOrderPaths(orderId);
+  revalidatePath("/admin/customers");
+  redirect("/admin/orders?deleted=1");
+}
+
 export async function addPaymentAction(formData: FormData): Promise<void> {
   const { user } = await requirePermission("payments.manage");
   const orderId = String(formData.get("orderId") ?? "");
@@ -282,4 +308,46 @@ export async function addRefundAction(formData: FormData): Promise<void> {
   revalidateOrderPaths(orderId);
   revalidatePath("/admin/orders");
   redirect(`/admin/orders/${orderId}?refunded=1`);
+}
+
+// A cost that belongs to one order — a courier slip paid by us, extra boxes —
+// recorded without leaving the order page. The reference is kept in the
+// description so the expense list can search back to the order.
+export async function addOrderExpenseAction(formData: FormData): Promise<void> {
+  const { user } = await requirePermission("expenses.manage");
+  const orderId = String(formData.get("orderId") ?? "");
+  if (!orderId) redirect("/admin/orders");
+  try {
+    const order = await getOrder(orderId);
+    if (!order) redirect("/admin/orders");
+    const amountPaise = parseRupeesToPaise(String(formData.get("amount") ?? ""));
+    if (amountPaise === null || amountPaise <= 0) {
+      throw new OrderError("Enter a cost greater than zero.", "amount");
+    }
+    const method = String(formData.get("method") ?? "");
+    const what = String(formData.get("description") ?? "").trim();
+    await createExpense(
+      {
+        date: String(formData.get("date") ?? ""),
+        amountPaise,
+        category: String(formData.get("category") ?? "") || "Miscellaneous",
+        description: `${order.ref} · ${what || "Order cost"}`,
+        supplier: String(formData.get("supplier") ?? ""),
+        paymentMethod: PAYMENT_VALUES.includes(method as PaymentMethod)
+          ? (method as PaymentMethod)
+          : null,
+      },
+      actorFrom(user),
+    );
+  } catch (error) {
+    if (error instanceof OrderError || error instanceof ExpenseError) {
+      const message = (error as Error).message;
+      redirect(`/admin/orders/${orderId}?error=${encodeURIComponent(message)}`);
+    }
+    throw error;
+  }
+  revalidatePath("/admin/expenses");
+  revalidatePath("/admin/reports");
+  revalidatePath("/admin");
+  redirect(`/admin/orders/${orderId}?expense=1`);
 }

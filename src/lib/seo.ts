@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { env } from "./env";
 
 export const BRAND_NAME = "GH Chikkis";
-export const BRAND_TAGLINE = "Ghar ki Gudcrafted Chikki's";
+export const BRAND_TAGLINE = "Ghar ki Gud-crafted Chikki's";
 /** The Gujarati couplet the Owner asks for wherever the brand needs a desi touch. */
 export const BRAND_COUPLET = "Gud ki mithaas, Ghee ki richness.";
 export const SITE_TITLE = `${BRAND_NAME} — Handmade chikki from Ahmedabad`;

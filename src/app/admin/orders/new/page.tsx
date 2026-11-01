@@ -11,6 +11,7 @@ import { businessToday, formatDateDDMMYYYY } from "@/lib/dates";
 import { findCustomerByPhone, getCustomer } from "@/lib/customers";
 import { getEnquiry } from "@/lib/enquiries";
 import { listProducts } from "@/lib/products";
+import { listRepeatCustomers } from "@/lib/orders";
 
 export const metadata: Metadata = { title: "New order" };
 
@@ -18,7 +19,9 @@ function productOptions(products: Awaited<ReturnType<typeof listProducts>>): Ord
   return products.map((product) => ({
     id: product.id,
     name: product.name,
+    slug: product.slug,
     active: product.active,
+    image: product.media[0]?.url ?? null,
     packaging: product.packaging.map((option) => ({
       id: option.id,
       label: option.label,
@@ -38,9 +41,10 @@ export default async function NewOrderPage({
   const customerId = typeof params.customerId === "string" ? params.customerId : "";
   const enquiryId = typeof params.enquiryId === "string" ? params.enquiryId : "";
 
-  const [products, enquiry] = await Promise.all([
+  const [products, enquiry, recent] = await Promise.all([
     listProducts(),
     enquiryId ? getEnquiry(enquiryId) : Promise.resolve(null),
+    listRepeatCustomers(),
   ]);
   const options = productOptions(products);
 
@@ -128,7 +132,7 @@ export default async function NewOrderPage({
           idempotencyKey={randomUUID()}
         />
       ) : (
-        <CustomerPicker createHref={createHref} orderQuery={pickerQuery} />
+        <CustomerPicker createHref={createHref} orderQuery={pickerQuery} recent={recent} />
       )}
     </div>
   );

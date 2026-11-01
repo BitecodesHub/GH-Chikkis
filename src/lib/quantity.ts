@@ -21,3 +21,18 @@ export function formatStockQuantity(quantity: number): string {
 export function stockLabel(quantity: number, unit: string): string {
   return `${formatStockQuantity(quantity)} ${unit}`;
 }
+
+/**
+ * Most packaging labels already read "250 g", so printing the weighed grams
+ * beside them gives the customer "250 g (250 g)". Returns the parenthetical only
+ * when the label does not already state that weight.
+ */
+export function weightAside(item: {
+  packagingLabel: string;
+  actualWeightGrams: number;
+  weightBasis?: "PER_UNIT" | "TOTAL";
+}): string {
+  if (item.packagingLabel.includes(String(item.actualWeightGrams))) return "";
+  const basis = item.weightBasis === "PER_UNIT" ? " each" : item.weightBasis === "TOTAL" ? " total" : "";
+  return ` (${item.actualWeightGrams} g${basis})`;
+}

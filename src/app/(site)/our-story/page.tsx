@@ -3,14 +3,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { PageHeader } from "@/components/site/page-header";
 import { Diamond } from "@/components/ui/diamond";
-import { founderPhotos } from "@/lib/brand";
+import { brandLogoSrc, founderPhotos } from "@/lib/brand";
 import {
   contentParagraphs,
   contentSteps,
   contentText,
   getPublishedContent,
 } from "@/lib/content";
-import { BRAND_COUPLET, pageMeta } from "@/lib/seo";
+import { BRAND_COUPLET, BRAND_TAGLINE, pageMeta } from "@/lib/seo";
 
 export const metadata: Metadata = pageMeta({
   title: "Our Story",
@@ -32,6 +32,7 @@ export default async function StoryPage() {
   const foundersParagraphs = contentParagraphs(content, "foundersBody");
   const timeline = contentSteps(content, "timeline");
   const photos = founderPhotos();
+  const logoSrc = brandLogoSrc();
 
   return (
     <>
@@ -44,12 +45,28 @@ export default async function StoryPage() {
       <section className="container-page py-14 md:py-20">
         <div className="grid gap-12 lg:grid-cols-[0.36fr_0.64fr] lg:gap-16">
           <aside className="lg:sticky lg:top-28 lg:self-start">
-            <p aria-hidden="true" className="display-l select-none text-paper-deep">
-              Ghar ki
-              <br />
-              Gudcrafted
-              <br />
-              Chikki&apos;s
+            {logoSrc ? (
+              // The Owner asked for the artwork to hold the space the big
+              // tagline used to fill. Without a logo file the words stand in.
+              <Image
+                src={logoSrc}
+                alt=""
+                width={650}
+                height={876}
+                sizes="(min-width: 1024px) 30vw, 90vw"
+                className="mx-auto h-auto w-[min(15rem,72%)] lg:w-full"
+              />
+            ) : (
+              <p aria-hidden="true" className="display-l select-none text-paper-deep">
+                Ghar ki
+                <br />
+                Gud-crafted
+                <br />
+                Chikki&apos;s
+              </p>
+            )}
+            <p className="meta mt-4 text-center font-semibold tracking-[0.14em] text-ink-soft lg:text-left">
+              {BRAND_TAGLINE}
             </p>
             <p className="font-display mt-3 text-[1.0625rem] italic leading-relaxed text-ink-soft">
               {BRAND_COUPLET}

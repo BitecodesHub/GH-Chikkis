@@ -117,6 +117,7 @@ export function EnquiryForm({
   }, [state, turnstileSiteKey]);
 
   if (state.ok) {
+    const handoff = state.whatsappHref ?? whatsappHref;
     return (
       <div className="surface p-7 md:p-9" role="status" aria-live="polite">
         <p className="eyebrow">Enquiry received</p>
@@ -128,9 +129,9 @@ export function EnquiryForm({
           <Link href="/contact#enquiry" className="btn btn-outline">
             Send another enquiry
           </Link>
-          {whatsappHref ? (
+          {handoff ? (
             <a
-              href={whatsappHref}
+              href={handoff}
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-solid"

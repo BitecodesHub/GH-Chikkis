@@ -33,7 +33,9 @@ export default async function EditOrderPage({
   const options: OrderProductOption[] = products.map((product) => ({
     id: product.id,
     name: product.name,
+    slug: product.slug,
     active: product.active,
+    image: product.media[0]?.url ?? null,
     packaging: product.packaging.map((option) => ({
       id: option.id,
       label: option.label,

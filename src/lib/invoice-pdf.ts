@@ -257,6 +257,9 @@ function drawTableHeader(page: PDFPage, context: RenderContext, y: number): numb
 
 function itemDetail(item: OrderItem): string {
   if (item.imported) return item.packagingLabel;
+  // A label like "250 g" already carries the weight; printing the weighed grams
+  // again reads "250 g · 250 g each" on the invoice the customer keeps.
+  if (item.packagingLabel.includes(String(item.actualWeightGrams))) return item.packagingLabel;
   const basis = item.weightBasis === "PER_UNIT" ? "each" : "total";
   return `${item.packagingLabel} · ${formatGrams(item.actualWeightGrams)} ${basis}`;
 }

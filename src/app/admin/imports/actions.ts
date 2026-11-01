@@ -6,7 +6,9 @@ import { requirePermission } from "@/lib/auth/session";
 import { hasPermission } from "@/lib/permissions";
 import {
   IMPORT_FIELDS,
+  IMPORT_TOO_LARGE,
   ImportError,
+  MAX_IMPORT_BYTES,
   createImportBatch,
   executeImport,
   getImportBatch,
@@ -54,8 +56,8 @@ export async function uploadImportAction(formData: FormData): Promise<void> {
   if (!(file instanceof File) || file.size === 0) {
     failImports("Choose a CSV or Excel file to upload.");
   }
-  if (file.size > 2 * 1024 * 1024) {
-    failImports("The file is larger than 2 MB. Split it into smaller files.");
+  if (file.size > MAX_IMPORT_BYTES) {
+    failImports(IMPORT_TOO_LARGE);
   }
 
   let batchId = "";

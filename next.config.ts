@@ -16,8 +16,14 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["mongodb"],
   experimental: {
     serverActions: {
-      bodySizeLimit: "4mb",
+      // The import desk and the media picker accept a 50 MB file. Vercel caps a
+      // function body at 4.5 MB whatever is set here, so a large upload only
+      // completes on a host without that ceiling.
+      bodySizeLimit: "55mb",
     },
+    // The proxy defaults to reading 10 MB of a request body and silently drops
+    // the rest, so a 50 MB image would arrive truncated instead of rejected.
+    proxyClientMaxBodySize: "55mb",
   },
   outputFileTracingIncludes: {
     "/admin/orders/**": ["./src/assets/fonts/**"],

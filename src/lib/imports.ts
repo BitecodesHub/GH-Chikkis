@@ -23,9 +23,12 @@ import type {
   PaymentMethod,
 } from "./types";
 
-export const MAX_IMPORT_BYTES = 2 * 1024 * 1024;
+export const MAX_IMPORT_BYTES = 50 * 1024 * 1024;
 export const MAX_IMPORT_ROWS = 2000;
 export const MAX_IMPORT_COLUMNS = 30;
+/** The guard, the action and the on-screen help all quote this one number. */
+export const MAX_IMPORT_MB = MAX_IMPORT_BYTES / (1024 * 1024);
+export const IMPORT_TOO_LARGE = `The file is larger than ${MAX_IMPORT_MB} MB. Split it into smaller files.`;
 const MAX_SUMMARY_ERRORS = 25;
 
 export class ImportError extends Error {
@@ -487,7 +490,7 @@ export async function parseImportFile(
 ): Promise<ParsedImportFile> {
   if (bytes.byteLength === 0) throw new ImportError("Choose a file to upload.");
   if (bytes.byteLength > MAX_IMPORT_BYTES) {
-    throw new ImportError("The file is larger than 2 MB. Split it into smaller files.");
+    throw new ImportError(IMPORT_TOO_LARGE);
   }
   const extension = filename.toLowerCase().split(".").pop() ?? "";
   let matrix: string[][];

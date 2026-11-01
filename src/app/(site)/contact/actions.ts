@@ -5,14 +5,16 @@ import { z } from "zod";
 import { createEnquiry } from "@/lib/enquiries";
 import { getProductBySlug } from "@/lib/products";
 import { businessToday, formatDateDDMMYYYY, parseBusinessDate } from "@/lib/dates";
-import { normalizePhone } from "@/lib/phone";
+import { normalizePhone, waLink } from "@/lib/phone";
 import { rateLimit, requestIp } from "@/lib/rate-limit";
+import { getSettings } from "@/lib/settings";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 
 export interface EnquiryFormState {
   ok: boolean;
   message?: string;
   errors?: Record<string, string>;
+  whatsappHref?: string;
 }
 
 const schema = z.object({
@@ -154,10 +156,26 @@ export async function submitEnquiry(
     return { ok: false, message: FEEDBACK.generic };
   }
 
+  const enquiryText = [
+    `Hello GH Chikkis! Website enquiry from ${data.name.trim()}.`,
+    `${data.quantityKg} kg${expectedDate ? `, needed by ${formatDateDDMMYYYY(expectedDate)}` : ", date still flexible"}`,
+    data.details.trim(),
+  ]
+    .filter(Boolean)
+    .join("\n");
+
   return {
     ok: true,
     message: `${FEEDBACK.success}${
       expectedDate ? ` Expected date: ${formatDateDDMMYYYY(expectedDate)}.` : ""
     }`,
+    whatsappHref: await handoffHref(enquiryText),
   };
+}
+
+// A number is only ever read from settings, never from the visitor.
+async function handoffHref(message: string): Promise<string | undefined> {
+  const settings = await getSettings();
+  const number = settings.business.whatsappNumber;
+  return number.trim() ? waLink(number, message) : undefined;
 }

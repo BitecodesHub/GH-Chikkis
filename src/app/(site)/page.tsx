@@ -11,7 +11,7 @@ import {
   contentParagraphs,
   contentSteps,
   contentText,
-  getPublishedContent,
+  getPublishedContentPages,
 } from "@/lib/content";
 import { listActiveProducts } from "@/lib/products";
 import { getSettings } from "@/lib/settings";
@@ -38,9 +38,8 @@ function pickFeatured(products: Product[]): Product[] {
 }
 
 export default async function HomePage() {
-  const [content, processContent, products, settings] = await Promise.all([
-    getPublishedContent("home"),
-    getPublishedContent("process"),
+  const [[content, processContent], products, settings] = await Promise.all([
+    getPublishedContentPages(["home", "process"]),
     listActiveProducts(),
     getSettings(),
   ]);
@@ -151,7 +150,7 @@ export default async function HomePage() {
               <p className="text-[0.5rem] font-semibold uppercase leading-[1.5] tracking-[0.1em] text-ink-soft">
                 Ghar ki
                 <br />
-                Gudcrafted
+                Gud-crafted
                 <br />
                 Chikki&apos;s
               </p>
@@ -190,7 +189,7 @@ export default async function HomePage() {
             <p aria-hidden="true" className="display-l mt-4 select-none text-paper/15">
               Ghar ki
               <br />
-              Gudcrafted
+              Gud-crafted
               <br />
               Chikki&apos;s
             </p>

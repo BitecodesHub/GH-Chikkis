@@ -7,6 +7,7 @@ import { DEFAULT_CONTENT, CONTENT_SCHEMA } from "./content-schema";
 import { getSessionContext } from "./auth/session";
 import { hasPermission } from "./permissions";
 import { nowIso } from "./dates";
+import { primeRead, readCacheHas, readThrough, READ_TTL } from "./read-cache";
 import { cleanSingleLine, cleanText } from "./text";
 import type {
   ContentFaq,
@@ -126,16 +127,61 @@ export const getPreviewingContent = cache(async (): Promise<boolean> => {
   return Boolean(context && hasPermission(context.user, "content.edit"));
 });
 
+async function loadPublishedContent(
+  pages: ContentPageKey[],
+): Promise<PageContent[]> {
+  const db = await getDb();
+  const docs = await db
+    .collection<WebsiteContentDoc>("website_content")
+    .find({ page: { $in: pages } })
+    .toArray();
+  const byPage = new Map(docs.map((doc) => [doc.page, doc]));
+  return pages.map((page) => {
+    const doc = byPage.get(page);
+    return doc ? mergeContent(page, doc.published) : DEFAULT_CONTENT[page];
+  });
+}
+
+/**
+ * The published copy behind a `page` key is read on every public render, so it
+ * is shared between requests rather than fetched per page view.
+ */
+function publishedContent(page: ContentPageKey): Promise<PageContent> {
+  return readThrough(`content:${page}`, READ_TTL.content, async () => {
+    const [loaded] = await loadPublishedContent([page]);
+    return loaded;
+  });
+}
+
 export const getPublishedContent = cache(
   async (page: ContentPageKey): Promise<PageContent> => {
-    const previewing = await getPreviewingContent();
+    if (!(await getPreviewingContent())) return publishedContent(page);
     const db = await getDb();
     const doc = await db
       .collection<WebsiteContentDoc>("website_content")
       .findOne({ page });
     if (!doc) return DEFAULT_CONTENT[page];
-    if (previewing) return mergeContent(page, doc.draft);
-    return mergeContent(page, doc.published);
+    return mergeContent(page, doc.draft);
+  },
+);
+
+/**
+ * Pages that need more than one document's copy — the home page reads its own
+ * hero plus the process steps — ask once and get one query.
+ */
+export const getPublishedContentPages = cache(
+  async (pages: ContentPageKey[]): Promise<PageContent[]> => {
+    if (await getPreviewingContent()) {
+      return Promise.all(pages.map((page) => getPublishedContent(page)));
+    }
+    const missing = pages.filter((page) => !readCacheHas(`content:${page}`));
+    if (missing.length > 0) {
+      const loaded = await loadPublishedContent(missing);
+      missing.forEach((page, index) => {
+        primeRead(`content:${page}`, READ_TTL.content, loaded[index]);
+      });
+    }
+    return Promise.all(pages.map((page) => publishedContent(page)));
   },
 );
 
@@ -293,6 +339,7 @@ export async function publishWebsiteContent(
       },
     );
   }
+  primeRead(`content:${page}`, READ_TTL.content, mergeContent(page, content));
   return { version, changed: true };
 }
 

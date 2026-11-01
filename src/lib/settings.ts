@@ -1,6 +1,7 @@
 import type { AppSettings } from "./types";
 import { getDb } from "./db";
 import { nowIso } from "./dates";
+import { invalidateReads, primeRead, readThrough, READ_TTL } from "./read-cache";
 
 export const DEFAULT_EXPENSE_CATEGORIES = [
   "Ingredients/raw materials",
@@ -17,7 +18,7 @@ export function defaultSettings(): AppSettings {
   return {
     business: {
       name: "GH Chikkis",
-      tagline: "Ghar ki Gudcrafted Chikki's",
+      tagline: "Ghar ki Gud-crafted Chikki's",
       city: "Ahmedabad",
       state: "Gujarat",
       whatsappNumber: "",
@@ -51,7 +52,7 @@ export function defaultSettings(): AppSettings {
   };
 }
 
-export async function getSettings(): Promise<AppSettings> {
+async function loadSettings(): Promise<AppSettings> {
   const db = await getDb();
   const collection = db.collection<AppSettings & { _id: string }>("system_settings");
   const existing = await collection.findOne({ _id: "global" });
@@ -67,6 +68,14 @@ export async function getSettings(): Promise<AppSettings> {
     { upsert: true },
   );
   return defaults;
+}
+
+/**
+ * Header, footer, WhatsApp links and the reviews band all want the same
+ * document, so an uncached read costs three round trips on one page render.
+ */
+export function getSettings(): Promise<AppSettings> {
+  return readThrough("settings", READ_TTL.content, loadSettings);
 }
 
 export interface SettingsPatch {
@@ -113,7 +122,8 @@ export async function updateSettings(
     },
     { upsert: true },
   );
-  return getSettings();
+  invalidateReads("settings");
+  return primeRead("settings", READ_TTL.content, await loadSettings());
 }
 
 export async function pauseWhatsApp(
