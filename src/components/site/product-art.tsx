@@ -8,8 +8,15 @@ export function ProductArt({ slug, className }: { slug: string; className?: stri
 
 const PHOTOS: Record<string, string> = {
   "groundnut-chikki": "Groundnut chikki cut into squares in a cream bowl",
+  "white-til-chikki":
+    "White til chikki cut into squares in a cream bowl, with a wooden bowl of white sesame behind",
+  "black-til-chikki":
+    "Black til chikki cut into squares in a cream bowl, with a wooden bowl of black sesame behind",
   "dry-fruit-chikki": "Dry fruit chikki with almonds, cashews and pistachios",
   "coconut-chikki": "Coconut and sesame chikki cut into squares in a cream bowl",
+  "mamra-chikki": "Mamra chikki — light puffed rice bars — stacked in a cream bowl",
+  "daliya-chikki":
+    "Daliya chikki cut into squares in a cream bowl, with a wooden bowl of cracked wheat behind",
 };
 
 export function ProductPhoto({
