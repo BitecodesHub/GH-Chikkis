@@ -63,9 +63,18 @@ a draft and a published copy, and falls back to the defaults in
 
 ## Brand assets
 
-- Logo: drop the artwork at `public/brand/logo.png` (also accepted: `.svg`,
-  `.jpg`, `.jpeg`, `.webp`) and it replaces the wordmark in the site header,
-  footer, link-preview card and the workspace sidebar with no code change.
+- Logo: `public/brand/logo.png` is the Owner's badge (background removed). It
+  stands alone in the header and replaces the "GH / Chikkis" type lockup,
+  because the badge already spells the name; on the dark olive surfaces —
+  footer, workspace sidebar, sign-in panel — it rides a paper plate, since its
+  own brown fills disappear against the green. Also accepted: `.svg`, `.jpg`,
+  `.jpeg`, `.webp`.
+- Tab and home-screen icons are crops of the same artwork: the "GH" lettering
+  on a brown plate, in `src/app/icon.png` and `src/app/apple-icon.png`.
+  Regenerate them from a new badge rather than hand-editing.
+- If you swap the logo and the browser still shows the old one, delete
+  `.next/dev/cache/images` — the dev server keys that cache by request, not by
+  file contents.
 - Founder photographs: `public/brand/founder-gopi.jpg` and
   `public/brand/founder-himani.jpg` appear as portraits on Our Story. No file,
   no frame — the page never shows an empty placeholder.

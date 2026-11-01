@@ -95,9 +95,9 @@ export async function GET() {
             <div
               style={{
                 display: "flex",
-                marginTop: 20,
-                width: 560,
-                height: 150,
+                marginTop: 8,
+                width: 220,
+                height: 250,
                 alignItems: "center",
               }}
             >

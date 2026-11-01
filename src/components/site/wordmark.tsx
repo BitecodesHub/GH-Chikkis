@@ -27,14 +27,24 @@ export function Wordmark({
       )}
     >
       {logoSrc ? (
-        <Image
-          src={logoSrc}
-          alt="GH Chikkis"
-          width={176}
-          height={48}
-          className="h-10 w-auto object-contain sm:h-11"
-          priority
-        />
+        // The badge already spells "GH Chikki's", so it stands in for the type
+        // lockup instead of sitting next to a second copy of the name. Its brown
+        // fills disappear on the dark olive surfaces, so there it rides a plate.
+        <span
+          className={cn(
+            "shrink-0",
+            tone === "paper" && "inline-flex rounded-[1rem] bg-paper p-1.5",
+          )}
+        >
+          <Image
+            src={logoSrc}
+            alt=""
+            width={96}
+            height={129}
+            className="h-10 w-auto sm:h-11"
+            priority
+          />
+        </span>
       ) : (
         <>
           <Diamond
