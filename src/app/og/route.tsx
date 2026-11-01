@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { ImageResponse } from "next/og";
+import { brandLogoSrc } from "@/lib/brand";
 import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/seo";
 
 export const revalidate = 86400;
@@ -12,18 +13,47 @@ const OLIVE = "#46512f";
 const BRASS = "#8a6a2f";
 const LINE = "#d9cdb4";
 
-async function asset(...segments: string[]): Promise<string> {
-  const buffer = await readFile(path.join(process.cwd(), ...segments));
+const MIME_BY_EXTENSION: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+  svg: "image/svg+xml",
+};
+
+const ROOT = process.cwd();
+
+/** Only ever joined with a filename from `brandLogoSrc()`, so the scan stays scoped to public/brand. */
+const BRAND_DIR = path.join(ROOT, "public", "brand");
+
+async function jpegDataUrl(absolute: string): Promise<string> {
+  const buffer = await readFile(absolute);
   return `data:image/jpeg;base64,${buffer.toString("base64")}`;
 }
 
+/** The Owner's artwork is optional, so a missing file must not break previews. */
+async function logoDataUrl(): Promise<string | null> {
+  const src = brandLogoSrc();
+  if (!src) return null;
+  const fileName = src.slice("/brand/".length);
+  const mime = MIME_BY_EXTENSION[fileName.slice(fileName.lastIndexOf(".") + 1).toLowerCase()];
+  if (!mime) return null;
+  try {
+    const buffer = await readFile(path.join(BRAND_DIR, /* turbopackIgnore: true */ fileName));
+    return `data:${mime};base64,${buffer.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET() {
-  const [fonts, photo] = await Promise.all([
+  const [fonts, photo, logo] = await Promise.all([
     Promise.all([
-      readFile(path.join(process.cwd(), "src", "assets", "fonts", "NotoSans-Regular.ttf")),
-      readFile(path.join(process.cwd(), "src", "assets", "fonts", "NotoSans-SemiBold.ttf")),
+      readFile(path.join(ROOT, "src", "assets", "fonts", "NotoSans-Regular.ttf")),
+      readFile(path.join(ROOT, "src", "assets", "fonts", "NotoSans-SemiBold.ttf")),
     ]),
-    asset("public", "products", "groundnut-chikki.jpg"),
+    jpegDataUrl(path.join(ROOT, "public", "products", "groundnut-chikki.jpg")),
+    logoDataUrl(),
   ]);
 
   return new ImageResponse(
@@ -61,19 +91,38 @@ export async function GET() {
             HANDMADE CHIKKI · AHMEDABAD
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              marginTop: 26,
-              fontSize: 104,
-              fontWeight: 600,
-              lineHeight: 1,
-              color: INK,
-              letterSpacing: -3,
-            }}
-          >
-            {BRAND_NAME}
-          </div>
+          {logo ? (
+            <div
+              style={{
+                display: "flex",
+                marginTop: 20,
+                width: 560,
+                height: 150,
+                alignItems: "center",
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={logo}
+                alt={BRAND_NAME}
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+              />
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                marginTop: 26,
+                fontSize: 104,
+                fontWeight: 600,
+                lineHeight: 1,
+                color: INK,
+                letterSpacing: -3,
+              }}
+            >
+              {BRAND_NAME}
+            </div>
+          )}
 
           <div
             style={{

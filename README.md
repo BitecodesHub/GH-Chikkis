@@ -63,10 +63,15 @@ a draft and a published copy, and falls back to the defaults in
 
 ## Brand assets
 
-- Logo: drop the artwork at `public/brand/logo.png` and it replaces the wordmark
-  in the header, footer and link-preview card with no code change.
-- Founder photographs and per-variety ingredient lists are supplied by the
-  business; ingredients are entered per product in **Admin › Products**.
+- Logo: drop the artwork at `public/brand/logo.png` (also accepted: `.svg`,
+  `.jpg`, `.jpeg`, `.webp`) and it replaces the wordmark in the site header,
+  footer, link-preview card and the workspace sidebar with no code change.
+- Founder photographs: `public/brand/founder-gopi.jpg` and
+  `public/brand/founder-himani.jpg` appear as portraits on Our Story. No file,
+  no frame — the page never shows an empty placeholder.
+- Per-variety ingredient lists are supplied by the business and entered in
+  **Admin › Products**, where each product has an "ingredients verified" tick
+  before the detail shows publicly.
 - Google reviews: enter the business's Google Place ID in **Admin › Settings**,
   tick "Show Google reviews on the website" and set
   `GOOGLE_PLACES_API_KEY`. Until then the band renders nothing — the site never

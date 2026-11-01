@@ -180,11 +180,13 @@ function initials(name: string): string {
 function NavContent({
   user,
   pathname,
+  logoSrc,
   onNavigate,
   onSignOut,
 }: {
   user: User;
   pathname: string;
+  logoSrc?: string | null;
   onNavigate?: () => void;
   onSignOut?: () => void;
 }) {
@@ -195,6 +197,7 @@ function NavContent({
           tone="paper"
           href="/admin"
           label="GH Chikkis workspace"
+          logoSrc={logoSrc}
         />
         <p className="mt-4 flex items-center gap-2 text-[0.6875rem] font-medium uppercase tracking-[0.16em] text-paper/40">
           <Diamond size="sm" className="border-brass" />
@@ -296,10 +299,12 @@ function NavContent({
 export function AdminShell({
   user,
   idleExpiresAt,
+  logoSrc,
   children,
 }: {
   user: User;
   idleExpiresAt: string;
+  logoSrc?: string | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -323,7 +328,7 @@ export function AdminShell({
     <div className="flex min-h-dvh bg-paper">
       <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 p-3 lg:block">
         <div className="glass-deep flex h-full flex-col overflow-hidden rounded-[1.75rem]">
-          <NavContent user={user} pathname={pathname} />
+          <NavContent user={user} pathname={pathname} logoSrc={logoSrc} />
         </div>
       </aside>
 
@@ -359,7 +364,7 @@ export function AdminShell({
               <Menu aria-hidden="true" className="size-5" />
             </button>
 
-            <Wordmark tone="ink" />
+            <Wordmark tone="ink" logoSrc={logoSrc} />
 
             <div className="ml-auto flex items-center gap-3">
               <a
@@ -410,6 +415,7 @@ export function AdminShell({
             <NavContent
               user={user}
               pathname={pathname}
+              logoSrc={logoSrc}
               onNavigate={() => setMenuOpen(false)}
             />
           </div>

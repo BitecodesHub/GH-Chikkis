@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { requireUser } from "@/lib/auth/session";
+import { brandLogoSrc } from "@/lib/brand";
 import { AdminShell } from "@/components/admin/admin-shell";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const { user, idleExpiresAt } = await requireUser();
   return (
-    <AdminShell user={user} idleExpiresAt={idleExpiresAt}>
+    <AdminShell user={user} idleExpiresAt={idleExpiresAt} logoSrc={brandLogoSrc()}>
       {children}
     </AdminShell>
   );

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { PageHeader } from "@/components/site/page-header";
 import { Diamond } from "@/components/ui/diamond";
+import { founderPhotos } from "@/lib/brand";
 import {
   contentParagraphs,
   contentSteps,
@@ -29,6 +31,7 @@ export default async function StoryPage() {
   const storyParagraphs = contentParagraphs(content, "storyBody");
   const foundersParagraphs = contentParagraphs(content, "foundersBody");
   const timeline = contentSteps(content, "timeline");
+  const photos = founderPhotos();
 
   return (
     <>
@@ -86,6 +89,26 @@ export default async function StoryPage() {
               <p key={paragraph.slice(0, 40)}>{paragraph}</p>
             ))}
           </div>
+          {photos.length > 0 ? (
+            <ul className="mt-2 grid gap-6 sm:grid-cols-2 md:col-span-2">
+              {photos.map((photo) => (
+                <li key={photo.src}>
+                  <div className="overflow-hidden rounded-[1.5rem] border border-line bg-paper">
+                    <Image
+                      src={photo.src}
+                      alt={`${photo.name}, co-founder of GH Chikkis`}
+                      width={640}
+                      height={800}
+                      className="aspect-[4/5] w-full object-cover"
+                    />
+                  </div>
+                  <p className="mt-3 text-center font-display text-[1.0625rem] font-medium">
+                    {photo.name}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       </section>
 
