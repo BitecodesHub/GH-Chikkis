@@ -10,7 +10,7 @@ import {
   contentText,
   getPublishedContent,
 } from "@/lib/content";
-import { pageMeta } from "@/lib/seo";
+import { BRAND_COUPLET, pageMeta } from "@/lib/seo";
 
 export const metadata: Metadata = pageMeta({
   title: "Our Story",
@@ -47,9 +47,12 @@ export default async function StoryPage() {
             <p aria-hidden="true" className="display-l select-none text-paper-deep">
               Ghar ki
               <br />
-              Gud-crafted
+              Gudcrafted
               <br />
               Chikki&apos;s
+            </p>
+            <p className="font-display mt-3 text-[1.0625rem] italic leading-relaxed text-ink-soft">
+              {BRAND_COUPLET}
             </p>
             <dl className="mt-8 border-t border-line">
               {FACTS.map((fact) => (

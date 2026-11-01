@@ -14,6 +14,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { closeDatabase, getDb } from "../lib/db";
 import { DEFAULT_CONTENT } from "../lib/content-schema";
+import { defaultSettings } from "../lib/settings";
 import { nowIso } from "../lib/dates";
 import type { ProductDoc } from "../lib/products";
 import type { AppSettings, InventoryItem, WebsiteContent } from "../lib/types";
@@ -44,8 +45,9 @@ const NEW_PRODUCT = {
 const OLD_INVENTORY_NAME = "Mawa";
 const NEW_INVENTORY_NAME = "Mamra (flattened rice)";
 
-const OLD_TAGLINE = "Ghar ki Gud";
-const NEW_TAGLINE = "Ghar ki Gud-crafted Chikki's";
+/** Every wording the shipped defaults have carried, oldest first. */
+const LEGACY_TAGLINES = ["Ghar ki Gud", "Ghar ki Gud-crafted Chikki's"];
+const NEW_TAGLINE = defaultSettings().business.tagline;
 
 const dryRun = process.argv.includes("--dry-run");
 const report: string[] = [];
@@ -187,7 +189,7 @@ async function migrateSettings(): Promise<void> {
     say(`Business tagline already reads ${NEW_TAGLINE}.`);
     return;
   }
-  if (doc.business.tagline !== OLD_TAGLINE) {
+  if (!LEGACY_TAGLINES.includes(doc.business.tagline)) {
     say(
       `Kept the tagline saved in the admin (“${doc.business.tagline}”). Update it on Settings if you want the new wording.`,
     );

@@ -85,6 +85,11 @@ we will confirm" fallback — that is deliberate, not a bug.
 - Founder photographs: `public/brand/founder-gopi.jpg` and
   `public/brand/founder-himani.jpg` appear as portraits on Our Story. No file,
   no frame — the page never shows an empty placeholder.
+- The couplet *"Gud ki mithaas, Ghee ki richness."* is set once as
+  `BRAND_COUPLET` in `src/lib/seo.ts` and appears under the tagline in the
+  footer, on the Our Story aside and on the link-preview card. The tagline has
+  two sources that must agree: `BRAND_TAGLINE` (page metadata and the card) and
+  the editable copy in **Admin › Settings** (the footer).
 - Per-variety ingredient lists are supplied by the business and entered in
   **Admin › Products**, where each product has an "ingredients verified" tick
   before the detail shows publicly.

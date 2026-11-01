@@ -14,6 +14,7 @@ import "./globals.css";
 const displayFace = Fraunces({
   subsets: ["latin"],
   weight: "variable",
+  style: ["normal", "italic"],
   axes: ["opsz", "SOFT"],
   variable: "--font-display-face",
   display: "swap",

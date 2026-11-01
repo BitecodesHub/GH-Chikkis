@@ -3,7 +3,7 @@ import { DEFAULT_EXPENSE_CATEGORIES, defaultSettings } from "./settings";
 
 describe("default settings", () => {
   it("carries the brand line the owner chose", () => {
-    expect(defaultSettings().business.tagline).toBe("Ghar ki Gud-crafted Chikki's");
+    expect(defaultSettings().business.tagline).toBe("Ghar ki Gudcrafted Chikki's");
     expect(defaultSettings().business.name).toBe("GH Chikkis");
   });
 

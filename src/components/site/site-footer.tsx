@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AtSign, Mail, MapPin, Star } from "lucide-react";
 import type { BusinessSettings } from "@/lib/types";
+import { BRAND_COUPLET } from "@/lib/seo";
 import { Wordmark } from "./wordmark";
 
 const EXPLORE_LINKS = [
@@ -38,6 +39,9 @@ export function SiteFooter({
         <div>
           <Wordmark tone="paper" logoSrc={logoSrc} />
           <p className="display-s mt-6 text-paper">{business.tagline}</p>
+          <p className="font-display mt-2 text-[1.0625rem] italic leading-relaxed text-paper/70">
+            {BRAND_COUPLET}
+          </p>
           <p className="mt-4 max-w-xs text-[0.9375rem] leading-relaxed text-paper/75">
             Handmade chikki from a family kitchen in Ahmedabad, made by Gopi Shah and
             Himani Shah.

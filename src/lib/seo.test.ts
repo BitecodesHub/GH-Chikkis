@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  BRAND_COUPLET,
   BRAND_NAME,
   BRAND_TAGLINE,
   SITE_DESCRIPTION,
@@ -67,6 +68,7 @@ describe("pageMeta", () => {
   it("uses the brand line as the fallback description source, not a placeholder", () => {
     expect(SITE_TITLE).toContain("chikki");
     expect(SITE_DESCRIPTION).toContain("Ahmedabad");
-    expect(BRAND_TAGLINE).toBe("Ghar ki Gud-crafted Chikki's");
+    expect(BRAND_TAGLINE).toBe("Ghar ki Gudcrafted Chikki's");
+    expect(BRAND_COUPLET).toBe("Gud ki mithaas, Ghee ki richness.");
   });
 });

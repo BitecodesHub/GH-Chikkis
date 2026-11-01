@@ -15,7 +15,7 @@ import {
 } from "@/lib/content";
 import { listActiveProducts } from "@/lib/products";
 import { getSettings } from "@/lib/settings";
-import { pageMeta, absoluteUrl } from "@/lib/seo";
+import { BRAND_COUPLET, pageMeta, absoluteUrl } from "@/lib/seo";
 import { brandLogoSrc } from "@/lib/brand";
 import { waLink, WHATSAPP_GENERAL_MESSAGE } from "@/lib/phone";
 import { env } from "@/lib/env";
@@ -151,7 +151,7 @@ export default async function HomePage() {
               <p className="text-[0.5rem] font-semibold uppercase leading-[1.5] tracking-[0.1em] text-ink-soft">
                 Ghar ki
                 <br />
-                Gud-crafted
+                Gudcrafted
                 <br />
                 Chikki&apos;s
               </p>
@@ -190,9 +190,12 @@ export default async function HomePage() {
             <p aria-hidden="true" className="display-l mt-4 select-none text-paper/15">
               Ghar ki
               <br />
-              Gud-crafted
+              Gudcrafted
               <br />
               Chikki&apos;s
+            </p>
+            <p className="font-display mt-3 text-[1.125rem] italic leading-relaxed text-paper/70">
+              {BRAND_COUPLET}
             </p>
             <div className="mt-6 flex items-center gap-3 text-paper/50">
               <Diamond className="bg-paper" />

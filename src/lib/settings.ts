@@ -17,7 +17,7 @@ export function defaultSettings(): AppSettings {
   return {
     business: {
       name: "GH Chikkis",
-      tagline: "Ghar ki Gud-crafted Chikki's",
+      tagline: "Ghar ki Gudcrafted Chikki's",
       city: "Ahmedabad",
       state: "Gujarat",
       whatsappNumber: "",

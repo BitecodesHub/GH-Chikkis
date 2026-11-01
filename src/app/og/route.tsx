@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { ImageResponse } from "next/og";
 import { brandLogoSrc } from "@/lib/brand";
-import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/seo";
+import { BRAND_COUPLET, BRAND_NAME, BRAND_TAGLINE } from "@/lib/seo";
 
 export const revalidate = 86400;
 
@@ -134,6 +134,17 @@ export async function GET() {
             }}
           >
             {BRAND_TAGLINE}
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              marginTop: 12,
+              fontSize: 25,
+              color: INK_SOFT,
+            }}
+          >
+            {BRAND_COUPLET}
           </div>
 
           <div style={{ display: "flex", marginTop: "auto", paddingTop: 30 }}>
