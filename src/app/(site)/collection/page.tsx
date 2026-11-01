@@ -4,13 +4,14 @@ import { PageHeader } from "@/components/site/page-header";
 import { ProductCard } from "@/components/site/product-card";
 import { contentText, getPublishedContent } from "@/lib/content";
 import { listActiveProducts } from "@/lib/products";
+import { pageMeta } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Chikki Collection",
   description:
-    "Seven handmade chikki varieties from GH Chikkis in Ahmedabad — groundnut, white and black til, dry fruit, coconut, mawa and daliya. Prices are shared directly.",
-  alternates: { canonical: "/collection" },
-};
+    "Seven handmade chikki varieties from Ahmedabad — groundnut, white and black til, dry fruit, coconut, mamra and daliya. Prices are shared directly.",
+  path: "/collection",
+});
 
 export default async function CollectionPage() {
   const [content, products] = await Promise.all([

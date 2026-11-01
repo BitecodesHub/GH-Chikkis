@@ -3,6 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { Diamond } from "@/components/ui/diamond";
 import { ProductCard } from "@/components/site/product-card";
+import { ProcessArt } from "@/components/site/line-art";
+import { GoogleReviews } from "@/components/site/google-reviews";
 import { ArrowLink } from "@/components/site/page-header";
 import { JsonLd } from "@/components/site/json-ld";
 import {
@@ -13,13 +15,17 @@ import {
 } from "@/lib/content";
 import { listActiveProducts } from "@/lib/products";
 import { getSettings } from "@/lib/settings";
+import { pageMeta, absoluteUrl } from "@/lib/seo";
+import { brandLogoSrc } from "@/lib/brand";
 import { waLink, WHATSAPP_GENERAL_MESSAGE } from "@/lib/phone";
 import { env } from "@/lib/env";
 import type { Product } from "@/lib/types";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/" },
-};
+export const metadata: Metadata = pageMeta({
+  description:
+    "Two sisters, one family kitchen in Ahmedabad. Seven chikki varieties made by hand — groundnut, til, dry fruit, coconut, mamra and daliya.",
+  path: "/",
+});
 
 const FEATURED_SLUGS = ["groundnut-chikki", "dry-fruit-chikki", "coconut-chikki"];
 
@@ -40,6 +46,7 @@ export default async function HomePage() {
   ]);
 
   const business = settings.business;
+  const logoSrc = brandLogoSrc();
   const whatsappHref = business.whatsappNumber
     ? waLink(business.whatsappNumber, WHATSAPP_GENERAL_MESSAGE)
     : null;
@@ -53,12 +60,15 @@ export default async function HomePage() {
     name: business.name,
     url: env.appUrl,
     description:
-      "A family-run, homemade chikki brand in Ahmedabad, Gujarat, run by sisters Gopi Shah and Himanisha since 2018.",
+      "A family-run, homemade chikki brand in Ahmedabad, Gujarat, run by sisters Gopi Shah and Himani Shah.",
     foundingDate: "2018",
     founder: [
       { "@type": "Person", name: "Gopi Shah" },
-      { "@type": "Person", name: "Himanisha" },
+      { "@type": "Person", name: "Himani Shah" },
     ],
+    ...(logoSrc ? { logo: absoluteUrl(logoSrc) } : {}),
+    ...(business.email ? { email: business.email } : {}),
+    ...(business.instagramUrl ? { sameAs: [business.instagramUrl] } : {}),
     address: {
       "@type": "PostalAddress",
       addressLocality: business.city,
@@ -138,10 +148,12 @@ export default async function HomePage() {
                 aria-hidden="true"
                 className="absolute inset-[5px] rounded-full border border-line-strong/70"
               />
-              <p className="text-[0.5625rem] font-semibold uppercase leading-[1.45] tracking-[0.16em] text-ink-soft">
-                Since
+              <p className="text-[0.5rem] font-semibold uppercase leading-[1.5] tracking-[0.1em] text-ink-soft">
+                Ghar ki
                 <br />
-                2018
+                Gud-crafted
+                <br />
+                Chikki&apos;s
               </p>
             </div>
           </div>
@@ -174,12 +186,13 @@ export default async function HomePage() {
       <section className="bg-olive-deep text-paper">
         <div className="container-page grid gap-12 py-20 md:py-28 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">
           <div>
-            <p className="eyebrow eyebrow-plain text-paper/60">Since 2018</p>
-            <p
-              aria-hidden="true"
-              className="display-xl mt-4 select-none text-paper/15"
-            >
-              2018
+            <p className="eyebrow eyebrow-plain text-paper/60">The kitchen</p>
+            <p aria-hidden="true" className="display-l mt-4 select-none text-paper/15">
+              Ghar ki
+              <br />
+              Gud-crafted
+              <br />
+              Chikki&apos;s
             </p>
             <div className="mt-6 flex items-center gap-3 text-paper/50">
               <Diamond className="bg-paper" />
@@ -213,8 +226,11 @@ export default async function HomePage() {
           <ol className="mt-12 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-5">
             {steps.map((step, index) => (
               <li key={step.title} className="border-t border-line-strong pt-5">
-                <span className="meta">0{index + 1}</span>
-                <h3 className="display-s mt-2">{step.title}</h3>
+                <div className="flex items-center gap-4">
+                  <ProcessArt step={index} decorative className="w-16 shrink-0 lg:w-[4.5rem]" />
+                  <span className="meta">0{index + 1}</span>
+                </div>
+                <h3 className="display-s mt-4">{step.title}</h3>
                 <p className="mt-2 text-[0.875rem] leading-relaxed text-ink-muted">
                   {step.body}
                 </p>
@@ -240,6 +256,8 @@ export default async function HomePage() {
           </Link>
         </div>
       </section>
+
+      <GoogleReviews />
 
       <section className="border-t border-line">
         <div className="container-narrow py-20 text-center md:py-28">

@@ -8,14 +8,15 @@ import {
   getPublishedContent,
 } from "@/lib/content";
 import { getSettings } from "@/lib/settings";
+import { pageMeta } from "@/lib/seo";
 import { waLink, WHATSAPP_BULK_MESSAGE } from "@/lib/phone";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Bulk & Corporate Gifting",
   description:
-    "Bulk, festive and corporate chikki gifting from GH Chikkis in Ahmedabad. Share the occasion, quantity and date and we will confirm what is possible directly.",
-  alternates: { canonical: "/gifting" },
-};
+    "Bulk, festive and corporate chikki gifting from Ahmedabad. Share the occasion, quantity and date and we confirm varieties, packaging and price.",
+  path: "/gifting",
+});
 
 const NEXT_STEPS = [
   {

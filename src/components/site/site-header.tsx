@@ -19,7 +19,7 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function SiteHeader() {
+export function SiteHeader({ logoSrc }: { logoSrc?: string | null }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -48,7 +48,7 @@ export function SiteHeader() {
             scrolled ? "glass-strong h-14" : "h-16"
           }`}
         >
-          <Wordmark />
+          <Wordmark logoSrc={logoSrc} />
 
           <nav aria-label="Main" className="nav-segment absolute left-1/2 hidden -translate-x-1/2 items-center lg:flex">
             {NAV_ITEMS.map((item) => (

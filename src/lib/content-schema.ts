@@ -69,7 +69,12 @@ export const CONTENT_SCHEMA: ContentPageDef[] = [
       { key: "foundersHeading", label: "Founders heading", type: "text" },
       { key: "foundersBody", label: "Founders paragraphs", type: "paragraphs" },
       { key: "timelineHeading", label: "Timeline heading", type: "text" },
-      { key: "timeline", label: "Timeline entries", type: "paragraphs" },
+      {
+        key: "timeline",
+        label: "Timeline entries",
+        type: "steps",
+        help: "One milestone each. Put the year or period in Note — it shows as the marker.",
+      },
       { key: "closing", label: "Closing note", type: "textarea" },
     ],
   },
@@ -150,11 +155,11 @@ export function pageDef(page: ContentPageKey) {
 
 export const DEFAULT_CONTENT: Record<ContentPageKey, PageContent> = {
   home: {
-    heroEyebrow: "Ahmedabad · Handmade since 2018",
+    heroEyebrow: "Ahmedabad · Family kitchen",
     heroTitle: "A family recipe,",
     heroTitleAccent: "cut into gold.",
     heroIntro:
-      "GH Chikkis is the work of sisters Gopi and Himanisha — handmade chikki from a family kitchen in Ahmedabad, made in the same spirit since 2018.",
+      "GH Chikkis is the work of sisters Gopi and Himani — handmade chikki from a family kitchen in Ahmedabad, made the same way since the first batch.",
     heroNote:
       "Prices are shared directly. Ask us about the collection, packaging or a bulk order.",
     collectionHeading: "The collection",
@@ -162,8 +167,8 @@ export const DEFAULT_CONTENT: Record<ContentPageKey, PageContent> = {
       "Seven varieties, each with its own character — some nuttier, some softer, all made by hand.",
     storyHeading: "Two sisters, one kitchen",
     storyBody: [
-      "GH Chikkis began in 2018 with a simple family habit: making chikki for the people around us. What started in a home kitchen became a collection of varieties, shared with families, shops and businesses in and around Ahmedabad.",
-      "Gopi Shah and Himanisha run GH Chikkis as equal partners. They are the people behind the recipes, the wrapping and the decisions.",
+      "GH Chikkis began with a simple family habit: making chikki for the people around us. What started in a home kitchen became a collection of varieties, shared with families, shops and businesses in and around Ahmedabad.",
+      "Gopi Shah and Himani Shah are the people behind the recipes, the wrapping and the decisions.",
       "We are a homemade brand, not a factory. Every order is made with hands, time and attention — and the details are best confirmed with us directly.",
     ],
     processHeading: "From the pour to the cut",
@@ -190,20 +195,32 @@ export const DEFAULT_CONTENT: Record<ContentPageKey, PageContent> = {
     intro:
       "GH Chikkis is a family-run, homemade chikki brand in Ahmedabad. These are the facts of our story — the rest is best told directly.",
     storyBody: [
-      "GH Chikkis was established in 2018. It is run by sisters Gopi Shah and Himanisha, who are equal partners in the business.",
+      "GH Chikkis is run by sisters Gopi Shah and Himani Shah, from the same kitchen where the first batch was made.",
       "The work began at home, and home is still the centre of it. The kitchen is where the recipes are made, the orders are packed and the standards are set.",
       "We make chikki by hand. We do not present ourselves as a factory, a showroom or a large operation. We are a family kitchen, and we like it that way.",
     ],
-    foundersHeading: "Gopi & Himanisha",
+    foundersHeading: "Gopi & Himani",
     foundersBody: [
-      "Gopi Shah and Himanisha are sisters and equal partners. They share the work of running GH Chikkis, from the kitchen to the people who order from us.",
+      "Gopi Shah and Himani Shah are sisters who share the work of running GH Chikkis, from the kitchen to the people who order from us.",
       "If you have a question about a variety, packaging or a bulk order, you are speaking to the family. We would rather tell you directly than invent a longer history.",
     ],
     timelineHeading: "The story so far",
     timeline: [
-      "2018 — GH Chikkis is established in Ahmedabad.",
-      "The family kitchen — Gopi and Himanisha build the business as equal partners.",
-      "Today — a collection of seven chikki varieties, made by hand for customers in and around Ahmedabad.",
+      {
+        note: "The first batch",
+        title: "Chikki made at home",
+        body: "It started as a family habit — chikki for the people around us, cut and packed in our own kitchen.",
+      },
+      {
+        note: "The kitchen",
+        title: "A collection grows",
+        body: "Word of mouth brought new varieties: sesame, dry fruit, coconut. Each one was worked out by hand, batch by batch.",
+      },
+      {
+        note: "Today",
+        title: "Seven varieties, still by hand",
+        body: "Made in Ahmedabad for families, shops and businesses in and around the city — and for anyone who asks.",
+      },
     ],
     closing:
       "For current varieties, packaging and availability, ask us directly. The kitchen changes with the season and with what has been made that week.",
@@ -294,7 +311,7 @@ export const DEFAULT_CONTENT: Record<ContentPageKey, PageContent> = {
       {
         question: "What varieties do you make?",
         answer:
-          "Our current collection is listed on the Chikki Collection page. Ask us if you are looking for something not listed.",
+          "Our current collection consists of Groundnut Chikki, White Til Chikki, Black Til Chikki, Dryfruit Chikki, Coconut Chikki, Mamra Chikki and Daliya Chikki. Ask us if you are looking for something not listed.",
       },
       {
         question: "Can I choose a custom weight?",
@@ -319,7 +336,7 @@ export const DEFAULT_CONTENT: Record<ContentPageKey, PageContent> = {
       {
         question: "How should I store chikki?",
         answer:
-          "Ask us for current storage guidance for the variety and packaging you choose. It can vary with the batch and the weather.",
+          "Store in a cool, dry place away from direct sunlight and heat to prevent the jaggery from softening or melting.",
       },
       {
         question: "Can I visit the kitchen?",
@@ -329,12 +346,12 @@ export const DEFAULT_CONTENT: Record<ContentPageKey, PageContent> = {
       {
         question: "Do you ship outside Ahmedabad?",
         answer:
-          "Ask us. We will confirm whether courier delivery is available for your location and what it costs.",
+          "Yes! We deliver across all Indian states and select international destinations. Shipping charges are borne by the customer and vary by location.",
       },
       {
         question: "How do I pay?",
         answer:
-          "Payment is arranged directly with us. We do not collect payment on this website.",
+          "We accept both cash and online payments for your convenience. Payment details will be shared when confirming your order.",
       },
     ],
   },
@@ -444,7 +461,8 @@ export const DEFAULT_CONTENT: Record<ContentPageKey, PageContent> = {
       {
         heading: "Delivery and collection",
         body: [
-          "Collection, porter or courier options and any charges are confirmed with you before an order is accepted.",
+          "We deliver across all Indian states and to select international destinations. Collection, porter or courier options are confirmed with you before an order is accepted.",
+          "Shipping charges are borne by the customer and vary by location. We confirm the amount with you before the order goes out.",
         ],
       },
       {

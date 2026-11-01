@@ -5,13 +5,14 @@ import {
   contentText,
   getPublishedContent,
 } from "@/lib/content";
+import { pageMeta } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Terms",
   description:
-    "Terms for using the GH Chikkis website and sending an enquiry. The website does not sell products online or take payment.",
-  alternates: { canonical: "/terms" },
-};
+    "Terms for using the GH Chikkis website: enquiries are not orders, prices are confirmed directly, and nothing here is nutritional advice.",
+  path: "/terms",
+});
 
 export default async function TermsPage() {
   const content = await getPublishedContent("terms");

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getSessionContext } from "@/lib/auth/session";
+import { brandLogoSrc } from "@/lib/brand";
 import { Wordmark } from "@/components/site/wordmark";
 import { Diamond } from "@/components/ui/diamond";
 import { env, googleConfigured } from "@/lib/env";
@@ -48,11 +49,12 @@ export default async function LoginPage({
   const noticeKey = typeof params.notice === "string" ? params.notice : "";
   const error = ERRORS[errorKey];
   const notice = NOTICES[noticeKey];
+  const logoSrc = brandLogoSrc();
 
   return (
     <main className="min-h-dvh lg:grid lg:grid-cols-[1.05fr_1fr]">
       <section className="relative hidden flex-col justify-between overflow-hidden bg-olive-deep px-12 py-12 text-paper lg:flex xl:px-16">
-        <Wordmark tone="paper" />
+        <Wordmark tone="paper" logoSrc={logoSrc} />
         <div className="relative max-w-md py-16">
           <p className="flex items-center gap-3 text-[0.75rem] font-medium uppercase tracking-[0.16em] text-paper/60">
             <Diamond size="sm" className="border-paper/50" />
@@ -75,7 +77,7 @@ export default async function LoginPage({
 
       <section className="flex min-h-dvh flex-col px-6 py-10 sm:px-10 lg:px-14">
         <div className="flex items-center justify-between lg:hidden">
-          <Wordmark tone="ink" />
+          <Wordmark tone="ink" logoSrc={logoSrc} />
           <Link href="/" className="meta link-underline">
             Back to site
           </Link>

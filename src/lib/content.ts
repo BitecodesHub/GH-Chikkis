@@ -375,3 +375,24 @@ export function contentSteps(content: PageContent, key: string): ContentStep[] {
       typeof (item as ContentStep).body === "string",
   );
 }
+
+/**
+ * A sitemap can only be trusted if <lastmod> means something, so it is taken
+ * from when each page was actually published rather than from request time.
+ */
+export async function listPublishedDates(): Promise<Record<string, Date>> {
+  const db = await getDb();
+  const docs = await db
+    .collection<{ page: ContentPageKey; publishedAt?: string; updatedAt: string }>(
+      "website_content",
+    )
+    .find({})
+    .toArray();
+  const dates: Record<string, Date> = {};
+  for (const doc of docs) {
+    const value = doc.publishedAt ?? doc.updatedAt;
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) dates[doc.page] = parsed;
+  }
+  return dates;
+}

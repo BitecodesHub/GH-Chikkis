@@ -17,9 +17,31 @@ function mongoDbName(): string {
   }
 }
 
+// Canonical origin, in priority order: the value the owner configured, then the
+// production URL Vercel exposes at build time, then the deployment URL. Without
+// this the sitemap, robots and every og:url ship "localhost" to Google.
+function appUrl(): string {
+  const explicit = clean(process.env.APP_URL);
+  const candidate =
+    explicit ||
+    clean(process.env.VERCEL_PROJECT_PRODUCTION_URL) ||
+    clean(process.env.VERCEL_URL);
+  if (!candidate) return "http://localhost:3000";
+  const withScheme = /^https?:\/\//.test(candidate)
+    ? candidate
+    : `https://${candidate}`;
+  // Vercel only ever serves the canonical site over TLS; http canonicals get
+  // superseded by redirects and split the link equity.
+  const normalised =
+    isProduction && withScheme.startsWith("http://") && !withScheme.includes("localhost")
+      ? withScheme.replace(/^http:/, "https:")
+      : withScheme;
+  return normalised.replace(/\/$/, "");
+}
+
 export const env = {
   isProduction,
-  appUrl: (clean(process.env.APP_URL) || "http://localhost:3000").replace(/\/$/, ""),
+  appUrl: appUrl(),
   mongodbUri: clean(process.env.MONGODB_URI) || "mongodb://127.0.0.1:27017",
   mongodbDb: mongoDbName(),
   ownerEmail: clean(process.env.OWNER_EMAIL).toLowerCase(),
@@ -27,6 +49,7 @@ export const env = {
   google: {
     clientId: clean(process.env.GOOGLE_CLIENT_ID),
     clientSecret: clean(process.env.GOOGLE_CLIENT_SECRET),
+    placesApiKey: clean(process.env.GOOGLE_PLACES_API_KEY),
   },
   cloudinary: {
     cloudName: clean(process.env.CLOUDINARY_CLOUD_NAME),

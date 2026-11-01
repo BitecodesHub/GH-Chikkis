@@ -9,6 +9,7 @@ import { ProductEnquiryActions } from "@/components/site/product-enquiry-actions
 import { ArrowLink } from "@/components/site/page-header";
 import { getProductBySlug, listActiveProducts } from "@/lib/products";
 import { getSettings } from "@/lib/settings";
+import { pageMeta } from "@/lib/seo";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -18,19 +19,19 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const product = await getProductBySlug(slug);
   if (!product || !product.active) {
-    return { title: "Variety not found" };
+    return { title: "Variety not found", robots: { index: false, follow: false } };
   }
-  return {
+  const description = product.tastingNote
+    ? `${product.description.replace(/\s+$/, "")} ${product.tastingNote}`
+    : product.description;
+
+  return pageMeta({
     title: product.name,
-    description: product.description.slice(0, 155),
-    alternates: { canonical: `/collection/${product.slug}` },
-    openGraph: {
-      title: `${product.name} — GH Chikkis`,
-      description: product.description.slice(0, 155),
-      url: `/collection/${product.slug}`,
-      images: product.media[0] ? [{ url: product.media[0].url, alt: product.media[0].alt }] : undefined,
-    },
-  };
+    description: description.slice(0, 158),
+    path: `/collection/${product.slug}`,
+    imageSrc: product.media[0]?.url ?? "/og",
+    imageAlt: product.media[0]?.alt ?? `${product.name} — GH Chikkis`,
+  });
 }
 
 const ORDER_STEPS = [
@@ -114,18 +115,17 @@ export default async function ProductPage({ params }: PageProps) {
                 <ProductPhoto slug={product.slug} priority sizes="(min-width: 1024px) 45vw, 100vw" />
               )}
             </div>
-            <dl className="mt-6 grid grid-cols-3 divide-x divide-line border-y border-line text-center">
+            <dl className="mt-6 grid grid-cols-2 divide-x divide-line border-y border-line text-center">
               <div className="px-3 py-4">
                 <dt className="meta">Made</dt>
-                <dd className="mt-1 text-sm font-semibold">By hand</dd>
+                <dd className="mt-1 text-sm font-semibold">By hand, in Ahmedabad</dd>
               </div>
               <div className="px-3 py-4">
-                <dt className="meta">Since</dt>
-                <dd className="mt-1 text-sm font-semibold">2018</dd>
-              </div>
-              <div className="px-3 py-4">
-                <dt className="meta">Kitchen</dt>
-                <dd className="mt-1 text-sm font-semibold">Ahmedabad</dd>
+                <dt className="meta">Packed</dt>
+                <dd className="mt-1 text-sm font-semibold">
+                  {product.packaging.map((option) => option.label).join(" · ") ||
+                    "Sizes on request"}
+                </dd>
               </div>
             </dl>
           </div>
@@ -176,8 +176,8 @@ export default async function ProductPage({ params }: PageProps) {
                     </div>
                   ) : null}
                   <p className="mt-4 text-[0.75rem] leading-relaxed text-ink-muted">
-                    Storage guidance is confirmed with your order. Ask us if you need
-                    details for a specific batch.
+                    Store in a cool, dry place away from direct sunlight and heat. Ask us
+                    if you need details for a specific batch.
                   </p>
                 </>
               ) : (

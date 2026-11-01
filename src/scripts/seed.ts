@@ -59,11 +59,11 @@ const PRODUCTS: SeedProduct[] = [
     displayOrder: 5,
   },
   {
-    slug: "mawa-chikki",
-    name: "Mawa Chikki",
+    slug: "mamra-chikki",
+    name: "Mamra Chikki",
     description:
-      "Mawa gives this variety a milk-rich depth and a softer set. It is made less often and is best treated as a seasonal or special-order variety.",
-    tastingNote: "Milk-rich, rounded, tender.",
+      "Mamra — flattened rice — is folded through the hot base, so the set is light and airy rather than dense. It has a melt-in-the-mouth finish and is the most delicate of the varieties we make.",
+    tastingNote: "Light, toasty, barely sweet.",
     displayOrder: 6,
   },
   {
@@ -82,7 +82,7 @@ const INVENTORY_ITEMS: { name: string; category: string; unit: string }[] = [
   { name: "Black sesame", category: "Ingredients/raw materials", unit: "kg" },
   { name: "Dry fruit mix", category: "Ingredients/raw materials", unit: "kg" },
   { name: "Desiccated coconut", category: "Ingredients/raw materials", unit: "kg" },
-  { name: "Mawa", category: "Ingredients/raw materials", unit: "kg" },
+  { name: "Mamra (flattened rice)", category: "Ingredients/raw materials", unit: "kg" },
   { name: "Daliya", category: "Ingredients/raw materials", unit: "kg" },
   { name: "Jaggery", category: "Ingredients/raw materials", unit: "kg" },
   { name: "Ghee", category: "Ingredients/raw materials", unit: "kg" },

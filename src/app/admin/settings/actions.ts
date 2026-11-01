@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requirePermission } from "@/lib/auth/session";
 import { passwordProblem, verifyPassword } from "@/lib/auth/password";
 import { recordAudit } from "@/lib/audit";
+import { clearReviewsSnapshot } from "@/lib/google-reviews";
 import { getSettings, updateSettings } from "@/lib/settings";
 import { getUserById, setPasswordForUser } from "@/lib/users";
 import { cleanSingleLine, cleanText } from "@/lib/text";
@@ -105,16 +106,35 @@ export async function saveSettingsAction(formData: FormData): Promise<void> {
     footerNote: cleanText(formData.get("footerNote"), 500),
   };
 
+  const reviews = {
+    enabled: formData.get("showGoogleReviews") === "on",
+    googlePlaceId: cleanSingleLine(formData.get("googlePlaceId"), 120),
+  };
+  if (reviews.googlePlaceId && !/^[A-Za-z0-9_-]{10,120}$/.test(reviews.googlePlaceId)) {
+    fail("A Google Place ID is a long string of letters, numbers, hyphens and underscores.");
+  }
+  if (reviews.enabled && !reviews.googlePlaceId) {
+    fail("Add the Google Place ID before turning reviews on.");
+  }
+
   const after = await updateSettings(
     {
       business,
       invoice,
+      reviews,
       expenseCategories: categories,
       backup: { retentionDays },
       security: { idleMinutes },
     },
     user.email,
   );
+
+  if (
+    before.reviews.googlePlaceId !== after.reviews.googlePlaceId ||
+    before.reviews.enabled !== after.reviews.enabled
+  ) {
+    await clearReviewsSnapshot();
+  }
 
   const changed = [
     before.business.name !== after.business.name ? "business profile" : null,
@@ -124,6 +144,10 @@ export async function saveSettingsAction(formData: FormData): Promise<void> {
       : null,
     before.expenseCategories.join("\n") !== after.expenseCategories.join("\n")
       ? "expense categories"
+      : null,
+    before.reviews.enabled !== after.reviews.enabled ||
+    before.reviews.googlePlaceId !== after.reviews.googlePlaceId
+      ? "Google reviews"
       : null,
     before.security.idleMinutes !== after.security.idleMinutes ? "idle sign-out" : null,
     before.backup.retentionDays !== after.backup.retentionDays ? "backup retention" : null,

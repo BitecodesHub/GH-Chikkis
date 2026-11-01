@@ -9,12 +9,14 @@ import {
   getPublishedContent,
 } from "@/lib/content";
 
-export const metadata: Metadata = {
+import { pageMeta } from "@/lib/seo";
+
+export const metadata: Metadata = pageMeta({
   title: "FAQs",
   description:
-    "Common questions about ordering chikki from GH Chikkis — prices, varieties, custom weights, delivery, ingredients and corporate orders.",
-  alternates: { canonical: "/faqs" },
-};
+    "Answers on ordering, prices, varieties, delivery across India, storage, ingredients and payment for handmade GH Chikkis chikki.",
+  path: "/faqs",
+});
 
 export default async function FaqsPage() {
   const content = await getPublishedContent("faqs");

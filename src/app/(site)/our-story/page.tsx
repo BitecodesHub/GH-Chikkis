@@ -4,29 +4,31 @@ import { PageHeader } from "@/components/site/page-header";
 import { Diamond } from "@/components/ui/diamond";
 import {
   contentParagraphs,
+  contentSteps,
   contentText,
   getPublishedContent,
 } from "@/lib/content";
+import { pageMeta } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Our Story",
   description:
-    "GH Chikkis is a family-run, homemade chikki brand in Ahmedabad, established in 2018 and run by sisters Gopi Shah and Himanisha as equal partners.",
-  alternates: { canonical: "/our-story" },
-};
+    "The family kitchen behind GH Chikkis: Gopi Shah and Himani Shah, the recipes they keep, and how a home habit became a handmade brand.",
+  path: "/our-story",
+});
 
 const FACTS = [
-  { label: "Established", value: "2018" },
-  { label: "Founders", value: "Gopi Shah & Himanisha" },
-  { label: "Partnership", value: "Equal partners" },
+  { label: "Founders", value: "Gopi Shah & Himani Shah" },
   { label: "Kitchen", value: "Ahmedabad, Gujarat" },
+  { label: "Made", value: "By hand, in small batches" },
+  { label: "Established", value: "2018" },
 ];
 
 export default async function StoryPage() {
   const content = await getPublishedContent("story");
   const storyParagraphs = contentParagraphs(content, "storyBody");
   const foundersParagraphs = contentParagraphs(content, "foundersBody");
-  const timeline = contentParagraphs(content, "timeline");
+  const timeline = contentSteps(content, "timeline");
 
   return (
     <>
@@ -39,13 +41,12 @@ export default async function StoryPage() {
       <section className="container-page py-14 md:py-20">
         <div className="grid gap-12 lg:grid-cols-[0.36fr_0.64fr] lg:gap-16">
           <aside className="lg:sticky lg:top-28 lg:self-start">
-            <p
-              aria-hidden="true"
-              className="font-display text-[clamp(4rem,10vw,7.5rem)] leading-[0.85] tracking-[-0.04em] text-paper-deep"
-            >
-              EST.
+            <p aria-hidden="true" className="display-l select-none text-paper-deep">
+              Ghar ki
               <br />
-              2018
+              Gud-crafted
+              <br />
+              Chikki&apos;s
             </p>
             <dl className="mt-8 border-t border-line">
               {FACTS.map((fact) => (
@@ -66,8 +67,7 @@ export default async function StoryPage() {
 
             <div className="mt-12 border-l-2 border-brass pl-6">
               <p className="font-display text-[clamp(1.5rem,3vw,2rem)] font-medium leading-snug text-ink">
-                Two sisters, one kitchen, and a family recipe kept at the centre since
-                2018.
+                Two sisters, one kitchen, and a family recipe kept at the centre.
               </p>
               <p className="meta mt-3">GH Chikkis · Ahmedabad</p>
             </div>
@@ -91,11 +91,19 @@ export default async function StoryPage() {
 
       <section className="container-narrow py-16 md:py-20">
         <h2 className="display-m">{contentText(content, "timelineHeading")}</h2>
-        <ol className="mt-8 space-y-5 border-l border-line-strong pl-6">
+        <ol className="mt-8 space-y-6 border-l border-line-strong pl-6">
           {timeline.map((entry) => (
-            <li key={entry.slice(0, 40)} className="relative">
-              <Diamond size="sm" className="absolute -left-[1.72rem] top-2.5" />
-              <p className="text-[1.0625rem] leading-relaxed text-ink-soft">{entry}</p>
+            <li key={entry.title || entry.body} className="relative">
+              <Diamond size="sm" className="absolute -left-[1.72rem] top-2" />
+              {entry.note ? (
+                <p className="meta text-brass">{entry.note}</p>
+              ) : null}
+              <h3 className="display-s mt-1">{entry.title}</h3>
+              {entry.body ? (
+                <p className="mt-2 max-w-xl text-[1.0625rem] leading-relaxed text-ink-soft">
+                  {entry.body}
+                </p>
+              ) : null}
             </li>
           ))}
         </ol>

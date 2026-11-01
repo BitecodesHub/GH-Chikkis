@@ -7,6 +7,7 @@ import { contentText, getPublishedContent } from "@/lib/content";
 import { env } from "@/lib/env";
 import { getProductBySlug } from "@/lib/products";
 import { getSettings } from "@/lib/settings";
+import { pageMeta } from "@/lib/seo";
 import {
   formatPhoneDisplay,
   waLink,
@@ -14,12 +15,12 @@ import {
 } from "@/lib/phone";
 import { businessToday } from "@/lib/dates";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Contact",
   description:
-    "Send an enquiry to GH Chikkis in Ahmedabad — share the variety, quantity and date you have in mind. Prices and availability are confirmed directly.",
-  alternates: { canonical: "/contact" },
-};
+    "Send a chikki enquiry to GH Chikkis — variety, quantity and date. We confirm availability, packaging and price directly with you.",
+  path: "/contact",
+});
 
 interface PageProps {
   searchParams: Promise<{ product?: string; packaging?: string }>;

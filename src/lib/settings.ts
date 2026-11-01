@@ -17,7 +17,7 @@ export function defaultSettings(): AppSettings {
   return {
     business: {
       name: "GH Chikkis",
-      tagline: "Ghar ki Gud",
+      tagline: "Ghar ki Gud-crafted Chikki's",
       city: "Ahmedabad",
       state: "Gujarat",
       whatsappNumber: "",
@@ -42,6 +42,7 @@ export function defaultSettings(): AppSettings {
       thankYou: "Thank you for choosing GH Chikkis! We truly appreciate your support.",
       footerNote: "Please retain this invoice for your records.",
     },
+    reviews: { enabled: false, googlePlaceId: "" },
     expenseCategories: DEFAULT_EXPENSE_CATEGORIES,
     backup: { retentionDays: 30 },
     updatedAt: nowIso(),
@@ -56,7 +57,7 @@ export async function getSettings(): Promise<AppSettings> {
   if (existing) {
     const { _id, ...settings } = existing;
     void _id;
-    return { ...defaultSettings(), ...settings, business: { ...defaultSettings().business, ...settings.business }, security: { ...defaultSettings().security, ...settings.security }, whatsapp: { ...defaultSettings().whatsapp, ...settings.whatsapp }, invoice: { ...defaultSettings().invoice, ...settings.invoice }, backup: { ...defaultSettings().backup, ...settings.backup } };
+    return { ...defaultSettings(), ...settings, business: { ...defaultSettings().business, ...settings.business }, security: { ...defaultSettings().security, ...settings.security }, whatsapp: { ...defaultSettings().whatsapp, ...settings.whatsapp }, invoice: { ...defaultSettings().invoice, ...settings.invoice }, reviews: { ...defaultSettings().reviews, ...settings.reviews }, backup: { ...defaultSettings().backup, ...settings.backup } };
   }
   const defaults = defaultSettings();
   await collection.updateOne(
@@ -72,6 +73,7 @@ export interface SettingsPatch {
   security?: Partial<AppSettings["security"]>;
   whatsapp?: Partial<AppSettings["whatsapp"]>;
   invoice?: Partial<AppSettings["invoice"]>;
+  reviews?: Partial<AppSettings["reviews"]>;
   expenseCategories?: string[];
   backup?: Partial<AppSettings["backup"]>;
 }

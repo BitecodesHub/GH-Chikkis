@@ -494,6 +494,11 @@ export interface BusinessSettings {
   gstin: string;
 }
 
+export interface ReviewsSettings {
+  enabled: boolean;
+  googlePlaceId: string;
+}
+
 export interface WhatsAppSettings {
   liveEnabled: boolean;
   paused: boolean;
@@ -510,6 +515,7 @@ export interface AppSettings {
   security: { idleMinutes: number };
   whatsapp: WhatsAppSettings;
   invoice: { thankYou: string; footerNote: string };
+  reviews: ReviewsSettings;
   expenseCategories: string[];
   backup: { retentionDays: number };
   updatedAt: ISODate;

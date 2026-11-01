@@ -5,13 +5,14 @@ import {
   contentText,
   getPublishedContent,
 } from "@/lib/content";
+import { pageMeta } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Privacy Policy",
   description:
-    "How GH Chikkis collects, uses and protects enquiry, customer and order information, including WhatsApp, analytics and staff access.",
-  alternates: { canonical: "/privacy" },
-};
+    "How GH Chikkis handles enquiry, customer and order data — WhatsApp permissions, analytics, cookies, retention and your choices.",
+  path: "/privacy",
+});
 
 export default async function PrivacyPage() {
   const content = await getPublishedContent("privacy");

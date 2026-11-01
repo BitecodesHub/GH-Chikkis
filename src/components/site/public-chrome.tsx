@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/site/site-footer";
 import { AnalyticsConsent } from "@/components/site/analytics-consent";
 import { getPreviewingContent } from "@/lib/content";
 import { getSettings } from "@/lib/settings";
+import { brandLogoSrc } from "@/lib/brand";
 import { env } from "@/lib/env";
 import { waLink, WHATSAPP_GENERAL_MESSAGE } from "@/lib/phone";
 import { stopPreviewAction } from "@/app/admin/content/actions";
@@ -19,17 +20,18 @@ export async function PublicChrome({ children }: { children: ReactNode }) {
     ? waLink(business.whatsappNumber, WHATSAPP_GENERAL_MESSAGE)
     : null;
   const nonce = (await headers()).get("x-nonce") ?? undefined;
+  const logoSrc = brandLogoSrc();
 
   return (
     <>
       <a href="#main" className="skip-link">
         Skip to content
       </a>
-      <SiteHeader />
+      <SiteHeader logoSrc={logoSrc} />
       <main id="main" className={previewing ? "pb-24" : undefined}>
         {children}
       </main>
-      <SiteFooter business={business} whatsappHref={whatsappHref} />
+      <SiteFooter business={business} whatsappHref={whatsappHref} logoSrc={logoSrc} />
       {env.gaId ? <AnalyticsConsent gaId={env.gaId} nonce={nonce} /> : null}
       {previewing ? (
         <div

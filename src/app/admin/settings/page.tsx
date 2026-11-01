@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { requirePermission } from "@/lib/auth/session";
+import { relativeTime } from "@/lib/dates";
 import {
   cloudinaryConfigured,
   env,
@@ -18,6 +19,7 @@ import {
   googleConfigured,
   whatsappConfigured,
 } from "@/lib/env";
+import { peekReviewsSnapshot } from "@/lib/google-reviews";
 import { getSettings } from "@/lib/settings";
 import { changeMyPasswordAction, saveSettingsAction } from "./actions";
 
@@ -72,6 +74,10 @@ export default async function AdminSettingsPage({
   const params = await searchParams;
   const settings = await getSettings();
   const business = settings.business;
+  const reviews = settings.reviews;
+  const reviewsSnapshot = reviews.enabled
+    ? await peekReviewsSnapshot(reviews.googlePlaceId)
+    : null;
 
   return (
     <div className="space-y-8">
@@ -226,6 +232,35 @@ export default async function AdminSettingsPage({
               <p className="mt-1 text-[0.75rem] text-ink-muted">
                 Shown as business information only. Invoices do not calculate GST.
               </p>
+            </div>
+            <div>
+              <label htmlFor="google-place-id" className="label">
+                Google Place ID (optional)
+              </label>
+              <input
+                id="google-place-id"
+                name="googlePlaceId"
+                maxLength={120}
+                defaultValue={reviews.googlePlaceId}
+                placeholder="ChIJ…"
+                className="field"
+              />
+              <p className="mt-1 text-[0.75rem] text-ink-muted">
+                Find it on your Google Business Profile listing URL, or with a “Place ID lookup”
+                search for your shop address.
+              </p>
+            </div>
+            <div className="flex items-end pb-1">
+              <label htmlFor="show-google-reviews" className="flex items-center gap-2 text-[0.875rem]">
+                <input
+                  id="show-google-reviews"
+                  name="showGoogleReviews"
+                  type="checkbox"
+                  defaultChecked={reviews.enabled}
+                  className="size-4 accent-olive"
+                />
+                Show Google reviews on the website
+              </label>
             </div>
           </div>
         </section>
@@ -492,6 +527,19 @@ export default async function AdminSettingsPage({
               label: "Analytics",
               ok: Boolean(env.gaId),
               detail: "Google Analytics loads only after consent.",
+            },
+            {
+              label: "Google reviews",
+              ok: Boolean(reviewsSnapshot),
+              detail: !reviews.googlePlaceId
+                ? "Add your Google Place ID in Business details to show customer reviews."
+                : !reviews.enabled
+                  ? "Place ID saved. Tick “Show Google reviews on the website” to put them on the home page."
+                  : reviewsSnapshot
+                    ? `${reviewsSnapshot.name} · ${reviewsSnapshot.rating.toFixed(1)} stars from ${reviewsSnapshot.total} ratings · fetched ${relativeTime(reviewsSnapshot.fetchedAt)}.`
+                    : env.google.placesApiKey
+                      ? "Turned on, but Google has not returned any data for this Place ID yet."
+                      : "Turned on, but GOOGLE_PLACES_API_KEY is not set, so the website shows nothing.",
             },
           ].map((item) => (
             <li key={item.label} className="flex items-start justify-between gap-3 border border-line bg-paper-raised px-4 py-3">
