@@ -43,7 +43,7 @@ export function defaultSettings(): AppSettings {
       footerNote: "Please retain this invoice for your records.",
     },
     reviews: { enabled: false, googlePlaceId: "" },
-    expenseCategories: DEFAULT_EXPENSE_CATEGORIES,
+    expenseCategories: [...DEFAULT_EXPENSE_CATEGORIES],
     backup: { retentionDays: 30 },
     updatedAt: nowIso(),
     updatedBy: "system",

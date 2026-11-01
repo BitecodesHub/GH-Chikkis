@@ -1,36 +1,91 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GH Chikkis
 
-## Getting Started
+Premium public website plus a private `/admin` workspace for a handmade chikki
+business in Ahmedabad: enquiries, orders, GST-style invoices, inventory,
+expenses, reports, WhatsApp messaging and encrypted backups, all on MongoDB.
 
-First, run the development server:
+Live site: https://gh-chikkis.vercel.app
+
+## Running it locally
+
+1. Install dependencies: `npm install`.
+2. Start a MongoDB instance. Either run a local `mongod` or point at an Atlas
+   cluster; the app reads exactly two variables, `MONGODB_URI` and `MONGODB_DB`.
+3. Copy `.env.example` to `.env.local` and fill in what you need. Everything has
+   a working simulation mode, so the app runs with only the two Mongo variables.
+4. Seed the catalogue, content, settings and Owner account: `npm run seed`.
+   Seeding never overwrites records that already exist.
+5. `npm run dev`, then open http://localhost:3000.
+
+Sign in at `/login`. With `DEV_AUTH_ENABLED=true` and a non-production build,
+the page offers a development sign-in for the `OWNER_EMAIL` account, so the
+workspace is reachable before Google OAuth is configured. In production, sign-in
+is Google-only for accounts the Owner has approved, plus the email-and-password
+account bootstrapped on first use.
+
+## Scripts
+
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Development server. |
+| `npm run build` / `npm start` | Production build and server. |
+| `npm run typecheck` | `tsc --noEmit`. |
+| `npm run lint` | ESLint over the whole repo. |
+| `npm test` | Vitest unit tests. |
+| `npm run seed` | Creates missing products, content pages, settings, templates and the Owner account. |
+| `npm run backup` / `npm run restore` | Encrypted database backup and verified restore. |
+| `npm run gmail-auth` | One-time Gmail OAuth refresh token for manual email sending. |
+
+One-off data migrations live in `src/scripts/` and are run directly, with a
+preview first:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npx tsx --env-file-if-exists=.env.local src/scripts/migrate-mamra.ts --dry-run
+npx tsx --env-file-if-exists=.env.local src/scripts/migrate-mamra.ts
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Layout
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `src/app/(site)/` — public pages: home, collection, product detail, Our Story,
+  process, gifting, FAQs, contact, privacy, terms.
+- `src/app/admin/` — the workspace, guarded by `src/proxy.ts` and per-page
+  permission checks.
+- `src/app/api/` — auth callback, cron endpoints, WhatsApp webhook, media and
+  export endpoints, `/api/health`.
+- `src/lib/` — all data access and business logic. Nothing talks to MongoDB
+  outside this folder.
+- `src/components/site/` — public UI, including `line-art.tsx`, the hand-drawn
+  SVG scenes used by the process steps and the ingredient tiles.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Website copy is editable in the admin under **Website content**. Each page stores
+a draft and a published copy, and falls back to the defaults in
+`src/lib/content-schema.ts` for any field that has never been saved.
 
-## Learn More
+## Brand assets
 
-To learn more about Next.js, take a look at the following resources:
+- Logo: drop the artwork at `public/brand/logo.png` and it replaces the wordmark
+  in the header, footer and link-preview card with no code change.
+- Founder photographs and per-variety ingredient lists are supplied by the
+  business; ingredients are entered per product in **Admin › Products**.
+- Google reviews: enter the business's Google Place ID in **Admin › Settings**,
+  tick "Show Google reviews on the website" and set
+  `GOOGLE_PLACES_API_KEY`. Until then the band renders nothing — the site never
+  shows an invented review.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deploying
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Vercel (Hobby) plus MongoDB Atlas is the current setup. Two constraints matter:
 
-## Deploy on Vercel
+- Vercel bakes environment variables into the build, so a changed variable needs
+  a redeploy, not a restart.
+- The filesystem is read-only and wiped between invocations, so in-app backups
+  cannot persist there; Atlas continuous backups is the real disaster-recovery
+  path for that host.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Set `APP_URL` to the exact canonical origin — it feeds OAuth callbacks,
+canonicals, the sitemap and robots.txt. Without it, production falls back to
+`VERCEL_PROJECT_PRODUCTION_URL`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`GET /api/health` reports `{"status":"ok","database":"connected"}` or a
+secret-free reason (`malformed_uri`, `dns`, `unreachable`, `auth`) when the
+database layer is broken.
