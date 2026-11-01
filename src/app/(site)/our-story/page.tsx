@@ -114,6 +114,9 @@ export default async function StoryPage() {
 
       <section className="container-narrow py-16 md:py-20">
         <h2 className="display-m">{contentText(content, "timelineHeading")}</h2>
+        {contentText(content, "timelineIntro") ? (
+          <p className="lede mt-3 text-ink-soft">{contentText(content, "timelineIntro")}</p>
+        ) : null}
         <ol className="mt-8 space-y-6 border-l border-line-strong pl-6">
           {timeline.map((entry) => (
             <li key={entry.title || entry.body} className="relative">

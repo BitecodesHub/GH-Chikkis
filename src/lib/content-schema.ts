@@ -69,6 +69,7 @@ export const CONTENT_SCHEMA: ContentPageDef[] = [
       { key: "foundersHeading", label: "Founders heading", type: "text" },
       { key: "foundersBody", label: "Founders paragraphs", type: "paragraphs" },
       { key: "timelineHeading", label: "Timeline heading", type: "text" },
+      { key: "timelineIntro", label: "Timeline introduction", type: "text" },
       {
         key: "timeline",
         label: "Timeline entries",
@@ -202,24 +203,45 @@ export const DEFAULT_CONTENT: Record<ContentPageKey, PageContent> = {
     foundersHeading: "Gopi & Himani",
     foundersBody: [
       "Gopi Shah and Himani Shah are sisters who share the work of running GH Chikkis, from the kitchen to the people who order from us.",
-      "If you have a question about a variety, packaging or a bulk order, you are speaking to the family. We would rather tell you directly than invent a longer history.",
+      "If you have a question about a variety, packaging or a bulk order, you are speaking to the family.",
     ],
-    timelineHeading: "The story so far",
+    timelineHeading: "Our Journey",
+    timelineIntro: "A journey of tradition, trust and growth.",
     timeline: [
       {
-        note: "The first batch",
-        title: "Chikki made at home",
-        body: "It started as a family habit — chikki for the people around us, cut and packed in our own kitchen.",
+        note: "2018",
+        title: "The Beginning",
+        body: "GH Chikkis began with a simple vision: bringing the authentic taste of homemade chikki to every home, starting with Ahmedabad.",
       },
       {
-        note: "The kitchen",
-        title: "A collection grows",
-        body: "Word of mouth brought new varieties: sesame, dry fruit, coconut. Each one was worked out by hand, batch by batch.",
+        note: "2019–2020",
+        title: "Building Trust",
+        body: "Gradually expanded our customer base across Ahmedabad, building lasting relationships through quality and consistency.",
+      },
+      {
+        note: "2021",
+        title: "Growing Through Challenges",
+        body: "Continued serving our customers through challenging times, reaching approximately 1.5 tonnes in production.",
+      },
+      {
+        note: "2022–2023",
+        title: "Expanding Horizons",
+        body: "Extended our reach beyond Ahmedabad, delivering to multiple cities and states, including Mumbai and Bengaluru.",
+      },
+      {
+        note: "2024",
+        title: "A New Milestone",
+        body: "Achieved approximately 5–6 tonnes in production, marking a significant step in our growth journey.",
+      },
+      {
+        note: "2025",
+        title: "Across Borders",
+        body: "Took the taste of GH Chikkis international, fulfilling orders and reaching customers in Canada, the United Kingdom, the United States and New Zealand.",
       },
       {
         note: "Today",
-        title: "Seven varieties, still by hand",
-        body: "Made in Ahmedabad for families, shops and businesses in and around the city — and for anyone who asks.",
+        title: "Growing With Tradition",
+        body: "Continuing our journey with the same homemade recipes, carefully selected ingredients and commitment to quality, one order at a time.",
       },
     ],
     closing:
