@@ -10,7 +10,9 @@ const globalForMongo = globalThis as unknown as {
 export function getMongoClient(): Promise<MongoClient> {
   if (!globalForMongo.mongoClientPromise) {
     const client = new MongoClient(env.mongodbUri, {
-      maxPoolSize: 5,
+      // A dashboard render asks for six reads at once. A pool of five made the
+      // sixth wait for a connection, which on Atlas costs a full round trip.
+      maxPoolSize: 10,
       serverSelectionTimeoutMS: 5000,
       connectTimeoutMS: 5000,
       retryWrites: true,
@@ -33,11 +35,12 @@ export function getMongoClient(): Promise<MongoClient> {
 export async function getDb(): Promise<Db> {
   const client = await getMongoClient();
   const db = client.db(env.mongodbDb);
-  // Building the indexes used to sit in front of every cold instance: 28
-  // round trips to Atlas before the first row of the page could be read. They
-  // are a one-off setup job, so the work runs alongside the request instead of
-  // gating it. `npm run indexes` does it up front and waits.
-  void ensureIndexes(db).catch(() => {});
+  // Index creation used to sit in front of every cold instance: 28 round trips
+  // to Atlas, on the same pool the page is waiting for. Production gets them
+  // from `npm run indexes`, which `npm run build` runs before the bundle is
+  // uploaded, so no request pays for them. A local database still builds them
+  // in the background, because the unique constraints double as validation.
+  if (!env.isProduction) void ensureIndexes(db).catch(() => {});
   return db;
 }
 

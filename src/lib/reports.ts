@@ -81,18 +81,7 @@ async function fetchRangeDocs(from: string, to: string): Promise<RangeDocs> {
   return { orders, payments, refunds, expenses };
 }
 
-async function countEnquiriesInRange(from: string, to: string): Promise<number> {
-  const db = await getDb();
-  return db.collection("enquiries").countDocuments({
-    submittedAt: {
-      $gte: businessDateStartUtc(from).toISOString(),
-      $lte: businessDateEndUtc(to).toISOString(),
-    },
-  });
-}
-
-function metricsFromDocs(docs: RangeDocs, newEnquiries: number): ReportMetrics {
-  const validSales = docs.orders.filter(
+function metricsFromDocs(docs: RangeDocs, newEnquiries: number): ReportMetrics {  const validSales = docs.orders.filter(
     (order) => order.type === "SALES" && order.status !== "CANCELLED",
   );
   const grossRevenuePaise = sum(validSales.map((order) => order.totalPaise));
@@ -123,12 +112,61 @@ function metricsFromDocs(docs: RangeDocs, newEnquiries: number): ReportMetrics {
   };
 }
 
-export async function getReportMetrics(from: string, to: string): Promise<ReportMetrics> {
-  const [docs, newEnquiries] = await Promise.all([
-    fetchRangeDocs(from, to),
-    countEnquiriesInRange(from, to),
+/**
+ * A range query is one wave of four reads, and the dashboard and reports page
+ * each wanted two or three of those waves for windows that sit inside one
+ * another. So the widest window is read once and the narrower ones are cut out
+ * of it by their business dates, which is what their own queries would have
+ * returned.
+ */
+function docsInRange(docs: RangeDocs, from: string, to: string): RangeDocs {
+  const keep = (date: string) => date >= from && date <= to;
+  return {
+    orders: docs.orders.filter((order) => keep(order.orderDate)),
+    payments: docs.payments.filter((payment) => keep(payment.date)),
+    refunds: docs.refunds.filter((refund) => keep(refund.date)),
+    expenses: docs.expenses.filter((expense) => keep(expense.date)),
+  };
+}
+
+type DateSpan = { from: string; to: string };
+
+function widest(spans: DateSpan[]): DateSpan {
+  let from = spans[0].from;
+  let to = spans[0].to;
+  for (const span of spans) {
+    if (span.from < from) from = span.from;
+    if (span.to > to) to = span.to;
+  }
+  return { from, to };
+}
+
+async function countEnquiriesPerRange(spans: DateSpan[]): Promise<number[]> {
+  const db = await getDb();
+  return Promise.all(
+    spans.map((span) =>
+      db.collection("enquiries").countDocuments({
+        submittedAt: {
+          $gte: businessDateStartUtc(span.from).toISOString(),
+          $lte: businessDateEndUtc(span.to).toISOString(),
+        },
+      }),
+    ),
+  );
+}
+
+export async function getReportMetricsForWindows(
+  windows: DateRange[],
+): Promise<ReportMetrics[]> {
+  if (windows.length === 0) return [];
+  const span = widest(windows);
+  const [docs, enquiryCounts] = await Promise.all([
+    fetchRangeDocs(span.from, span.to),
+    countEnquiriesPerRange(windows),
   ]);
-  return metricsFromDocs(docs, newEnquiries);
+  return windows.map((window, index) =>
+    metricsFromDocs(docsInRange(docs, window.from, window.to), enquiryCounts[index]),
+  );
 }
 
 export function buildReportSeries(
@@ -173,7 +211,7 @@ export function buildReportSeries(
   });
 }
 
-async function getMonthlySeries(): Promise<ReportSeriesPoint[]> {
+function monthlySpan(): DateSpan {
   const todayKey = businessToday();
   const [yearPart, monthPart] = todayKey.split("-").map(Number);
   let year = yearPart;
@@ -182,9 +220,7 @@ async function getMonthlySeries(): Promise<ReportSeriesPoint[]> {
     month += 12;
     year -= 1;
   }
-  const from = `${year}-${String(month).padStart(2, "0")}-01`;
-  const docs = await fetchRangeDocs(from, todayKey);
-  return buildReportSeries(docs, from, todayKey);
+  return { from: `${year}-${String(month).padStart(2, "0")}-01`, to: todayKey };
 }
 
 function previousRange(range: DateRange): DateRange {
@@ -195,16 +231,18 @@ function previousRange(range: DateRange): DateRange {
 
 export async function getReportData(range: DateRange): Promise<ReportData> {
   const prevRange = previousRange(range);
-  const [docs, newEnquiries, prevDocs, prevEnquiries, monthly, inventory] = await Promise.all([
-    fetchRangeDocs(range.from, range.to),
-    countEnquiriesInRange(range.from, range.to),
-    fetchRangeDocs(prevRange.from, prevRange.to),
-    countEnquiriesInRange(prevRange.from, prevRange.to),
-    getMonthlySeries(),
+  const monthly = monthlySpan();
+  const wide = widest([range, prevRange, monthly]);
+  const [wideDocs, enquiryCounts, inventory] = await Promise.all([
+    fetchRangeDocs(wide.from, wide.to),
+    countEnquiriesPerRange([range, prevRange]),
     listInventoryItems({}),
   ]);
+  const docs = docsInRange(wideDocs, range.from, range.to);
+  const prevDocs = docsInRange(wideDocs, prevRange.from, prevRange.to);
+  const monthlyDocs = docsInRange(wideDocs, monthly.from, monthly.to);
 
-  const metrics = metricsFromDocs(docs, newEnquiries);
+  const metrics = metricsFromDocs(docs, enquiryCounts[0]);
   const validSales = docs.orders.filter(
     (order) => order.type === "SALES" && order.status !== "CANCELLED",
   );
@@ -290,10 +328,10 @@ export async function getReportData(range: DateRange): Promise<ReportData> {
     metrics,
     previous: {
       range: prevRange,
-      metrics: metricsFromDocs(prevDocs, prevEnquiries),
+      metrics: metricsFromDocs(prevDocs, enquiryCounts[1]),
     },
     series: buildReportSeries(docs, range.from, range.to),
-    monthly,
+    monthly: buildReportSeries(monthlyDocs, monthly.from, monthly.to),
     salesByProduct,
     expensesByCategory,
     paymentsByMethod,

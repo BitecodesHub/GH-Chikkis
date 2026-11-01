@@ -484,12 +484,20 @@ export async function consentCounts(): Promise<{
   notRecorded: number;
 }> {
   const db = await getDb();
-  const customers = db.collection("customers");
-  const [granted, withdrawn, notRecorded] = await Promise.all([
-    customers.countDocuments({ whatsappConsent: "GRANTED" }),
-    customers.countDocuments({ whatsappConsent: "WITHDRAWN" }),
-    customers.countDocuments({ whatsappConsent: { $nin: ["GRANTED", "WITHDRAWN"] } }),
-  ]);
+  const rows = await db
+    .collection("customers")
+    .aggregate<{ _id: string | null; n: number }>([
+      { $group: { _id: "$whatsappConsent", n: { $sum: 1 } } },
+    ])
+    .toArray();
+  let granted = 0;
+  let withdrawn = 0;
+  let notRecorded = 0;
+  for (const row of rows) {
+    if (row._id === "GRANTED") granted += row.n;
+    else if (row._id === "WITHDRAWN") withdrawn += row.n;
+    else notRecorded += row.n;
+  }
   return { granted, withdrawn, notRecorded };
 }
 
@@ -1690,30 +1698,52 @@ export interface MessagingSnapshot {
   consent: { granted: number; withdrawn: number; notRecorded: number };
 }
 
+/** The desk shows four counters, so they come back in one read instead of four. */
+async function jobStatusCounts(): Promise<{
+  reviewCount: number;
+  queuedCount: number;
+  failedCount: number;
+  simulatedCount: number;
+}> {
+  const db = await getDb();
+  const [row] = await db
+    .collection("notification_jobs")
+    .aggregate<{ byStatus: { _id: string; n: number }[]; review: { n: number }[] }>([
+      {
+        $facet: {
+          byStatus: [{ $group: { _id: "$status", n: { $sum: 1 } } }],
+          review: [{ $match: { needsReview: true } }, { $count: "n" }],
+        },
+      },
+    ])
+    .toArray();
+  const byStatus = new Map((row?.byStatus ?? []).map((entry) => [entry._id, entry.n]));
+  return {
+    reviewCount: row?.review[0]?.n ?? 0,
+    queuedCount: byStatus.get("QUEUED") ?? 0,
+    failedCount: byStatus.get("FAILED") ?? 0,
+    simulatedCount: byStatus.get("SIMULATED") ?? 0,
+  };
+}
+
 export async function getMessagingSnapshot(): Promise<MessagingSnapshot> {
   const settings = await getSettings();
   const modeInfo = messagingModeInfo();
-  const [templates, spend, consent] = await Promise.all([
+  const [templates, spend, consent, counts] = await Promise.all([
     listTemplates(),
     getMonthlySpendState(settings),
     consentCounts(),
-  ]);
-  const db = await getDb();
-  const [reviewCount, queuedCount, failedCount, simulatedCount] = await Promise.all([
-    db.collection("notification_jobs").countDocuments({ needsReview: true }),
-    db.collection("notification_jobs").countDocuments({ status: "QUEUED" }),
-    db.collection("notification_jobs").countDocuments({ status: "FAILED" }),
-    db.collection("notification_jobs").countDocuments({ status: "SIMULATED" }),
+    jobStatusCounts(),
   ]);
   return {
     settings,
     mode: modeInfo.mode,
     liveConfigured: modeInfo.liveConfigured,
     templates,
-    reviewCount,
-    queuedCount,
-    failedCount,
-    simulatedCount,
+    reviewCount: counts.reviewCount,
+    queuedCount: counts.queuedCount,
+    failedCount: counts.failedCount,
+    simulatedCount: counts.simulatedCount,
     spend,
     consent,
   };

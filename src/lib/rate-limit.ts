@@ -35,29 +35,39 @@ export async function rateLimit(input: {
   const collection = db.collection<RateLimitDoc>("rate_limits");
   const _id = keyFor(input.scope, input.identifier);
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + input.windowSeconds * 1000);
-  const existing = await collection.findOne({ _id });
-  if (!existing || existing.expiresAt <= now) {
-    await collection.updateOne(
-      { _id },
-      { $set: { count: 1, expiresAt } },
-      { upsert: true },
-    );
-    return { allowed: true, remaining: input.limit - 1, retryAfterSeconds: 0 };
-  }
-  const updated = await collection.findOneAndUpdate(
-    { _id, expiresAt: { $gt: now } },
-    { $inc: { count: 1 } },
-    { returnDocument: "after" },
+  const windowEnd = new Date(now.getTime() + input.windowSeconds * 1000);
+  // One atomic upsert instead of a read followed by a write: the pair cost two
+  // round trips on every sign-in and let two instances both count themselves
+  // first. Inside the update, a missing or spent window restarts the count.
+  const doc = await collection.findOneAndUpdate(
+    { _id },
+    [
+      {
+        $set: {
+          count: {
+            $cond: {
+              if: { $gt: ["$expiresAt", now] },
+              then: { $add: ["$count", 1] },
+              else: 1,
+            },
+          },
+          expiresAt: {
+            $cond: { if: { $gt: ["$expiresAt", now] }, then: "$expiresAt", else: windowEnd },
+          },
+        },
+      },
+    ],
+    { upsert: true, returnDocument: "after" },
   );
-  const count = updated?.count ?? existing.count + 1;
+  const count = doc?.count ?? 1;
+  const expiresAt = doc?.expiresAt ?? windowEnd;
   const allowed = count <= input.limit;
   return {
     allowed,
     remaining: Math.max(0, input.limit - count),
     retryAfterSeconds: allowed
       ? 0
-      : Math.max(1, Math.ceil((existing.expiresAt.getTime() - now.getTime()) / 1000)),
+      : Math.max(1, Math.ceil((expiresAt.getTime() - now.getTime()) / 1000)),
   };
 }
 

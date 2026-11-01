@@ -1,10 +1,11 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import type { Permission, User } from "@/lib/types";
 import { getDb } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
-import { getUserById, mapUser } from "@/lib/users";
+import { mapUser, type UserDoc } from "@/lib/users";
 import { hasPermission } from "@/lib/permissions";
 import { nowIso } from "@/lib/dates";
 import { env } from "@/lib/env";
@@ -76,52 +77,72 @@ export async function createSession(
   return { token, idleExpiresAt: idleExpiresAt.toISOString() };
 }
 
-export async function getSessionContext(): Promise<SessionContext | null> {
+async function loadSession(): Promise<SessionContext | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   if (!token) return null;
   const db = await getDb();
-  const session = await db.collection<SessionDoc>("sessions").findOne({
-    tokenHash: hashToken(token),
-    revokedAt: { $exists: false },
-  });
-  if (!session) return null;
+  const sessions = db.collection<SessionDoc>("sessions");
+  // The sign-in document and the account behind it come back together: two
+  // round trips to Atlas on the front of every admin screen became one, and
+  // revocation still takes effect on the very next request.
+  const [row] = await sessions
+    .aggregate<SessionDoc & { user: UserDoc | null }>([
+      { $match: { tokenHash: hashToken(token), revokedAt: { $exists: false } } },
+      { $limit: 1 },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+    ])
+    .toArray();
+  if (!row) return null;
   const now = new Date();
-  if (session.expiresAt <= now) {
-    await db
-      .collection<SessionDoc>("sessions")
-      .updateOne({ _id: session._id }, { $set: { revokedAt: nowIso() } });
+  if (row.expiresAt <= now) {
+    await sessions.updateOne({ _id: row._id }, { $set: { revokedAt: nowIso() } });
     return null;
   }
-  const userDoc = await getUserById(session.userId);
+  const userDoc = row.user;
   if (!userDoc || !userDoc.active) {
-    await db
-      .collection<SessionDoc>("sessions")
-      .updateOne({ _id: session._id }, { $set: { revokedAt: nowIso() } });
+    await sessions.updateOne({ _id: row._id }, { $set: { revokedAt: nowIso() } });
     return null;
   }
-  if (session.idleExpiresAt <= now) {
-    await db
-      .collection<SessionDoc>("sessions")
-      .updateOne({ _id: session._id }, { $set: { revokedAt: nowIso() } });
+  if (row.idleExpiresAt <= now) {
+    await sessions.updateOne({ _id: row._id }, { $set: { revokedAt: nowIso() } });
     return null;
   }
-  const lastSeen = new Date(session.lastSeenAt);
+  const lastSeen = new Date(row.lastSeenAt);
   if (now.getTime() - lastSeen.getTime() > 60_000) {
     const settings = await getSettings();
     const nextIdle = new Date(now.getTime() + settings.security.idleMinutes * 60_000);
-    await db.collection<SessionDoc>("sessions").updateOne(
-      { _id: session._id },
+    await sessions.updateOne(
+      { _id: row._id },
       { $set: { lastSeenAt: now.toISOString(), idleExpiresAt: nextIdle } },
     );
-    session.idleExpiresAt = nextIdle;
-    session.lastSeenAt = now.toISOString();
+    row.idleExpiresAt = nextIdle;
   }
   return {
     user: mapUser(userDoc),
-    sessionId: session._id,
-    idleExpiresAt: session.idleExpiresAt.toISOString(),
+    sessionId: row._id,
+    idleExpiresAt: row.idleExpiresAt.toISOString(),
   };
+}
+
+/**
+ * The admin layout checks the sign-in and the page under it checks the
+ * permission, so an uncached lookup paid two Atlas round trips on every screen
+ * of the workspace. React's cache shares one resolution per request; outside a
+ * request it simply calls through, which is what the scripts want.
+ */
+const resolveSession = cache(loadSession);
+
+export function getSessionContext(): Promise<SessionContext | null> {
+  return resolveSession();
 }
 
 export async function getSessionUser(): Promise<User | null> {
@@ -129,9 +150,10 @@ export async function getSessionUser(): Promise<User | null> {
   return context?.user ?? null;
 }
 
-export async function touchSession(): Promise<boolean> {
+/** Extends the idle window and answers with the expiry it just written. */
+export async function touchSession(): Promise<string | null> {
   const context = await getSessionContext();
-  if (!context) return false;
+  if (!context) return null;
   const settings = await getSettings();
   const db = await getDb();
   const nextIdle = new Date(Date.now() + settings.security.idleMinutes * 60_000);
@@ -139,7 +161,7 @@ export async function touchSession(): Promise<boolean> {
     { _id: context.sessionId },
     { $set: { lastSeenAt: nowIso(), idleExpiresAt: nextIdle } },
   );
-  return true;
+  return nextIdle.toISOString();
 }
 
 export async function destroySession(): Promise<void> {

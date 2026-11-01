@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
 import { hasPermission, canSeeMoney } from "@/lib/permissions";
-import { getOutstandingTotalPaise, getReportMetrics } from "@/lib/reports";
+import { getOutstandingTotalPaise, getReportMetricsForWindows } from "@/lib/reports";
 import { listRecentOrders } from "@/lib/orders";
 import { listRecentEnquiries } from "@/lib/enquiries";
 import { listAlertsForUser } from "@/lib/alerts";
@@ -90,16 +90,18 @@ export default async function AdminDashboardPage({
   const today = dateRangeForPreset("today", now);
   const month = dateRangeForPreset("month", now);
 
-  const [todayMetrics, monthMetrics, outstandingTotal, alerts, recentOrders, recentEnquiries, inventory] =
+  const [reportMetrics, outstandingTotal, alerts, recentOrders, recentEnquiries, inventory] =
     await Promise.all([
-      canMoney ? getReportMetrics(today.from, today.to) : null,
-      canMoney ? getReportMetrics(month.from, month.to) : null,
+      canMoney ? getReportMetricsForWindows([today, month]) : null,
       canMoney ? getOutstandingTotalPaise() : null,
       listAlertsForUser(user, { status: "OPEN", limit: 5 }),
       canViewOrders ? listRecentOrders(6) : Promise.resolve([]),
       canManageEnquiries ? listRecentEnquiries(5) : Promise.resolve([]),
       canManageInventory ? listInventoryItems({}) : Promise.resolve([]),
     ]);
+
+  const todayMetrics = reportMetrics?.[0] ?? null;
+  const monthMetrics = reportMetrics?.[1] ?? null;
 
   const firstName = user.name.split(/\s+/)[0] || user.name;
   const activeInventory = inventory.filter((item) => item.active);

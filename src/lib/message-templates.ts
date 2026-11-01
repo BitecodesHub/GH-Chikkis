@@ -96,15 +96,34 @@ interface TemplateVersionDoc {
   by: string;
 }
 
-export async function ensureDefaultTemplates(): Promise<void> {
+let defaultsApplied: Promise<void> | null = null;
+
+/**
+ * Every order screen and the WhatsApp desk ask for the templates, so an
+ * uncached check costs a round trip per message type per render. The list is
+ * only ever filled, never emptied, so one pass per instance is enough.
+ */
+export function ensureDefaultTemplates(): Promise<void> {
+  if (!defaultsApplied) {
+    defaultsApplied = applyDefaultTemplates().catch((error) => {
+      defaultsApplied = null;
+      throw error;
+    });
+  }
+  return defaultsApplied;
+}
+
+async function applyDefaultTemplates(): Promise<void> {
   const db = await getDb();
   const templates = db.collection<TemplateDoc>("message_templates");
   const versions = db.collection<TemplateVersionDoc>("template_versions");
   const now = nowIso();
+  const present = await templates.find({ channel: "WHATSAPP" }).toArray();
+  const missing = TEMPLATE_DEFAULTS.filter(
+    (item) => !present.some((doc) => doc.key === item.type),
+  );
   await Promise.all(
-    TEMPLATE_DEFAULTS.map(async (item) => {
-      const existing = await templates.findOne({ key: item.type, channel: "WHATSAPP" });
-      if (existing) return;
+    missing.map(async (item) => {
       const id = randomUUID();
       try {
         await templates.insertOne({
