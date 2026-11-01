@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ChevronDown, LoaderCircle, Minus, Plus, Save, X } from "lucide-react";
 import { saveOrderAction, type OrderFormState } from "@/app/admin/orders/actions";
-import { ProductArt } from "@/components/site/product-art";
+import { ProductPhoto } from "@/components/site/product-art";
 import { cn } from "@/lib/cn";
 import { formatINR, paiseToInput } from "@/lib/money";
 import {
@@ -16,6 +16,13 @@ import {
 } from "@/lib/types";
 
 const EMPTY_STATE: OrderFormState = { ok: false };
+
+/** The weights this kitchen actually sells by. */
+const WEIGHT_PRESETS = [
+  { grams: 250, label: "250 g" },
+  { grams: 500, label: "500 g" },
+  { grams: 1000, label: "1 kg" },
+];
 
 export interface OrderProductOption {
   id: string;
@@ -46,6 +53,8 @@ interface LineState {
   basis: WeightBasis;
   quantity: string;
   rate: string;
+  /** What the owner last typed into the price box, kept raw until they move on. */
+  price: string;
   adjustment: string;
   notes: string;
 }
@@ -84,6 +93,7 @@ function blankLine(key: string): LineState {
     basis: "PER_UNIT",
     quantity: "1",
     rate: "",
+    price: "",
     adjustment: "",
     notes: "",
   };
@@ -101,6 +111,7 @@ function initialLines(order?: Order): LineState[] {
     basis: item.weightBasis,
     quantity: String(item.quantity),
     rate: toRupees(item.ratePerGramPaise),
+    price: "",
     adjustment: item.adjustmentPaise ? toRupees(item.adjustmentPaise) : "",
     notes: item.notes ?? "",
   }));
@@ -121,13 +132,40 @@ function stepQuantity(value: string, delta: number): string {
   return String(Math.min(999, Math.max(1, current + delta)));
 }
 
+/**
+ * The kitchen quotes a bar, not a gram, so the order line offers the price for
+ * one piece and converts it to the stored per-gram rate. Rates live in whole
+ * paise, so an awkward combination like ₹100 for 300 g settles at ₹99.
+ */
+function piecePrice(line: LineState): string {
+  const paise = parseMoney(line.rate) * Number(line.weight);
+  if (!Number.isFinite(paise) || paise <= 0) return "";
+  return String(Math.round(paise) / 100);
+}
+
+/** Compared in paise per gram: the inputs hold "0.9" and "0.90" for one number. */
+function differsFromCatalogue(
+  line: LineState,
+  option: { grams: number; standardPricePaise: number | null },
+): boolean {
+  if (option.standardPricePaise === null) return false;
+  return parseMoney(line.rate) !== Math.round(option.standardPricePaise / option.grams);
+}
+
+function toRatePerGram(pricePaise: number, grams: number): string {
+  if (!pricePaise || !Number.isFinite(grams) || grams <= 0) return "";
+  return String(Math.round((pricePaise / grams / 100) * 10000) / 10000);
+}
+
 function LineThumb({ product }: { product?: OrderProductOption }) {
   return (
     <span className="relative size-12 shrink-0 overflow-hidden rounded-xl border border-line bg-paper-deep">
-      {product?.image ? (
-        <Image src={product.image} alt="" fill sizes="48px" className="object-cover" />
-      ) : product ? (
-        <ProductArt slug={product.slug} className="size-full p-1.5" />
+      {product ? (
+        product.image ? (
+          <Image src={product.image} alt="" fill sizes="48px" className="object-cover" />
+        ) : (
+          <ProductPhoto slug={product.slug} sizes="48px" />
+        )
       ) : null}
     </span>
   );
@@ -200,9 +238,10 @@ export function OrderForm({
     packagingId: string,
   ): Partial<LineState> => {
     const option = product.packaging.find((entry) => entry.id === packagingId);
-    if (!option) return { packagingId: "" };
+    if (!option) return { packagingId: "", price: "" };
     return {
       packagingId,
+      price: "",
       weight: String(option.grams),
       rate:
         option.standardPricePaise !== null
@@ -230,6 +269,41 @@ export function OrderForm({
       return;
     }
     updateLine(line.key, applyPackaging(line, product, packagingId));
+  };
+
+  const setPiecePrice = (line: LineState, value: string) => {
+    const grams = Number(line.weight);
+    const paise = parseMoney(value);
+    if (!paise || !Number.isFinite(grams) || grams <= 0) {
+      updateLine(line.key, { price: value, rate: paise ? line.rate : "" });
+      return;
+    }
+    updateLine(line.key, { price: value, rate: toRatePerGram(paise, grams) });
+  };
+
+  /**
+   * The price box shows what was typed until the owner leaves it, then settles
+   * on the rate the line can actually hold — paise per gram cannot express every
+   * rupee amount, and a silent ₹226 → ₹225 would otherwise look like a miscount.
+   */
+  const settlePiecePrice = (line: LineState) => {
+    if (!line.price) return;
+    updateLine(line.key, {
+      price: "",
+      rate: toRatePerGram(parseMoney(line.price), Number(line.weight)),
+    });
+  };
+
+  /** Keeps the weight the owner typed and borrows only the catalogue's rate. */
+  const applyCatalogueRate = (
+    line: LineState,
+    option: { grams: number; standardPricePaise: number | null },
+  ) => {
+    if (option.standardPricePaise === null) return;
+    updateLine(line.key, {
+      price: "",
+      rate: toRatePerGram(option.standardPricePaise, option.grams),
+    });
   };
 
   const addLine = () => {
@@ -407,7 +481,7 @@ export function OrderForm({
                         className="object-cover"
                       />
                     ) : (
-                      <ProductArt slug={product.slug} className="size-full p-2" />
+                      <ProductPhoto slug={product.slug} sizes="84px" />
                     )}
                   </span>
                   <span className="mt-1 block truncate text-[0.75rem] font-medium leading-tight">
@@ -535,11 +609,33 @@ export function OrderForm({
                       <input
                         id={`weight-${line.key}`}
                         value={line.weight}
-                        onChange={(event) => updateLine(line.key, { weight: event.target.value })}
+                        onChange={(event) =>
+                          updateLine(line.key, { weight: event.target.value, price: "" })
+                        }
                         inputMode="decimal"
                         className="field"
                         placeholder="500"
                       />
+                      <div className="mt-2 flex gap-1" role="group" aria-label="Quick weights">
+                        {WEIGHT_PRESETS.map((preset) => (
+                          <button
+                            key={preset.grams}
+                            type="button"
+                            onClick={() =>
+                              updateLine(line.key, { weight: String(preset.grams), price: "" })
+                            }
+                            aria-pressed={Number(line.weight) === preset.grams}
+                            className={cn(
+                              "rounded-full border px-2.5 py-1 text-[0.75rem] font-medium transition-colors",
+                              Number(line.weight) === preset.grams
+                                ? "border-olive bg-olive text-paper"
+                                : "border-line text-ink-soft hover:bg-paper-raised",
+                            )}
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                     <div>
                       <label htmlFor={`basis-${line.key}`} className="label">
@@ -556,6 +652,37 @@ export function OrderForm({
                         <option value="PER_UNIT">Weight per unit</option>
                         <option value="TOTAL">Total weight for line</option>
                       </select>
+                      <p className="mt-2 text-[0.75rem] leading-snug text-ink-muted">
+                        {line.basis === "PER_UNIT"
+                          ? "Each piece weighs this much."
+                          : "The whole line weighs this much."}
+                      </p>
+                    </div>
+                    <div>
+                      <label htmlFor={`piece-${line.key}`} className="label">
+                        {line.basis === "PER_UNIT" ? "Price per piece (₹)" : "Price for this weight (₹)"}
+                      </label>
+                      <input
+                        id={`piece-${line.key}`}
+                        value={line.price || piecePrice(line)}
+                        onChange={(event) => setPiecePrice(line, event.target.value)}
+                        onBlur={() => settlePiecePrice(line)}
+                        inputMode="decimal"
+                        className="field"
+                        placeholder={line.weight ? "225" : "Set a weight first"}
+                        disabled={!line.weight}
+                      />
+                      {option?.standardPricePaise != null &&
+                      differsFromCatalogue(line, option) ? (
+                        <button
+                          type="button"
+                          onClick={() => applyCatalogueRate(line, option)}
+                          className="mt-2 text-[0.75rem] font-medium text-olive underline decoration-olive/40 underline-offset-2"
+                        >
+                          Use catalogue{" "}
+                          {formatINR(Math.round(option.standardPricePaise / option.grams))} per gram
+                        </button>
+                      ) : null}
                     </div>
                     <div>
                       <label htmlFor={`rate-${line.key}`} className="label">
@@ -564,7 +691,9 @@ export function OrderForm({
                       <input
                         id={`rate-${line.key}`}
                         value={line.rate}
-                        onChange={(event) => updateLine(line.key, { rate: event.target.value })}
+                        onChange={(event) =>
+                          updateLine(line.key, { rate: event.target.value, price: "" })
+                        }
                         inputMode="decimal"
                         className="field"
                         placeholder="0.90"
@@ -583,7 +712,7 @@ export function OrderForm({
                         placeholder="0"
                       />
                     </div>
-                    <div className="sm:col-span-2 lg:col-span-4">
+                    <div className="sm:col-span-2 lg:col-span-3">
                       <label htmlFor={`notes-${line.key}`} className="label">
                         Line notes (optional)
                       </label>
@@ -597,8 +726,9 @@ export function OrderForm({
                       />
                     </div>
                     <p className="help sm:col-span-2 lg:col-span-4">
-                      The line is weight × rate × quantity. An adjustment adds to it and may be
-                      negative for a discount. Prices stay internal.
+                      Price per piece and rate per gram are the same number seen two ways — change
+                      either, and the box settles on the price this weight can hold. An adjustment
+                      adds to the line and may be negative for a discount. Prices stay internal.
                     </p>
                   </div>
                 ) : null}
@@ -667,7 +797,8 @@ export function OrderForm({
       {!isGift && mode === "create" ? (
         <section className="surface p-5" aria-labelledby="initial-payment">
           <h2 id="initial-payment" className="font-[family-name:var(--font-display)] text-xl">
-            Money received
+            Money received{" "}
+            <span className="text-[0.8125rem] font-normal text-ink-muted">(optional)</span>
           </h2>
           <p className="mt-1 text-[0.875rem] text-ink-soft">
             Leave the amount blank if nothing has come in yet.
