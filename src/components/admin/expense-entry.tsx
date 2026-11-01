@@ -6,7 +6,9 @@ import { LoaderCircle, Package } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { PAYMENT_METHODS } from "@/lib/types";
 import { formatStockQuantity } from "@/lib/quantity";
+import { ingredientArt } from "@/lib/ingredients";
 import { ExpenseForm } from "@/components/admin/expense-form";
+import { IngredientPhoto } from "@/components/admin/ingredient-photo";
 import type { ExpenseFormState } from "@/app/admin/expenses/actions";
 
 export interface StockTile {
@@ -265,7 +267,9 @@ export function ExpenseEntry({
             ) : null}
           </div>
           <ul className="flex flex-wrap gap-2 p-4">
-            {items.map((entry) => (
+            {items.map((entry) => {
+              const art = ingredientArt(entry.name, entry.category);
+              return (
               <li key={entry.id}>
                 <button
                   type="button"
@@ -280,9 +284,13 @@ export function ExpenseEntry({
                   )}
                 >
                   <span className="relative block aspect-square overflow-hidden rounded-lg bg-paper-deep">
-                    <span className="grid size-full place-items-center text-ink-muted">
-                      <Package aria-hidden="true" className="size-6" />
-                    </span>
+                    {art ? (
+                      <IngredientPhoto art={art} sizes="88px" />
+                    ) : (
+                      <span className="grid size-full place-items-center text-ink-muted">
+                        <Package aria-hidden="true" className="size-6" />
+                      </span>
+                    )}
                   </span>
                   <span className="mt-1 block truncate text-[0.75rem] font-medium leading-tight">
                     {entry.name}
@@ -290,7 +298,8 @@ export function ExpenseEntry({
                   <span className="block text-[0.6875rem] text-ink-muted">{entry.unit}</span>
                 </button>
               </li>
-            ))}
+              );
+            })}
           </ul>
           {item ? (
             <StockPurchaseForm

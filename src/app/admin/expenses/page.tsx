@@ -3,8 +3,10 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus, ReceiptText, Search } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { FilterNav } from "@/components/admin/filter-nav";
+import { IngredientPhoto } from "@/components/admin/ingredient-photo";
 import { requirePermission } from "@/lib/auth/session";
 import { expenseCategories, listExpenses } from "@/lib/expenses";
+import { ingredientArt } from "@/lib/ingredients";
 import { dateRangeFromParams, formatDateDDMMYYYY, rangeLabel } from "@/lib/dates";
 import { formatINR } from "@/lib/money";
 import { cn } from "@/lib/cn";
@@ -265,7 +267,9 @@ export default async function AdminExpensesPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
-                {result.items.map((expense) => (
+                {result.items.map((expense) => {
+                  const art = ingredientArt(expense.description, expense.category);
+                  return (
                   <tr key={expense.id} className="hover:bg-paper-raised/60">
                     <td className="px-5 py-3 whitespace-nowrap">
                       {formatDateDDMMYYYY(expense.date)}
@@ -275,11 +279,20 @@ export default async function AdminExpensesPage({
                       </p>
                     </td>
                     <td className="px-5 py-3">
-                      <p className="font-medium">{expense.category}</p>
-                      <p className="text-[0.8125rem] text-ink-soft">{expense.description}</p>
-                      {expense.receiptRef ? (
-                        <p className="text-[0.75rem] text-ink-muted">Receipt {expense.receiptRef}</p>
-                      ) : null}
+                      <div className="flex items-start gap-3">
+                        {art ? (
+                          <span className="relative block size-10 shrink-0 overflow-hidden rounded-md bg-paper-deep">
+                            <IngredientPhoto art={art} sizes="40px" />
+                          </span>
+                        ) : null}
+                        <div className="min-w-0">
+                          <p className="font-medium">{expense.category}</p>
+                          <p className="text-[0.8125rem] text-ink-soft">{expense.description}</p>
+                          {expense.receiptRef ? (
+                            <p className="text-[0.75rem] text-ink-muted">Receipt {expense.receiptRef}</p>
+                          ) : null}
+                        </div>
+                      </div>
                     </td>
                     <td className="hidden px-5 py-3 md:table-cell">{expense.supplier || "—"}</td>
                     <td className="hidden px-5 py-3 md:table-cell">
@@ -300,7 +313,8 @@ export default async function AdminExpensesPage({
                       {formatINR(expense.amountPaise)}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -1,0 +1,83 @@
+{
+  "source": "Wikimedia Commons",
+  "note": "Each photograph is a resized copy of the file named below, used under the licence shown. Open the Commons page for the full licence terms and attribution requirements.",
+  "images": {
+    "groundnut": {
+      "file": "groundnut.jpg",
+      "commons": "File:Roasted Peanuts with shell.jpg",
+      "page": "https://commons.wikimedia.org/wiki/File%3ARoasted_Peanuts%20with%20shell.jpg",
+      "author": "Sanjay Acharya",
+      "license": "CC BY-SA 4.0"
+    },
+    "white-til": {
+      "file": "white-til.jpg",
+      "commons": "File:Sa white sesame seeds.jpg",
+      "page": "https://commons.wikimedia.org/wiki/File%3ASa_white%20sesame%20seeds.jpg",
+      "author": "Sanjay ach",
+      "license": "CC BY-SA 3.0"
+    },
+    "black-til": {
+      "file": "black-til.jpg",
+      "commons": "File:Black sesame.jpg",
+      "page": "https://commons.wikimedia.org/wiki/File%3ABlack_sesame.jpg",
+      "author": "국립국어원",
+      "license": "CC BY-SA 2.0 kr"
+    },
+    "jaggery": {
+      "file": "jaggery.jpg",
+      "commons": "File:Jaggery cubes.jpg",
+      "page": "https://commons.wikimedia.org/wiki/File%3AJaggery_cubes.jpg",
+      "author": "Mangosapiens",
+      "license": "CC BY-SA 4.0"
+    },
+    "ghee": {
+      "file": "ghee.jpg",
+      "commons": "File:Pure Ghee-Homemade-Maharashtra.jpg",
+      "page": "https://commons.wikimedia.org/wiki/File%3APure_Ghee-Homemade-Maharashtra.jpg",
+      "author": "Phadke09",
+      "license": "CC BY-SA 4.0"
+    },
+    "daliya": {
+      "file": "daliya.jpg",
+      "commons": "File:Bulgur.jpg",
+      "page": "https://commons.wikimedia.org/wiki/File%3ABulgur.jpg",
+      "author": "Myself",
+      "license": "CC BY-SA 3.0"
+    },
+    "mamra": {
+      "file": "mamra.jpg",
+      "commons": "File:Flattened Rice (Poha) (49684434042).jpg",
+      "page": "https://commons.wikimedia.org/wiki/File%3AFlattened_Rice%20(Poha)%20(49684434042).jpg",
+      "author": "Ajay Suresh from New York, NY, USA",
+      "license": "CC BY 2.0"
+    },
+    "coconut": {
+      "file": "coconut.jpg",
+      "commons": "File:Grated Coconut - Howrah 2013-10-18 3541.JPG",
+      "page": "https://commons.wikimedia.org/wiki/File%3AGrated_Coconut%20-%20Howrah%202013-10-18%203541.JPG",
+      "author": "Biswarup Ganguly",
+      "license": "CC BY 3.0"
+    },
+    "dry-fruit": {
+      "file": "dry-fruit.jpg",
+      "commons": "File:Walnuts pistachios cashew almonds.jpg",
+      "page": "https://commons.wikimedia.org/wiki/File%3AWalnuts_pistachios%20cashew%20almonds.jpg",
+      "author": "piviso.com",
+      "license": "CC0"
+    },
+    "gift-box": {
+      "file": "gift-box.jpg",
+      "commons": "File:Brown gift box with red ribbon and bow.jpg",
+      "page": "https://commons.wikimedia.org/wiki/File%3ABrown_gift%20box%20with%20red%20ribbon%20and%20bow.jpg",
+      "author": "Shixart1985",
+      "license": "CC BY 2.0"
+    },
+    "kraft-paper": {
+      "file": "kraft-paper.jpg",
+      "commons": "File:Roll brown paper.jpg",
+      "page": "https://commons.wikimedia.org/wiki/File%3ARoll_brown%20paper.jpg",
+      "author": "Tangerineduel",
+      "license": "CC BY-SA 4.0"
+    }
+  }
+}
