@@ -49,9 +49,13 @@ export async function passwordSignIn(formData: FormData): Promise<void> {
 
   await ensureBootstrapAdmin();
   const user = await getUserByEmail(email);
-  if (!user || !verifyPassword(password, user.passwordHash)) {
-    redirect("/login?error=password");
-  }
+  // Verified first and checked after, so an account that is locked out for
+  // other reasons still costs the same scrypt run as a real sign-in.
+  const passwordOk = verifyPassword(password, user?.passwordHash);
+  // The starter password is published in this repository, so it never opens the
+  // live workspace. Give the account a real password with ADMIN_PASSWORD.
+  if (env.isProduction && user?.usesDefaultPassword) redirect("/login?error=starter");
+  if (!passwordOk || !user) redirect("/login?error=password");
   if (!user.active) redirect("/login?error=not-allowed");
 
   await createSession(user._id, {

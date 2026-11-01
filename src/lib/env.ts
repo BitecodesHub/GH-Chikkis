@@ -45,6 +45,8 @@ export const env = {
   mongodbUri: clean(process.env.MONGODB_URI) || "mongodb://127.0.0.1:27017",
   mongodbDb: mongoDbName(),
   ownerEmail: clean(process.env.OWNER_EMAIL).toLowerCase(),
+  adminEmail: clean(process.env.ADMIN_EMAIL).toLowerCase(),
+  adminPassword: clean(process.env.ADMIN_PASSWORD),
   devAuthEnabled: !isProduction && process.env.DEV_AUTH_ENABLED === "true",
   google: {
     clientId: clean(process.env.GOOGLE_CLIENT_ID),

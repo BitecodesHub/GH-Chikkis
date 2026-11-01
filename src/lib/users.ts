@@ -84,30 +84,52 @@ export async function ensureOwnerUser(): Promise<UserDoc | null> {
 }
 
 /**
- * Creates the password sign-in account the owner uses before Google is wired up.
- * Deactivating it is permanent — the row is never re-enabled or re-created.
+ * The email-and-password account for the workspace, so it can be opened before
+ * Google is wired up. In production the credential has to come from the
+ * environment: this repository is public, so a starter password written into
+ * the source is a front door rather than a bootstrap. Locally the starter pair
+ * stays, because the point of it is a clone that runs with no setup.
+ *
+ * Deactivating the account is permanent — the row is never re-enabled.
  */
 export async function ensureBootstrapAdmin(): Promise<UserDoc | null> {
-  const existing = await getUserByEmail(BOOTSTRAP_EMAIL);
-  if (existing) return existing.active ? existing : null;
-  const db = await getDb();
+  // Production needs a password from the environment; the address may keep
+  // defaulting to the starter one, so setting ADMIN_PASSWORD alone is enough
+  // to take back an account that already exists there.
+  const password = env.adminPassword || (env.isProduction ? "" : BOOTSTRAP_PASSWORD);
+  if (!password) return null;
+  const email = env.adminEmail || BOOTSTRAP_EMAIL;
+
+  const existing = await getUserByEmail(email);
+  if (existing) {
+    if (!existing.active) return null;
+    // The configured password replaces a starter one that was never changed,
+    // which doubles as the way back in for an owner who lost it.
+    if (env.adminPassword && existing.usesDefaultPassword) {
+      await setPasswordForUser(existing._id, env.adminPassword);
+      return { ...existing, passwordHash: hashPassword(env.adminPassword), usesDefaultPassword: false };
+    }
+    return existing;
+  }
+
   const now = nowIso();
+  const database = await getDb();
   const doc: UserDoc = {
     _id: randomUUID(),
-    email: BOOTSTRAP_EMAIL,
+    email,
     name: "Admin",
     role: "OWNER",
     permissions: [],
     active: true,
-    passwordHash: hashPassword(BOOTSTRAP_PASSWORD),
-    usesDefaultPassword: true,
+    passwordHash: hashPassword(password),
+    usesDefaultPassword: !env.adminPassword,
     createdAt: now,
     updatedAt: now,
   };
   try {
-    await db.collection<UserDoc>("users").insertOne(doc);
+    await database.collection<UserDoc>("users").insertOne(doc);
   } catch {
-    return getUserByEmail(BOOTSTRAP_EMAIL);
+    return getUserByEmail(email);
   }
   return doc;
 }

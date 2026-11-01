@@ -21,7 +21,10 @@ Sign in at `/login`. With `DEV_AUTH_ENABLED=true` and a non-production build,
 the page offers a development sign-in for the `OWNER_EMAIL` account, so the
 workspace is reachable before Google OAuth is configured. In production, sign-in
 is Google-only for accounts the Owner has approved, plus the email-and-password
-account bootstrapped on first use.
+account given by `ADMIN_PASSWORD` at `ADMIN_EMAIL` (defaulting to
+`admin@gmail.com`). With no `ADMIN_PASSWORD` in production there is no password
+account to sign into; the `admin@gmail.com` / `admin` starter pair is created in
+development only.
 
 ## Scripts
 
