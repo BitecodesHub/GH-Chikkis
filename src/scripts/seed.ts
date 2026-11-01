@@ -15,6 +15,9 @@ interface SeedProduct {
   description: string;
   tastingNote: string;
   displayOrder: number;
+  /** Owner-supplied, one item per line. Absent means we have nothing verified. */
+  ingredients?: string;
+  nutritionHighlights?: string;
 }
 
 const PRODUCTS: SeedProduct[] = [
@@ -25,6 +28,8 @@ const PRODUCTS: SeedProduct[] = [
       "Our founding variety. Groundnuts are roasted slowly and set in a dark, caramelised base, then cut into thick pieces with a clean snap. Nutty, warm and unmistakably handmade.",
     tastingNote: "Deep roasted, toasty, with a bittersweet edge.",
     displayOrder: 1,
+    ingredients: "Premium groundnuts (peanuts)\nPure jaggery\nAmul cow ghee",
+    nutritionHighlights: "Protein\nVitamin E\nMagnesium",
   },
   {
     slug: "white-til-chikki",
@@ -33,6 +38,8 @@ const PRODUCTS: SeedProduct[] = [
       "White sesame, toasted just until fragrant, set in a pale, delicate base. Lighter on the palate than the nut varieties, with a fine, even crunch.",
     tastingNote: "Fragrant, delicate, a clean finish.",
     displayOrder: 2,
+    ingredients: "Premium white sesame seeds\nPure jaggery\nAmul cow ghee",
+    nutritionHighlights: "Calcium\nIron\nDietary Fibre\nMagnesium",
   },
   {
     slug: "black-til-chikki",
@@ -41,6 +48,8 @@ const PRODUCTS: SeedProduct[] = [
       "Black sesame brings an earthier, deeper note. The set is dark, the crunch is fine, and the sweetness stays in the background.",
     tastingNote: "Earthy, intense, quietly sweet.",
     displayOrder: 3,
+    ingredients: "Premium black sesame seeds\nPure jaggery\nAmul cow ghee",
+    nutritionHighlights: "Calcium\nIron\nAntioxidants",
   },
   {
     slug: "dry-fruit-chikki",
@@ -49,6 +58,9 @@ const PRODUCTS: SeedProduct[] = [
       "A richer chikki built around a mix of dry fruits. Heavier, more textured and made in smaller quantities than the everyday varieties.",
     tastingNote: "Rich, layered, celebratory.",
     displayOrder: 4,
+    ingredients:
+      "Premium cashews\nPremium almonds\nPremium pistachios\nPure jaggery\nAmul cow ghee",
+    nutritionHighlights: "Protein\nVitamin E\nMagnesium",
   },
   {
     slug: "coconut-chikki",
@@ -57,6 +69,8 @@ const PRODUCTS: SeedProduct[] = [
       "Dried coconut folded through the base for a softer, chewier bite. A gentler sweetness, closer to a home-style sweet than a hard candy.",
     tastingNote: "Soft, fragrant, gently sweet.",
     displayOrder: 5,
+    ingredients: "Premium coconut\nPure jaggery\nAmul cow ghee",
+    nutritionHighlights: "Dietary Fibre\nHealthy Fats\nManganese\nCopper",
   },
   {
     slug: "mamra-chikki",
@@ -73,6 +87,9 @@ const PRODUCTS: SeedProduct[] = [
       "Cracked wheat gives this chikki its rustic texture. Hearty, less sweet than the nut varieties, and a different kind of crunch altogether.",
     tastingNote: "Rustic, hearty, mellow.",
     displayOrder: 7,
+    ingredients: "Premium daliya (broken wheat)\nPure jaggery\nAmul cow ghee",
+    nutritionHighlights:
+      "Dietary Fibre\nComplex Carbohydrates\nPlant-based Protein\nIron",
   },
 ];
 
@@ -99,16 +116,21 @@ async function seedProducts(): Promise<number> {
   for (const product of PRODUCTS) {
     const existing = await products.findOne({ slug: product.slug });
     if (existing) {
-      // Keep Owner edits; only repair the public listing fields.
-      await products.updateOne(
-        { _id: existing._id },
-        {
-          $set: {
-            displayOrder: product.displayOrder,
-            updatedAt: now,
-          },
-        },
-      );
+      // Keep Owner edits. Repair the listing order, and fill ingredient detail
+      // only where the record has none at all — never over what was typed here.
+      const blank = (value: unknown) => value === undefined || value === null || value === "";
+      const fill: Record<string, unknown> = {
+        displayOrder: product.displayOrder,
+        updatedAt: now,
+      };
+      if (product.ingredients && blank(existing.ingredients)) {
+        fill.ingredients = product.ingredients;
+        fill.ingredientsVerified = true;
+      }
+      if (product.nutritionHighlights && blank(existing.nutritionHighlights)) {
+        fill.nutritionHighlights = product.nutritionHighlights;
+      }
+      await products.updateOne({ _id: existing._id }, { $set: fill });
       continue;
     }
     await products.insertOne({
@@ -117,7 +139,9 @@ async function seedProducts(): Promise<number> {
       name: product.name,
       description: product.description,
       tastingNote: product.tastingNote,
-      ingredientsVerified: false,
+      ingredients: product.ingredients,
+      nutritionHighlights: product.nutritionHighlights,
+      ingredientsVerified: Boolean(product.ingredients),
       active: true,
       media: [],
       displayOrder: product.displayOrder,

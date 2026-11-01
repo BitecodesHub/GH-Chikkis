@@ -10,9 +10,36 @@ import { ArrowLink } from "@/components/site/page-header";
 import { getProductBySlug, listActiveProducts } from "@/lib/products";
 import { getSettings } from "@/lib/settings";
 import { pageMeta } from "@/lib/seo";
+import { toLines } from "@/lib/text";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+}
+
+const COMMON_PRODUCT_NOTE =
+  "All our varieties are prepared using pure jaggery and Amul cow ghee, without added refined sugar or glucose.";
+
+const NUTRITION_DISCLAIMER =
+  "These are nutrients the ingredients naturally carry. Actual content varies with the proportions and the batch.";
+
+function DetailList({ heading, items }: { heading: string; items: string[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div>
+      <h3 className="meta">{heading}</h3>
+      <ul className="mt-2 space-y-1.5 text-[0.875rem] leading-relaxed text-ink-soft">
+        {items.map((item) => (
+          <li key={item} className="flex gap-2">
+            <span
+              aria-hidden="true"
+              className="mt-[0.55em] size-1 shrink-0 rounded-full bg-brass"
+            />
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -62,7 +89,10 @@ export default async function ProductPage({ params }: PageProps) {
   const related = products.filter((item) => item.slug !== product.slug).slice(0, 3);
   const primary = product.media[0];
   const hasVerifiedIngredients =
-    product.ingredientsVerified && Boolean(product.ingredients || product.allergens);
+    product.ingredientsVerified &&
+    Boolean(product.ingredients || product.nutritionHighlights || product.allergens);
+  const ingredients = toLines(product.ingredients);
+  const highlights = toLines(product.nutritionHighlights);
   const packaging = product.packaging.map((option) => ({
     id: option.id,
     label: option.label,
@@ -159,13 +189,12 @@ export default async function ProductPage({ params }: PageProps) {
               </div>
               {hasVerifiedIngredients ? (
                 <>
-                  {product.ingredients ? (
-                    <div className="mt-4">
-                      <h3 className="meta">Ingredients</h3>
-                      <p className="mt-1 whitespace-pre-line text-[0.875rem] leading-relaxed text-ink-soft">
-                        {product.ingredients}
-                      </p>
-                    </div>
+                  <div className="mt-4 grid gap-5 sm:grid-cols-2">
+                    <DetailList heading="Ingredients" items={ingredients} />
+                    <DetailList heading="Nutritional highlights" items={highlights} />
+                  </div>
+                  {highlights.length > 0 ? (
+                    <p className="help mt-3">{NUTRITION_DISCLAIMER}</p>
                   ) : null}
                   {product.allergens ? (
                     <div className="mt-4">
@@ -175,7 +204,12 @@ export default async function ProductPage({ params }: PageProps) {
                       </p>
                     </div>
                   ) : null}
-                  <p className="mt-4 text-[0.75rem] leading-relaxed text-ink-muted">
+                  {ingredients.length > 0 ? (
+                    <p className="mt-4 text-[0.8125rem] leading-relaxed text-ink-soft">
+                      {COMMON_PRODUCT_NOTE}
+                    </p>
+                  ) : null}
+                  <p className="mt-3 text-[0.75rem] leading-relaxed text-ink-muted">
                     Store in a cool, dry place away from direct sunlight and heat. Ask us
                     if you need details for a specific batch.
                   </p>

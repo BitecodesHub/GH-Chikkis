@@ -116,6 +116,7 @@ export async function saveProductAction(
 
   const tastingNote = cleanSingleLine(formData.get("tastingNote"), 300);
   const ingredients = cleanText(formData.get("ingredients"), 2000);
+  const nutritionHighlights = cleanText(formData.get("nutritionHighlights"), 500);
   const allergens = cleanText(formData.get("allergens"), 500);
 
   const displayOrder = Number(formData.get("displayOrder") ?? 0);
@@ -151,6 +152,7 @@ export async function saveProductAction(
     description,
     tastingNote: tastingNote || undefined,
     ingredients: ingredients || undefined,
+    nutritionHighlights: nutritionHighlights || undefined,
     allergens: allergens || undefined,
     ingredientsVerified: formData.get("ingredientsVerified") === "on",
     active: formData.get("active") === "on",

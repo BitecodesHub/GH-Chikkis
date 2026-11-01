@@ -49,6 +49,18 @@ describe("toLines", () => {
   it("turns a textarea into trimmed non-empty lines", () => {
     expect(toLines("Groundnuts\n\n  Jaggery  \n")).toEqual(["Groundnuts", "Jaggery"]);
   });
+
+  it("drops the bullet markers people type into the box", () => {
+    expect(toLines("- Pure jaggery\n• Amul cow ghee\n* Roasted peanuts")).toEqual([
+      "Pure jaggery",
+      "Amul cow ghee",
+      "Roasted peanuts",
+    ]);
+  });
+
+  it("keeps a line that only looks like a bullet, such as a year range or a minus", () => {
+    expect(toLines("2018-2020\n-25%")).toEqual(["2018-2020", "-25%"]);
+  });
 });
 
 describe("slugify", () => {

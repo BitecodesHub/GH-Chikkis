@@ -54,11 +54,12 @@ export function safeFilename(value: string): string {
     .slice(0, 120);
 }
 
+/** Turns a one-item-per-line textarea into list items, dropping typed bullet markers. */
 export function toLines(value: unknown): string[] {
   if (typeof value !== "string") return [];
   return value
     .split("\n")
-    .map((line) => cleanText(line, 500))
+    .map((line) => cleanText(line, 500).replace(/^[-*•]\s+/, "").trim())
     .filter(Boolean);
 }
 

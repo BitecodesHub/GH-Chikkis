@@ -15,6 +15,7 @@ export interface ProductWriteInput {
   description: string;
   tastingNote?: string;
   ingredients?: string;
+  nutritionHighlights?: string;
   allergens?: string;
   ingredientsVerified: boolean;
   active: boolean;

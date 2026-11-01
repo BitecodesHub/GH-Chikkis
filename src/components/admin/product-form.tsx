@@ -242,7 +242,24 @@ export function ProductForm({
                 className="field"
               />
               <p className="help">
-                Only shown publicly once the details have been verified below.
+                One item per line. Only shown publicly once the details have been verified below.
+              </p>
+            </div>
+            <div>
+              <label htmlFor="product-nutrition" className="label">
+                Nutritional highlights
+              </label>
+              <textarea
+                id="product-nutrition"
+                name="nutritionHighlights"
+                defaultValue={product?.nutritionHighlights ?? ""}
+                maxLength={500}
+                rows={3}
+                className="field"
+              />
+              <p className="help">
+                One per line, e.g. Protein, Vitamin E. Name nutrients the ingredients
+                naturally carry — never a per-serving figure we cannot back.
               </p>
             </div>
             <div>

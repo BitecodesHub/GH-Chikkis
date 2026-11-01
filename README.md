@@ -61,6 +61,13 @@ Website copy is editable in the admin under **Website content**. Each page store
 a draft and a published copy, and falls back to the defaults in
 `src/lib/content-schema.ts` for any field that has never been saved.
 
+Per-variety **Ingredients** and **Nutritional highlights** are one item per line
+and appear publicly only when the variety's "details verified" box is ticked.
+`npm run seed` fills those fields where a record has none at all and never
+overwrites what was typed in the admin. Mamra Chikki is the one variety the
+Owner has not supplied ingredient details for, so it still shows the "ask us and
+we will confirm" fallback — that is deliberate, not a bug.
+
 ## Brand assets
 
 - Logo: `public/brand/logo.png` is the Owner's badge (background removed). It
