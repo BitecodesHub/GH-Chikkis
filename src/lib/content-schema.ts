@@ -156,11 +156,11 @@ export function pageDef(page: ContentPageKey) {
 
 export const DEFAULT_CONTENT: Record<ContentPageKey, PageContent> = {
   home: {
-    heroEyebrow: "Ahmedabad · Family kitchen",
-    heroTitle: "A family recipe,",
-    heroTitleAccent: "cut into gold.",
+    heroEyebrow: "Gud ki mithaas, Ghee ki richness.",
+    heroTitle: "Chikki,",
+    heroTitleAccent: "cut by hand.",
     heroIntro:
-      "GH Chikkis is the work of sisters Gopi and Himani — handmade chikki from a family kitchen in Ahmedabad, made the same way since the first batch.",
+      "Seven varieties made by sisters Gopi and Himani in a family kitchen in Ahmedabad — pure jaggery and cow ghee, without added refined sugar or glucose.",
     heroNote:
       "Prices are shared directly. Ask us about the collection, packaging or a bulk order.",
     collectionHeading: "The collection",

@@ -89,7 +89,8 @@ we will confirm" fallback — that is deliberate, not a bug.
   `BRAND_COUPLET` in `src/lib/seo.ts` and appears under the tagline in the
   footer, on the Our Story aside and on the link-preview card. The tagline has
   two sources that must agree: `BRAND_TAGLINE` (page metadata and the card) and
-  the editable copy in **Admin › Settings** (the footer).
+  the editable copy in **Admin › Settings** (the footer). The same line holds
+  the hero eyebrow on the home page, so the headline can stay about the product.
 - Per-variety ingredient lists are supplied by the business and entered in
   **Admin › Products**, where each product has an "ingredients verified" tick
   before the detail shows publicly.

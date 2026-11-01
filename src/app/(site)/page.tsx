@@ -98,8 +98,8 @@ export default async function HomePage() {
           <div>
             <p className="eyebrow enter">{contentText(content, "heroEyebrow")}</p>
             <h1 className="display-xl enter enter-1 mt-5">
-              {contentText(content, "heroTitle")}{" "}
-              <span className="text-terracotta">
+              {contentText(content, "heroTitle")}
+              <span className="block text-terracotta">
                 {contentText(content, "heroTitleAccent")}
               </span>
             </h1>

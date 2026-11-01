@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CONTENT_SCHEMA, DEFAULT_CONTENT } from "./content-schema";
+import { BRAND_COUPLET } from "./seo";
 import { CONTENT_PAGES } from "./types";
 import type { PageContent } from "./types";
 
@@ -54,6 +55,12 @@ describe("the owner's copy rules", () => {
   it("names the founders the way they asked to be named", () => {
     expect(pageStrings("story")).toContain("Himani Shah");
     expect(pageStrings("home")).toContain("Himani");
+  });
+
+  it("opens the hero by naming the sweet, with the couplet above it", () => {
+    const home = DEFAULT_CONTENT.home;
+    expect(home.heroEyebrow).toBe(BRAND_COUPLET);
+    expect(`${home.heroTitle} ${home.heroTitleAccent}`).toMatch(/Chikki.*hand/);
   });
 
   it("lists the whole current collection in the varieties answer", () => {
