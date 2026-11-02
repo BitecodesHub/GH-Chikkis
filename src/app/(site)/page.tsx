@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Diamond } from "@/components/ui/diamond";
+import { Dash } from "@/components/ui/diamond";
 import { ProductCard } from "@/components/site/product-card";
 import { ProductPhoto } from "@/components/site/product-art";
 import { ProcessArt } from "@/components/site/line-art";
@@ -187,7 +187,7 @@ export default async function HomePage() {
               {BRAND_COUPLET}
             </p>
             <div className="mt-6 flex items-center gap-3 text-paper/50">
-              <Diamond className="bg-paper" />
+              <Dash className="bg-paper/50" />
               <span className="text-[0.75rem] uppercase tracking-[0.16em]">
                 Ahmedabad, Gujarat
               </span>
@@ -253,7 +253,7 @@ export default async function HomePage() {
 
       <section className="border-t border-line">
         <div className="container-narrow py-20 text-center md:py-28">
-          <Diamond size="md" className="mx-auto" />
+          <Dash className="mx-auto bg-brass/50" />
           <h2 className="display-l mt-6">{contentText(content, "finalCtaHeading")}</h2>
           <p className="lede mx-auto mt-5 max-w-xl">
             {contentText(content, "finalCtaBody")}

@@ -58,6 +58,7 @@ export async function saveSettingsAction(formData: FormData): Promise<void> {
     instagramUrl: cleanSingleLine(formData.get("instagramUrl"), 300),
     googleReviewUrl: cleanSingleLine(formData.get("googleReviewUrl"), 300),
     addressLine: cleanSingleLine(formData.get("addressLine"), 300),
+    mapsUrl: cleanSingleLine(formData.get("mapsUrl"), 300),
     gstin: cleanSingleLine(formData.get("gstin"), 20).toUpperCase(),
   };
 
@@ -86,6 +87,19 @@ export async function saveSettingsAction(formData: FormData): Promise<void> {
       }
     } catch {
       fail("Enter a Google review link beginning with https:// — paste it from your Google business profile.");
+    }
+  }
+  if (business.mapsUrl) {
+    try {
+      const url = new URL(business.mapsUrl);
+      if (
+        url.protocol !== "https:" ||
+        !/(^|\.)(google\.com|google\.co\.in|goo\.gl)$/i.test(url.hostname)
+      ) {
+        fail("Enter a Google Maps link beginning with https:// — paste it from the Share map pin button.");
+      }
+    } catch {
+      fail("Enter a Google Maps link beginning with https:// — paste it from the Share map pin button.");
     }
   }
   if (business.gstin && !/^[0-9A-Z]{15}$/.test(business.gstin)) {

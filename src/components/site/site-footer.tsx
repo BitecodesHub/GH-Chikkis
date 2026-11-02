@@ -2,6 +2,10 @@ import Link from "next/link";
 import { Mail, MapPin, Star } from "lucide-react";
 import type { BusinessSettings } from "@/lib/types";
 import { BRAND_COUPLET } from "@/lib/seo";
+import { formatPhoneDisplay } from "@/lib/phone";
+import { locationHref, locationLabel } from "@/lib/location";
+import { cn } from "@/lib/cn";
+import { WhatsAppMark } from "./whatsapp-mark";
 import { Wordmark } from "./wordmark";
 
 const EXPLORE_LINKS = [
@@ -46,10 +50,13 @@ export function SiteFooter({
   business,
   whatsappHref,
   logoSrc,
+  clearedForAssistant = false,
 }: {
   business: BusinessSettings;
   whatsappHref: string | null;
   logoSrc?: string | null;
+  /** The floating chat bubble sits over the bottom bar, so leave it room. */
+  clearedForAssistant?: boolean;
 }) {
   const year = new Date().getFullYear();
 
@@ -93,9 +100,10 @@ export function SiteFooter({
                   href={whatsappHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 transition-colors hover:text-paper"
+                  className="inline-flex items-center gap-2 rounded-full border border-paper/25 bg-paper/10 px-4 py-2 font-semibold text-paper transition-colors hover:bg-paper/20"
                 >
-                  WhatsApp
+                  <WhatsAppMark className="size-4" />
+                  {formatPhoneDisplay(business.whatsappNumber)}
                 </a>
               </li>
             ) : null}
@@ -107,19 +115,6 @@ export function SiteFooter({
                 >
                   <Mail aria-hidden="true" className="size-4 text-paper/60" />
                   {business.email}
-                </a>
-              </li>
-            ) : null}
-            {business.instagramUrl ? (
-              <li>
-                <a
-                  href={business.instagramUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 transition-colors hover:text-paper"
-                >
-                  <InstagramMark className="size-4 text-paper/60" />
-                  {instagramHandle(business.instagramUrl)}
                 </a>
               </li>
             ) : null}
@@ -136,6 +131,19 @@ export function SiteFooter({
                 </a>
               </li>
             ) : null}
+            {business.instagramUrl ? (
+              <li>
+                <a
+                  href={business.instagramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 transition-colors hover:text-paper"
+                >
+                  <InstagramMark className="size-4 text-paper/60" />
+                  {instagramHandle(business.instagramUrl)}
+                </a>
+              </li>
+            ) : null}
             <li>
               <Link
                 href="/contact#enquiry"
@@ -144,19 +152,36 @@ export function SiteFooter({
                 Enquiry form
               </Link>
             </li>
-            <li className="flex items-start gap-2 pt-1 text-paper/60">
-              <MapPin aria-hidden="true" className="mt-1 size-4" />
-              <span>
-                {business.city}
-                {business.state ? `, ${business.state}` : ""}
-              </span>
+            <li className="pt-1">
+              <a
+                href={locationHref(business)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-start gap-2 transition-colors hover:text-paper"
+              >
+                <MapPin
+                  aria-hidden="true"
+                  className="mt-1 size-4 shrink-0 text-paper/60 transition-colors group-hover:text-paper"
+                />
+                <span className="leading-relaxed">
+                  {locationLabel(business)}
+                  <span className="mt-0.5 block text-[0.8125rem] text-paper/55 underline-offset-2 group-hover:underline">
+                    Open in Google Maps
+                  </span>
+                </span>
+              </a>
             </li>
           </ul>
         </div>
       </div>
 
       <div className="border-t border-paper/15">
-        <div className="container-page flex flex-col gap-4 py-6 text-[0.8125rem] text-paper/60 sm:flex-row sm:items-center sm:justify-between">
+        <div
+          className={cn(
+            "container-page flex flex-col gap-4 py-6 text-[0.8125rem] text-paper/60 sm:flex-row sm:items-center sm:justify-between",
+            clearedForAssistant && "pe-24 sm:pe-48",
+          )}
+        >
           <p>© {year} {business.name}. All rights reserved.</p>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <Link href="/privacy" className="transition-colors hover:text-paper">

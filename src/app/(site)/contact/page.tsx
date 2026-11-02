@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/site/page-header";
 import { EnquiryForm } from "@/components/site/enquiry-form";
 import { contentText, getPublishedContent } from "@/lib/content";
 import { env } from "@/lib/env";
+import { locationHref, locationLabel } from "@/lib/location";
 import { getProductBySlug } from "@/lib/products";
 import { getSettings } from "@/lib/settings";
 import { pageMeta } from "@/lib/seo";
@@ -129,14 +130,17 @@ export default async function ContactPage({ searchParams }: PageProps) {
               <dl className="mt-4 space-y-3 text-[0.9375rem]">
                 <div>
                   <dt className="meta">Location</dt>
-                  <dd className="mt-0.5">{business.city}{business.state ? `, ${business.state}` : ""}</dd>
+                  <dd className="mt-0.5">
+                    <a
+                      href={locationHref(business)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="link-underline"
+                    >
+                      {locationLabel(business)}
+                    </a>
+                  </dd>
                 </div>
-                {business.addressLine ? (
-                  <div>
-                    <dt className="meta">Address</dt>
-                    <dd className="mt-0.5">{business.addressLine}</dd>
-                  </div>
-                ) : null}
                 {business.email ? (
                   <div>
                     <dt className="meta">Email</dt>

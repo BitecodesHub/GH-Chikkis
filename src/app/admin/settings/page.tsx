@@ -143,7 +143,7 @@ export default async function AdminSettingsPage({
               />
               <p className="help mt-1">
                 Where the “Open in WhatsApp” invoice handoff goes, and the number behind the
-                WhatsApp buttons on the website.
+                WhatsApp buttons and the chat bubble on the website. Leave blank to hide them.
               </p>
             </div>
             <div>
@@ -239,6 +239,28 @@ export default async function AdminSettingsPage({
                 defaultValue={business.addressLine}
                 className="field"
               />
+              <p className="help">
+                Printed on invoices and shown in the website footer. Leave blank to hide it.
+              </p>
+            </div>
+            <div className="md:col-span-2">
+              <label htmlFor="business-maps" className="label">
+                Google Maps link (optional)
+              </label>
+              <input
+                id="business-maps"
+                name="mapsUrl"
+                type="url"
+                maxLength={300}
+                defaultValue={business.mapsUrl}
+                placeholder="https://maps.app.goo.gl/..."
+                className="field"
+              />
+              <p className="help">
+                The footer turns the address into a link that opens this pin in Maps. On Google
+                Maps, press Share, then Copy link. Leave blank and the address links to a search
+                for it instead.
+              </p>
             </div>
             <div>
               <label htmlFor="business-gstin" className="label">

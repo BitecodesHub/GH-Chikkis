@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Script from "next/script";
 import { useEffect, useRef, useSyncExternalStore } from "react";
+import { cn } from "@/lib/cn";
 
 const STORAGE_KEY = "gh-analytics-consent";
 const CHANGE_EVENT = "gh-analytics-consent-change";
@@ -27,7 +28,16 @@ function getServerSnapshot(): Consent {
   return null;
 }
 
-export function AnalyticsConsent({ gaId, nonce }: { gaId: string; nonce?: string }) {
+export function AnalyticsConsent({
+  gaId,
+  nonce,
+  raised = false,
+}: {
+  gaId: string;
+  nonce?: string;
+  /** Keeps the banner clear of the floating WhatsApp button when both show. */
+  raised?: boolean;
+}) {
   const consent = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const configured = useRef(false);
 
@@ -61,7 +71,10 @@ export function AnalyticsConsent({ gaId, nonce }: { gaId: string; nonce?: string
     <div
       role="region"
       aria-label="Analytics cookies"
-      className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md border border-line-strong bg-paper-raised p-5 md:right-6 md:left-auto md:mx-0"
+      className={cn(
+        "fixed inset-x-4 z-50 mx-auto max-w-md border border-line-strong bg-paper-raised p-5 md:right-6 md:left-auto md:mx-0",
+        raised ? "bottom-24" : "bottom-4",
+      )}
     >
       <p className="text-[0.9375rem] font-semibold">Optional analytics</p>
       <p className="mt-2 text-[0.875rem] leading-relaxed text-ink-soft">

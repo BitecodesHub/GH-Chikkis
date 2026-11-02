@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { headers } from "next/headers";
 import { SiteHeader } from "@/components/site/site-header";
 import { SiteFooter } from "@/components/site/site-footer";
+import { WhatsAppAssistant } from "@/components/site/whatsapp-assistant";
 import { AnalyticsConsent } from "@/components/site/analytics-consent";
 import { getPreviewingContent } from "@/lib/content";
 import { getSettings } from "@/lib/settings";
@@ -31,8 +32,22 @@ export async function PublicChrome({ children }: { children: ReactNode }) {
       <main id="main" className={previewing ? "pb-24" : undefined}>
         {children}
       </main>
-      <SiteFooter business={business} whatsappHref={whatsappHref} logoSrc={logoSrc} />
-      {env.gaId ? <AnalyticsConsent gaId={env.gaId} nonce={nonce} /> : null}
+      <SiteFooter
+        business={business}
+        whatsappHref={whatsappHref}
+        logoSrc={logoSrc}
+        clearedForAssistant={Boolean(whatsappHref)}
+      />
+      {whatsappHref ? (
+        <WhatsAppAssistant href={whatsappHref} number={business.whatsappNumber} />
+      ) : null}
+      {env.gaId ? (
+        <AnalyticsConsent
+          gaId={env.gaId}
+          nonce={nonce}
+          raised={Boolean(whatsappHref)}
+        />
+      ) : null}
       {previewing ? (
         <div
           role="status"

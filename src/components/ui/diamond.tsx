@@ -27,3 +27,13 @@ export function Diamond({
     />
   );
 }
+
+/** A hairline rule, for the places the Owner asked for a dash rather than a gem. */
+export function Dash({ className }: { className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn("inline-block h-px w-5 shrink-0 self-center", className)}
+    />
+  );
+}

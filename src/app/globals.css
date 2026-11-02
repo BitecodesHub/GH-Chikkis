@@ -156,10 +156,9 @@
 
   .eyebrow::before {
     content: "";
-    width: 0.5rem;
-    height: 0.5rem;
+    width: 1.25rem;
+    height: 1px;
     background-color: var(--color-brass);
-    transform: rotate(45deg);
     flex: none;
   }
 

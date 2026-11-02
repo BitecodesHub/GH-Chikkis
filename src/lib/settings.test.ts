@@ -12,12 +12,14 @@ describe("default settings", () => {
     expect(business.email).toBe("ghchikkis@gmail.com");
     expect(business.instagramUrl).toBe("https://www.instagram.com/ghchikkis");
     expect(business.googleReviewUrl).toMatch(/^https:\/\/(www\.)?(g\.page|google\.com)\//);
+    expect(business.addressLine).toContain("Paldi");
+    expect(business.addressLine).toContain("380007");
+    expect(business.mapsUrl).toMatch(/^https:\/\/maps\.app\.goo\.gl\//);
   });
 
   it("leaves details we have not been given blank instead of inventing them", () => {
     const { business } = defaultSettings();
     expect(business.whatsappNumber).toBe("");
-    expect(business.addressLine).toBe("");
     expect(business.gstin).toBe("");
   });
 

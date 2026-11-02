@@ -493,6 +493,7 @@ export interface BusinessSettings {
   instagramUrl: string;
   googleReviewUrl: string;
   addressLine: string;
+  mapsUrl: string;
   gstin: string;
 }
 

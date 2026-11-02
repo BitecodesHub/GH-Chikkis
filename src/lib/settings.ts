@@ -26,7 +26,9 @@ export function defaultSettings(): AppSettings {
       phoneDisplay: "",
       instagramUrl: "https://www.instagram.com/ghchikkis",
       googleReviewUrl: "https://g.page/r/CeJDbg29S3ZHEBM/review",
-      addressLine: "",
+      addressLine:
+        "3, Gopal Nivas, Besides Prakruti Tower, Sanjivbaug Society, Near Jainnagar, Paldi, Ahmedabad - 380007",
+      mapsUrl: "https://maps.app.goo.gl/nrx4QFSfjfjV2j7aA",
       gstin: "",
     },
     security: { idleMinutes: 60 },
@@ -61,15 +63,19 @@ async function loadSettings(): Promise<AppSettings> {
     void _id;
     const merged: AppSettings = { ...defaultSettings(), ...settings, business: { ...defaultSettings().business, ...settings.business }, security: { ...defaultSettings().security, ...settings.security }, whatsapp: { ...defaultSettings().whatsapp, ...settings.whatsapp }, invoice: { ...defaultSettings().invoice, ...settings.invoice }, reviews: { ...defaultSettings().reviews, ...settings.reviews }, backup: { ...defaultSettings().backup, ...settings.backup } };
 
-    // Early documents were created with the contact links blank, and a blank
-    // reads as "hidden" to the footer. Fill the account we have been given,
+    // Early documents were created with the contact details blank, and a blank
+    // reads as "hidden" to the footer. Fill what the Owner has since given us,
     // once, so the stored record becomes editable instead of overridden.
-    if (!merged.business.instagramUrl.trim()) {
-      await collection.updateOne(
-        { _id: "global" },
-        { $set: { "business.instagramUrl": defaultSettings().business.instagramUrl } },
-      );
-      merged.business.instagramUrl = defaultSettings().business.instagramUrl;
+    const fills: Array<keyof AppSettings["business"]> = [
+      "instagramUrl",
+      "addressLine",
+      "mapsUrl",
+    ];
+    for (const field of fills) {
+      const wanted = defaultSettings().business[field];
+      if (merged.business[field].trim()) continue;
+      await collection.updateOne({ _id: "global" }, { $set: { [`business.${field}`]: wanted } });
+      merged.business[field] = wanted;
     }
 
     return merged;
