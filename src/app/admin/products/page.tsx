@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowUpRight, Package, Plus } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { MediaLibrary } from "@/components/admin/media-library";
-import { ProductArt } from "@/components/site/product-art";
+import { ProductPhoto } from "@/components/site/product-art";
 import { requirePermission } from "@/lib/auth/session";
 import { formatINR } from "@/lib/money";
 import { listMediaAssets } from "@/lib/media";
@@ -95,7 +95,7 @@ export default async function AdminProductsPage() {
                           className="object-cover"
                         />
                       ) : (
-                        <ProductArt slug={product.slug} />
+                        <ProductPhoto slug={product.slug} sizes="80px" />
                       )}
                     </Link>
 
@@ -134,8 +134,8 @@ export default async function AdminProductsPage() {
                     <p className="mt-0.5">
                       #{product.displayOrder} in the collection ·{" "}
                       {product.media.length === 0
-                        ? "No photos yet"
-                        : `${product.media.length} photo${product.media.length === 1 ? "" : "s"}`}
+                        ? "Standard variety photo"
+                        : `${product.media.length} uploaded photo${product.media.length === 1 ? "" : "s"}`}
                     </p>
                   </div>
 

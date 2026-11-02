@@ -7,16 +7,20 @@ export function ProductArt({ slug, className }: { slug: string; className?: stri
 }
 
 const PHOTOS: Record<string, string> = {
-  "groundnut-chikki": "Groundnut chikki cut into squares in a cream bowl",
+  "groundnut-chikki":
+    "Groundnut chikki bars stacked on a dark stone board, with a bowl of peanuts and a bowl of ghee behind",
   "white-til-chikki":
-    "White til chikki cut into squares in a cream bowl, with a wooden bowl of white sesame behind",
+    "White til chikki bars stacked on a dark stone board, with a bowl of white sesame and a bowl of jaggery behind",
   "black-til-chikki":
-    "Black til chikki cut into squares in a cream bowl, with a wooden bowl of black sesame behind",
-  "dry-fruit-chikki": "Dry fruit chikki with almonds, cashews and pistachios",
-  "coconut-chikki": "Coconut and sesame chikki cut into squares in a cream bowl",
-  "mamra-chikki": "Mamra chikki — light puffed rice bars — stacked in a cream bowl",
+    "Black til chikki bars stacked on a dark wooden board, with a bowl of black sesame behind",
+  "dry-fruit-chikki":
+    "Dry fruit chikki bars studded with almonds, cashews and pistachios, stacked beside a bowl of mixed nuts",
+  "coconut-chikki":
+    "Coconut chikki bars on a dark stone board scattered with coconut shreds, with a halved coconut behind",
+  "mamra-chikki":
+    "Mamra chikki — light puffed rice bars — stacked on a dark stone board, with a bowl of mamra and a bowl of ghee behind",
   "daliya-chikki":
-    "Daliya chikki cut into squares in a cream bowl, with a wooden bowl of cracked wheat behind",
+    "Daliya chikki bars stacked on a dark stone board, with a bowl of roasted daliya and a bowl of ghee behind",
 };
 
 export function ProductPhoto({

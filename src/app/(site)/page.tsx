@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { Diamond } from "@/components/ui/diamond";
 import { ProductCard } from "@/components/site/product-card";
+import { ProductPhoto } from "@/components/site/product-art";
 import { ProcessArt } from "@/components/site/line-art";
 import { GoogleReviews } from "@/components/site/google-reviews";
 import { ArrowLink } from "@/components/site/page-header";
@@ -120,26 +120,16 @@ export default async function HomePage() {
 
           <div className="enter enter-2 relative mx-auto w-full max-w-[28rem]">
             <div className="hero-frame aspect-[4/5]">
-              <Image
-                src="/products/groundnut-chikki.jpg"
-                alt="Groundnut chikki cut into squares in a cream bowl"
-                width={800}
-                height={945}
-                sizes="(min-width: 1024px) 28rem, (min-width: 640px) 26rem, 92vw"
+              <ProductPhoto
+                slug="groundnut-chikki"
                 priority
-                className="hero-photo size-full object-cover"
+                sizes="(min-width: 1024px) 28rem, (min-width: 640px) 26rem, 92vw"
+                className="hero-photo"
               />
             </div>
 
             <div className="absolute -bottom-10 -left-4 aspect-[3/4] w-[37%] -rotate-3 overflow-hidden rounded-2xl border-[5px] border-paper-raised shadow-[0_26px_52px_-26px_rgba(34,29,22,0.66)] sm:-left-9">
-              <Image
-                src="/products/dry-fruit-chikki.jpg"
-                alt="Dry fruit chikki with almonds, cashews and pistachios"
-                width={800}
-                height={945}
-                sizes="11rem"
-                className="size-full object-cover"
-              />
+              <ProductPhoto slug="dry-fruit-chikki" sizes="11rem" />
             </div>
 
             <div className="absolute bottom-5 right-4 grid size-[5.25rem] place-content-center rounded-full bg-paper-raised text-center shadow-[0_14px_30px_-16px_rgba(20,16,10,0.75)] sm:right-5">
