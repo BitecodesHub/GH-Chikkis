@@ -39,28 +39,34 @@ export default async function EnquiryDetailPage({
 
   const [linkedOrder, customer] = await Promise.all([
     enquiry.linkedOrderId ? getOrder(enquiry.linkedOrderId) : Promise.resolve(null),
-    findCustomerByPhone(enquiry.phone),
+    enquiry.phone ? findCustomerByPhone(enquiry.phone) : Promise.resolve(null),
   ]);
   const canOrder = hasPermission(user, "orders.manage");
   const canCreateCustomer = hasPermission(user, "customers.manage");
+
+  const contact = [enquiry.phoneOriginal || enquiry.phone, enquiry.email].filter(Boolean);
+  const hasContact = contact.length > 0;
 
   const customerHref = customer ? `/admin/customers/${customer.id}` : "";
   const startOrderHref =
     customer && !customer.archived
       ? `/admin/orders/new?customerId=${customer.id}&enquiryId=${enquiry.id}`
       : "";
-  const createCustomerHref = `/admin/customers/new?name=${encodeURIComponent(
-    enquiry.name,
-  )}&phone=${encodeURIComponent(enquiry.phoneOriginal)}${
-    enquiry.email ? `&email=${encodeURIComponent(enquiry.email)}` : ""
-  }&enquiryId=${enquiry.id}`;
+  const createSearch = new URLSearchParams({ name: enquiry.name });
+  const enquiryPhone = enquiry.phoneOriginal || enquiry.phone;
+  if (enquiryPhone) createSearch.set("phone", enquiryPhone);
+  if (enquiry.email) createSearch.set("email", enquiry.email);
+  createSearch.set("enquiryId", enquiry.id);
+  const createCustomerHref = `/admin/customers/new?${createSearch.toString()}`;
 
   return (
     <div className="space-y-8">
       <AdminPageHeader
         eyebrow="Enquiry"
         title={enquiry.name}
-        description={`Received ${formatDateTime(enquiry.submittedAt)} · ${enquiry.phoneOriginal}`}
+        description={`Received ${formatDateTime(enquiry.submittedAt)}${
+          hasContact ? ` · ${contact.join(" · ")}` : ""
+        }`}
         actions={
           <>
             <Link href="/admin/enquiries" className="btn btn-quiet btn-sm">
@@ -109,35 +115,37 @@ export default async function EnquiryDetailPage({
                 <dt className="meta">Quantity</dt>
                 <dd className="mt-1 text-[1.0625rem]">{enquiry.quantityKg} kg</dd>
               </div>
+              {enquiry.notSure || enquiry.expectedDate ? (
+                <div>
+                  <dt className="meta">Expected date</dt>
+                  <dd className="mt-1 flex items-center gap-2 text-[1.0625rem]">
+                    <CalendarDays aria-hidden="true" className="size-4 text-brass" />
+                    {enquiry.notSure ? "Not sure yet" : formatDateDDMMYYYY(enquiry.expectedDate)}
+                  </dd>
+                </div>
+              ) : null}
               <div>
-                <dt className="meta">Expected date</dt>
-                <dd className="mt-1 flex items-center gap-2 text-[1.0625rem]">
-                  <CalendarDays aria-hidden="true" className="size-4 text-brass" />
-                  {enquiry.notSure
-                    ? "Not sure yet"
-                    : enquiry.expectedDate
-                      ? formatDateDDMMYYYY(enquiry.expectedDate)
-                      : "No date given"}
-                </dd>
-              </div>
-              <div>
-                <dt className="meta">Phone</dt>
-                <dd className="mt-1">
-                  <a href={`tel:${enquiry.phone}`} className="hover:underline">
-                    {enquiry.phoneOriginal}
-                  </a>
-                </dd>
-              </div>
-              <div>
-                <dt className="meta">Email</dt>
-                <dd className="mt-1">
+                <dt className="meta">How to reply</dt>
+                <dd className="mt-1 space-y-1 text-[0.9375rem]">
+                  {enquiryPhone ? (
+                    <a href={`tel:${enquiry.phone}`} className="block hover:underline">
+                      {enquiryPhone}
+                    </a>
+                  ) : null}
                   {enquiry.email ? (
-                    <a href={`mailto:${enquiry.email}`} className="break-all hover:underline">
+                    <a
+                      href={`mailto:${enquiry.email}`}
+                      className="block break-all hover:underline"
+                    >
                       {enquiry.email}
                     </a>
-                  ) : (
-                    "Not provided"
-                  )}
+                  ) : null}
+                  {!hasContact ? (
+                    <span className="text-ink-muted">
+                      They sent no phone or email. Ask them to continue on WhatsApp, or use
+                      the number they wrote in their message.
+                    </span>
+                  ) : null}
                 </dd>
               </div>
               <div>
@@ -252,8 +260,9 @@ export default async function EnquiryDetailPage({
             ) : canCreateCustomer ? (
               <div className="mt-4 space-y-3">
                 <p className="text-[0.9375rem] text-ink-soft">
-                  This phone number has no customer profile yet. Create one from the enquiry
-                  details, then continue to the order.
+                  {hasContact
+                    ? "This phone number has no customer profile yet. Create one from the enquiry details, then continue to the order."
+                    : "No phone or email on this enquiry. Get their number from the conversation, then create the profile and continue to the order."}
                 </p>
                 <Link
                   href={createCustomerHref}
@@ -275,15 +284,22 @@ export default async function EnquiryDetailPage({
               Contact
             </h2>
             <ul className="mt-4 space-y-3 text-[0.9375rem]">
-              <li>
-                <a
-                  href={`tel:${enquiry.phone}`}
-                  className="flex items-center gap-3 hover:underline"
-                >
-                  <Phone aria-hidden="true" className="size-4 text-brass" />
-                  {enquiry.phoneOriginal}
-                </a>
-              </li>
+              {enquiryPhone ? (
+                <li>
+                  <a
+                    href={`tel:${enquiry.phone}`}
+                    className="flex items-center gap-3 hover:underline"
+                  >
+                    <Phone aria-hidden="true" className="size-4 text-brass" />
+                    {enquiryPhone}
+                  </a>
+                </li>
+              ) : (
+                <li className="flex items-start gap-3 text-ink-muted">
+                  <Phone aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-brass" />
+                  No phone number was given
+                </li>
+              )}
               {enquiry.email ? (
                 <li>
                   <a

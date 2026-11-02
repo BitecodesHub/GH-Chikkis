@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { submitEnquiry, type EnquiryFormState } from "@/app/(site)/contact/actions";
 
 const INITIAL: EnquiryFormState = { ok: false };
@@ -28,7 +28,6 @@ function turnstileApi(): TurnstileApi | null {
 
 export function EnquiryForm({
   startedAt,
-  today,
   whatsappHref,
   productContext,
   formNote,
@@ -36,7 +35,6 @@ export function EnquiryForm({
   turnstileNonce,
 }: {
   startedAt: string;
-  today: string;
   whatsappHref: string | null;
   productContext: { slug: string; packaging: string; label: string } | null;
   formNote: string;
@@ -44,7 +42,6 @@ export function EnquiryForm({
   turnstileNonce?: string;
 }) {
   const [state, formAction, pending] = useActionState(submitEnquiry, INITIAL);
-  const [notSure, setNotSure] = useState(false);
   const statusRef = useRef<HTMLDivElement>(null);
   const turnstileContainer = useRef<HTMLDivElement>(null);
   const turnstileInput = useRef<HTMLInputElement>(null);
@@ -126,9 +123,6 @@ export function EnquiryForm({
           {state.message}
         </p>
         <div className="mt-7 flex flex-wrap gap-3">
-          <Link href="/contact#enquiry" className="btn btn-outline">
-            Send another enquiry
-          </Link>
           {handoff ? (
             <a
               href={handoff}
@@ -139,6 +133,9 @@ export function EnquiryForm({
               Continue on WhatsApp
             </a>
           ) : null}
+          <Link href="/contact#enquiry" className="btn btn-outline">
+            Send another enquiry
+          </Link>
         </div>
       </div>
     );
@@ -221,55 +218,7 @@ export function EnquiryForm({
           ) : null}
         </div>
 
-        <div>
-          <label className="label" htmlFor="phone">
-            Phone
-          </label>
-          <input
-            className={errors.phone ? "field field-error" : "field"}
-            id="phone"
-            name="phone"
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            required
-            maxLength={20}
-            aria-invalid={errors.phone ? true : undefined}
-            aria-describedby={errors.phone ? "phone-error" : "phone-help"}
-          />
-          {errors.phone ? (
-            <p className="error-text" id="phone-error">
-              {errors.phone}
-            </p>
-          ) : (
-            <p className="help" id="phone-help">
-              We reply on this number by phone or WhatsApp.
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label className="label" htmlFor="email">
-            Email <span className="font-normal text-ink-muted">(optional)</span>
-          </label>
-          <input
-            className={errors.email ? "field field-error" : "field"}
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            maxLength={200}
-            aria-invalid={errors.email ? true : undefined}
-            aria-describedby={errors.email ? "email-error" : undefined}
-          />
-          {errors.email ? (
-            <p className="error-text" id="email-error">
-              {errors.email}
-            </p>
-          ) : null}
-        </div>
-
-        <div>
+        <div className="sm:col-span-2">
           <label className="label" htmlFor="quantityKg">
             Quantity in kilograms
           </label>
@@ -297,63 +246,30 @@ export function EnquiryForm({
           )}
         </div>
 
-        <div>
-          <label className="label" htmlFor="expectedDate">
-            Expected date
+        <div className="sm:col-span-2">
+          <label className="label" htmlFor="details">
+            Details <span className="font-normal text-ink-muted">(optional)</span>
           </label>
-          <input
-            className={errors.expectedDate ? "field field-error" : "field"}
-            id="expectedDate"
-            name="expectedDate"
-            type="date"
-            min={today}
-            disabled={notSure}
-            required={!notSure}
-            aria-invalid={errors.expectedDate ? true : undefined}
-            aria-describedby={errors.expectedDate ? "date-error" : undefined}
+          <textarea
+            className={errors.details ? "field field-error" : "field"}
+            id="details"
+            name="details"
+            rows={4}
+            maxLength={1500}
+            placeholder="Varieties you like, the occasion, packaging, your city…"
+            aria-invalid={errors.details ? true : undefined}
+            aria-describedby={errors.details ? "details-error" : "details-help"}
           />
-          {errors.expectedDate ? (
-            <p className="error-text" id="date-error">
-              {errors.expectedDate}
+          {errors.details ? (
+            <p className="error-text" id="details-error">
+              {errors.details}
             </p>
-          ) : null}
-          <label className="mt-3 flex min-h-11 cursor-pointer items-center gap-2.5 text-[0.875rem] text-ink-soft">
-            <input
-              type="checkbox"
-              name="notSure"
-              value="1"
-              checked={notSure}
-              onChange={(event) => setNotSure(event.target.checked)}
-              className="size-4 accent-olive"
-            />
-            Not sure yet
-          </label>
+          ) : (
+            <p className="help" id="details-help">
+              Want a call back? Put your number here. Otherwise we reply on WhatsApp.
+            </p>
+          )}
         </div>
-      </div>
-
-      <div className="mt-5">
-        <label className="label" htmlFor="details">
-          Details <span className="font-normal text-ink-muted">(optional)</span>
-        </label>
-        <textarea
-          className={errors.details ? "field field-error" : "field"}
-          id="details"
-          name="details"
-          rows={4}
-          maxLength={1500}
-          placeholder="Varieties you like, the occasion, packaging, your city…"
-          aria-invalid={errors.details ? true : undefined}
-          aria-describedby={errors.details ? "details-error" : "details-help"}
-        />
-        {errors.details ? (
-          <p className="error-text" id="details-error">
-            {errors.details}
-          </p>
-        ) : (
-          <p className="help" id="details-help">
-            The more you tell us, the faster we can confirm price and availability.
-          </p>
-        )}
       </div>
 
       {turnstileSiteKey ? (

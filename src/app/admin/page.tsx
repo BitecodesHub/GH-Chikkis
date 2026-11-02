@@ -361,13 +361,19 @@ export default async function AdminDashboardPage({
               </p>
             ) : (
               <ul className="divide-y divide-line">
-                {recentEnquiries.map((enquiry) => (
+                {recentEnquiries.map((enquiry) => {
+                  const contact = [
+                    enquiry.phoneOriginal || enquiry.phone,
+                    enquiry.email,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ");
+                  return (
                   <li key={enquiry.id} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-4">
                     <div className="min-w-0 flex-1">
                       <p className="text-[0.9375rem] font-medium">{enquiry.name}</p>
                       <p className="mt-0.5 text-[0.8125rem] text-ink-muted">
-                        {enquiry.phoneOriginal || enquiry.phone}
-                        {enquiry.email ? ` · ${enquiry.email}` : ""}
+                        {contact || "No contact left on the form"}
                       </p>
                     </div>
                     <div className="text-right">
@@ -375,14 +381,17 @@ export default async function AdminDashboardPage({
                       <p className="text-[0.75rem] text-ink-muted">
                         {enquiry.notSure
                           ? "Date not decided"
-                          : `Expected ${formatDateDDMMYYYY(enquiry.expectedDate)}`}
+                          : enquiry.expectedDate
+                            ? `Expected ${formatDateDDMMYYYY(enquiry.expectedDate)}`
+                            : ""}
                       </p>
                     </div>
                     <p className="w-full text-[0.75rem] text-ink-muted sm:w-auto">
                       {relativeTime(enquiry.submittedAt)}
                     </p>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             )}
           </section>

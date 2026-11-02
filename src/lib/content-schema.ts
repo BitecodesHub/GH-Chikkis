@@ -394,7 +394,7 @@ export const DEFAULT_CONTENT: Record<ContentPageKey, PageContent> = {
       {
         heading: "What we collect",
         body: [
-          "When you send an enquiry, we collect your name, phone number, optional email address, the quantity you are interested in and an optional expected date.",
+          "When you send an enquiry we keep the name, quantity and message you type. The enquiry form no longer asks for your phone number, email address or expected date — if you share any of those with us later, we record them alongside the enquiry so we can reply.",
           "If you become a customer, we may also keep your address, company details, order history, payment records and notes needed to run the business.",
         ],
       },

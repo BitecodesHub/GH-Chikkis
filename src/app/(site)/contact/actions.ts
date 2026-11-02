@@ -4,8 +4,7 @@ import { headers } from "next/headers";
 import { z } from "zod";
 import { createEnquiry } from "@/lib/enquiries";
 import { getProductBySlug } from "@/lib/products";
-import { businessToday, formatDateDDMMYYYY, parseBusinessDate } from "@/lib/dates";
-import { normalizePhone, waLink } from "@/lib/phone";
+import { waLink } from "@/lib/phone";
 import { rateLimit, requestIp } from "@/lib/rate-limit";
 import { getSettings } from "@/lib/settings";
 import { verifyTurnstileToken } from "@/lib/turnstile";
@@ -19,22 +18,10 @@ export interface EnquiryFormState {
 
 const schema = z.object({
   name: z.string().trim().min(2, "Please enter your name.").max(120, "That name is too long."),
-  phone: z.string().trim().min(7, "Enter a phone number we can reach you on.").max(20, "That phone number is too long."),
-  email: z
-    .string()
-    .trim()
-    .max(200)
-    .default("")
-    .refine(
-      (value) => value === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
-      "Enter a valid email address, or leave it blank.",
-    ),
   quantityKg: z.coerce
     .number()
     .positive("Enter the quantity in kilograms.")
     .max(100000, "That quantity looks too large — please tell us directly."),
-  expectedDate: z.string().trim().max(20).default(""),
-  notSure: z.string().optional(),
   details: z
     .string()
     .trim()
@@ -49,7 +36,7 @@ const schema = z.object({
 
 const FEEDBACK = {
   success:
-    "Thank you — your enquiry has reached us. We will reply on the number you shared.",
+    "Thank you — your enquiry has reached us. Continue on WhatsApp and we will pick it up from there.",
   spam: "Thank you — your enquiry has reached us.",
   rate: "Too many enquiries from here in a short time. Please try again later, or message us on WhatsApp.",
   verify: "Please complete the quick verification and send your enquiry again.",
@@ -82,45 +69,15 @@ export async function submitEnquiry(
     return { ok: true, message: FEEDBACK.spam };
   }
 
-  const normalized = normalizePhone(data.phone);
-  if (!normalized) {
-    return {
-      ok: false,
-      errors: { phone: "Enter a valid phone number, including the country code if outside India." },
-    };
-  }
-
-  const notSure = data.notSure === "1";
-  let expectedDate: string | null = null;
-  if (!notSure) {
-    if (!data.expectedDate) {
-      return {
-        ok: false,
-        errors: { expectedDate: "Choose an expected date, or select “Not sure yet”." },
-      };
-    }
-    const parsedDate = parseBusinessDate(data.expectedDate);
-    if (!parsedDate) {
-      return { ok: false, errors: { expectedDate: "Enter a valid date." } };
-    }
-    if (parsedDate < businessToday()) {
-      return { ok: false, errors: { expectedDate: "Please choose today or a future date." } };
-    }
-    expectedDate = parsedDate;
-  }
-
   const requestHeaders = await headers();
   const ip = requestIp(requestHeaders);
-  const [ipLimit, phoneLimit] = await Promise.all([
-    rateLimit({ scope: "enquiry:ip", identifier: ip, limit: 8, windowSeconds: 600 }),
-    rateLimit({
-      scope: "enquiry:phone",
-      identifier: normalized.phone,
-      limit: 5,
-      windowSeconds: 86400,
-    }),
-  ]);
-  if (!ipLimit.allowed || !phoneLimit.allowed) {
+  const ipLimit = await rateLimit({
+    scope: "enquiry:ip",
+    identifier: ip,
+    limit: 8,
+    windowSeconds: 600,
+  });
+  if (!ipLimit.allowed) {
     return { ok: false, message: FEEDBACK.rate };
   }
 
@@ -128,14 +85,16 @@ export async function submitEnquiry(
     return { ok: false, message: FEEDBACK.verify };
   }
 
-  let notes: string | undefined;
+  let productLine: string | undefined;
   if (data.product) {
     const product = await getProductBySlug(data.product);
     if (product && product.active) {
       const packaging = product.packaging.find((option) => option.label === data.packaging);
-      notes = `Website enquiry: ${product.name}${packaging ? ` — ${packaging.label}` : ""}`;
+      productLine = `${product.name}${packaging ? ` — ${packaging.label}` : ""}`;
     }
   }
+  let notes: string | undefined;
+  if (productLine) notes = `Website enquiry: ${productLine}`;
   if (data.details) {
     notes = [notes, data.details].filter(Boolean).join("\n");
   }
@@ -143,12 +102,7 @@ export async function submitEnquiry(
   try {
     await createEnquiry({
       name: data.name,
-      phone: normalized.phone,
-      phoneOriginal: normalized.phoneOriginal,
-      email: data.email || undefined,
       quantityKg: data.quantityKg,
-      expectedDate,
-      notSure,
       notes,
     });
   } catch (error) {
@@ -158,7 +112,7 @@ export async function submitEnquiry(
 
   const enquiryText = [
     `Hello GH Chikkis! Website enquiry from ${data.name.trim()}.`,
-    `${data.quantityKg} kg${expectedDate ? `, needed by ${formatDateDDMMYYYY(expectedDate)}` : ", date still flexible"}`,
+    productLine ? `${productLine} · ${data.quantityKg} kg` : `${data.quantityKg} kg`,
     data.details.trim(),
   ]
     .filter(Boolean)
@@ -166,9 +120,7 @@ export async function submitEnquiry(
 
   return {
     ok: true,
-    message: `${FEEDBACK.success}${
-      expectedDate ? ` Expected date: ${formatDateDDMMYYYY(expectedDate)}.` : ""
-    }`,
+    message: FEEDBACK.success,
     whatsappHref: await handoffHref(enquiryText),
   };
 }

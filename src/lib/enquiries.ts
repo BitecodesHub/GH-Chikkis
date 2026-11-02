@@ -13,13 +13,14 @@ interface EnquiryDoc extends Omit<Enquiry, "id"> {
 
 export interface CreateEnquiryInput {
   name: string;
-  phone: string;
-  phoneOriginal: string;
-  email?: string;
   quantityKg: number;
-  expectedDate: string | null;
-  notSure: boolean;
   notes?: string;
+  /** The website form stopped asking; stored enquiries still carry these. */
+  phone?: string;
+  phoneOriginal?: string;
+  email?: string;
+  expectedDate?: string | null;
+  notSure?: boolean;
 }
 
 export async function createEnquiry(input: CreateEnquiryInput): Promise<Enquiry> {
@@ -27,12 +28,12 @@ export async function createEnquiry(input: CreateEnquiryInput): Promise<Enquiry>
   const doc: EnquiryDoc = {
     _id: randomUUID(),
     name: input.name,
-    phone: input.phone,
-    phoneOriginal: input.phoneOriginal,
+    phone: input.phone ?? "",
+    phoneOriginal: input.phoneOriginal ?? "",
     email: input.email || undefined,
     quantityKg: input.quantityKg,
-    expectedDate: input.expectedDate,
-    notSure: input.notSure,
+    expectedDate: input.expectedDate ?? null,
+    notSure: input.notSure ?? false,
     submittedAt: nowIso(),
     notes: input.notes,
     whatsappConsent: false,
@@ -45,7 +46,11 @@ export async function createEnquiry(input: CreateEnquiryInput): Promise<Enquiry>
       severity: "INFO",
       title: `New enquiry from ${doc.name}`,
       message: `${doc.quantityKg} kg${
-        doc.expectedDate ? ` · expected ${formatDateDDMMYYYY(doc.expectedDate)}` : " · date not decided"
+        doc.expectedDate
+          ? ` · expected ${formatDateDDMMYYYY(doc.expectedDate)}`
+          : doc.notSure
+            ? " · date not decided"
+            : ""
       }`,
       permission: "enquiries.manage",
       link: "/admin/enquiries",

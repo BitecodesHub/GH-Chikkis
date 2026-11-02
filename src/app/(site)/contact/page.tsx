@@ -13,12 +13,11 @@ import {
   waLink,
   WHATSAPP_GENERAL_MESSAGE,
 } from "@/lib/phone";
-import { businessToday } from "@/lib/dates";
 
 export const metadata: Metadata = pageMeta({
   title: "Contact",
   description:
-    "Send a chikki enquiry to GH Chikkis — variety, quantity and date. We confirm availability, packaging and price directly with you.",
+    "Send a chikki enquiry to GH Chikkis — variety and quantity, in three short fields. We confirm availability, packaging and price directly with you.",
   path: "/contact",
 });
 
@@ -67,13 +66,12 @@ export default async function ContactPage({ searchParams }: PageProps) {
           <div>
             <h2 className="display-m">Send an enquiry</h2>
             <p className="lede mt-3 max-w-xl">
-              Tell us the variety, quantity and date you have in mind. We will confirm
-              availability, packaging and price directly.
+              Three short fields. Tell us the variety and how much you need, and we will
+              confirm availability, packaging and price directly.
             </p>
             <div className="mt-8">
               <EnquiryForm
                 startedAt={new Date().toISOString()}
-                today={businessToday()}
                 whatsappHref={whatsappHref}
                 productContext={productContext}
                 formNote={contentText(content, "formNote")}
@@ -114,7 +112,7 @@ export default async function ContactPage({ searchParams }: PageProps) {
                 </li>
                 <li className="flex gap-3">
                   <span className="meta mt-0.5">02</span>
-                  <span>We reply on the number you shared.</span>
+                  <span>We reply on WhatsApp, or on the contact you leave in your details.</span>
                 </li>
                 <li className="flex gap-3">
                   <span className="meta mt-0.5">03</span>

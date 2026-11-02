@@ -103,7 +103,14 @@ export default async function AdminEnquiriesPage({
           </div>
         ) : (
           <ul className="divide-y divide-line">
-            {items.map((enquiry) => (
+            {items.map((enquiry) => {
+              const contact = [
+                enquiry.phoneOriginal || enquiry.phone,
+                enquiry.email,
+              ]
+                .filter(Boolean)
+                .join(" · ");
+              return (
               <li key={enquiry.id} className="px-5 py-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
@@ -124,16 +131,15 @@ export default async function AdminEnquiriesPage({
                       ) : null}
                     </div>
                     <p className="mt-1 text-[0.9375rem] text-ink-soft">
-                      {enquiry.phoneOriginal}
-                      {enquiry.email ? ` · ${enquiry.email}` : ""}
+                      {contact || "No contact left on the form"}
                     </p>
                     <p className="mt-1 text-[0.875rem] text-ink-muted">
-                      {enquiry.quantityKg} kg ·{" "}
+                      {enquiry.quantityKg} kg
                       {enquiry.notSure
-                        ? "Date not decided"
+                        ? " · Date not decided"
                         : enquiry.expectedDate
-                          ? `Expected ${formatDateDDMMYYYY(enquiry.expectedDate)}`
-                          : "No date given"}
+                          ? ` · Expected ${formatDateDDMMYYYY(enquiry.expectedDate)}`
+                          : ""}
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
@@ -157,7 +163,8 @@ export default async function AdminEnquiriesPage({
                   </div>
                 </div>
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
 

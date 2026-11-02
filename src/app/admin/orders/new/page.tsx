@@ -49,7 +49,7 @@ export default async function NewOrderPage({
   const options = productOptions(products);
 
   let customer = customerId ? await getCustomer(customerId) : null;
-  if (!customer && enquiry) {
+  if (!customer && enquiry?.phone) {
     const match = await findCustomerByPhone(enquiry.phone);
     if (match && !match.archived) {
       const search = new URLSearchParams({ customerId: match.id, enquiryId: enquiry.id });
@@ -61,7 +61,8 @@ export default async function NewOrderPage({
   const createSearch = new URLSearchParams({ next: "/admin/orders/new" });
   if (enquiry) {
     createSearch.set("name", enquiry.name);
-    createSearch.set("phone", enquiry.phoneOriginal);
+    const enquiryPhone = enquiry.phoneOriginal || enquiry.phone;
+    if (enquiryPhone) createSearch.set("phone", enquiryPhone);
     if (enquiry.email) createSearch.set("email", enquiry.email);
     createSearch.set("enquiryId", enquiry.id);
   }
@@ -86,12 +87,12 @@ export default async function NewOrderPage({
         <div className="flex flex-wrap items-center gap-3 border border-brass/40 bg-paper-raised px-4 py-3 text-[0.875rem]">
           <Inbox aria-hidden="true" className="size-4 text-brass" />
           <p className="text-ink-soft">
-            From the enquiry by <strong>{enquiry.name}</strong> · {enquiry.quantityKg} kg ·{" "}
+            From the enquiry by <strong>{enquiry.name}</strong> · {enquiry.quantityKg} kg
             {enquiry.notSure
-              ? "date not decided"
+              ? " · date not decided"
               : enquiry.expectedDate
-                ? `expected ${formatDateDDMMYYYY(enquiry.expectedDate)}`
-                : "no date"}
+                ? ` · expected ${formatDateDDMMYYYY(enquiry.expectedDate)}`
+                : ""}
             .
           </p>
           <Link
