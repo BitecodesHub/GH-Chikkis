@@ -142,7 +142,10 @@ export async function startPreviewAction(formData: FormData): Promise<void> {
     path: "/",
     maxAge: 60 * 30,
   });
-  redirect(pageDef(page).path);
+  // Public pages are served from Vercel's edge cache under their plain address,
+  // and that cache ignores cookies. The marker puts this request on its own key
+  // so the draft reaches the screen instead of somebody else's cached copy.
+  redirect(`${pageDef(page).path}?preview=1`);
 }
 
 export async function stopPreviewAction(): Promise<void> {

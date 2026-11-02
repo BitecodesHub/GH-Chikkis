@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Instrument_Sans } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { env } from "@/lib/env";
 import {
   BRAND_NAME,
@@ -67,7 +68,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${bodyFace.variable} ${displayFace.variable}`}
       suppressHydrationWarning
     >
-      <body>{children}</body>
+      <body>
+        {children}
+        <SpeedInsights />
+      </body>
     </html>
   );
 }

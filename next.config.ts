@@ -14,6 +14,22 @@ const nextConfig: NextConfig = {
     ],
   },
   serverExternalPackages: ["mongodb"],
+  headers: () => [
+    // Vercel serves `public/` files with `must-revalidate`, so every photograph
+    // on a page costs a trip to the function region. Five minutes at the edge
+    // with a day of stale-serving keeps repeat visits instant while a swapped
+    // picture still lands on the next fetch after the window opens.
+    ...["products", "brand", "ingredients", "templates", "uploads"].map((dir) => ({
+      source: `/${dir}/:path*`,
+      headers: [
+        {
+          key: "Cache-Control",
+          value: "public, max-age=0, s-maxage=300, stale-while-revalidate=86400",
+        },
+        { key: "X-Content-Type-Options", value: "nosniff" },
+      ],
+    })),
+  ],
   experimental: {
     serverActions: {
       // The import desk and the media picker accept a 50 MB file. Vercel caps a

@@ -60,8 +60,12 @@ export function readCacheHas(key: string): boolean {
 }
 
 export const READ_TTL = {
-  /** Settings, page copy and the catalogue: written by the admin, rarely by hand. */
-  content: 60_000,
+  /**
+   * Settings, page copy and the catalogue: written by the admin, rarely by hand.
+   * The workspace invalidates its own instance on save, so this window is only
+   * how long the *other* warm instances take to notice an edit made elsewhere.
+   */
+  content: 120_000,
   /** Google data refreshes daily, so a longer window costs nothing. */
   reviews: 10 * 60_000,
 } as const;
