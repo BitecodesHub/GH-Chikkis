@@ -19,12 +19,13 @@ Live site: https://gh-chikkis.vercel.app
 
 Sign in at `/login`. With `DEV_AUTH_ENABLED=true` and a non-production build,
 the page offers a development sign-in for the `OWNER_EMAIL` account, so the
-workspace is reachable before Google OAuth is configured. In production, sign-in
-is Google-only for accounts the Owner has approved, plus the email-and-password
-account given by `ADMIN_PASSWORD` at `ADMIN_EMAIL` (defaulting to
-`admin@gmail.com`). With no `ADMIN_PASSWORD` in production there is no password
-account to sign into; the `admin@gmail.com` / `admin` starter pair is created in
-development only.
+workspace is reachable before Google OAuth is configured. Every environment also
+has the email-and-password account: `admin@gmail.com` / `admin`, or
+`ADMIN_EMAIL` / `ADMIN_PASSWORD` when those are set. Because the starter pair is
+published in this repository, the dashboard keeps warning at the top of every
+admin page until `admin@gmail.com` has a password of its own — change it in
+**Settings › Your sign-in** (8 characters minimum), or set `ADMIN_PASSWORD`,
+which replaces a starter password on the next sign-in attempt.
 
 ## Scripts
 

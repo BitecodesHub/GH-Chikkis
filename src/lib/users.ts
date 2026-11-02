@@ -85,19 +85,18 @@ export async function ensureOwnerUser(): Promise<UserDoc | null> {
 
 /**
  * The email-and-password account for the workspace, so it can be opened before
- * Google is wired up. In production the credential has to come from the
- * environment: this repository is public, so a starter password written into
- * the source is a front door rather than a bootstrap. Locally the starter pair
- * stays, because the point of it is a clone that runs with no setup.
+ * Google is wired up. ADMIN_PASSWORD overrides the starter pair; leave it unset
+ * and `admin@gmail.com` / `admin` signs in everywhere, including production.
+ * That pair is published in this repository, so the account keeps
+ * `usesDefaultPassword` until it is changed in Settings › Your sign-in — the
+ * dashboard shows a banner at the top of every page until then.
  *
  * Deactivating the account is permanent — the row is never re-enabled.
  */
 export async function ensureBootstrapAdmin(): Promise<UserDoc | null> {
-  // Production needs a password from the environment; the address may keep
-  // defaulting to the starter one, so setting ADMIN_PASSWORD alone is enough
-  // to take back an account that already exists there.
-  const password = env.adminPassword || (env.isProduction ? "" : BOOTSTRAP_PASSWORD);
-  if (!password) return null;
+  // A configured password is also the way back in for an owner who lost the
+  // account, because it replaces a starter hash that was never changed below.
+  const password = env.adminPassword || BOOTSTRAP_PASSWORD;
   const email = env.adminEmail || BOOTSTRAP_EMAIL;
 
   const existing = await getUserByEmail(email);

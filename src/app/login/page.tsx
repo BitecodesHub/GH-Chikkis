@@ -23,8 +23,6 @@ const ERRORS: Record<string, string> = {
   "google-off": "Google sign-in is not configured yet.",
   "google-failed": "Google sign-in could not be completed. Please try again.",
   password: "That email and password combination did not match an account.",
-  starter:
-    "This account still has the starter password, so it no longer signs anyone in. Set a real one with the ADMIN_PASSWORD environment variable, or turn on Google sign-in.",
   rate: "Too many sign-in attempts. Please wait a few minutes.",
   "dev-off": "Development sign-in is not enabled.",
   "dev-email": "Enter the email of an approved account.",
