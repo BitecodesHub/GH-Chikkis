@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Wordmark } from "./wordmark";
@@ -26,10 +26,29 @@ function isActive(pathname: string, href: string): boolean {
 
 export function SiteHeader({ logoSrc }: { logoSrc?: string | null }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const logoRef = useRef<HTMLDivElement>(null);
   const home = pathname === "/";
+
+  // Below the desktop breakpoint the only copy of the menu sits in a drawer that
+  // is `hidden` until it opens, so its links never enter the viewport and Next
+  // never prefetches them — measured on a phone, a drawer tap still cost half a
+  // second. Ask for those six payloads directly, but only once the browser is
+  // idle: six background fetches during the hero download would slow the page
+  // the visitor is reading to help the one they might tap.
+  useEffect(() => {
+    if (window.matchMedia("(min-width: 1024px)").matches) return;
+    const run = () => NAV_ITEMS.forEach((item) => router.prefetch(item.href));
+    const handle = typeof window.requestIdleCallback === "function"
+      ? window.requestIdleCallback(run, { timeout: 4000 })
+      : window.setTimeout(run, 1500);
+    return () => {
+      if (typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(handle);
+      else window.clearTimeout(handle);
+    };
+  }, [router]);
 
   useEffect(() => {
     if (!open) return;
