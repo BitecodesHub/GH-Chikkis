@@ -93,13 +93,17 @@ export function proxy(request: NextRequest) {
     response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
     response.headers.set("X-Robots-Tag", "noindex, nofollow");
   } else if (cacheablePublicPage(request, pathname)) {
-    // `Cache-Control` stays `no-store` so a browser re-checks the edge every
-    // visit; this header is Vercel's instruction to answer from Mumbai instead
-    // of waking the function in another continent.
-    response.headers.set(
-      "Vercel-CDN-Cache-Control",
-      `public, s-maxage=${HTML_S_MAXAGE}, stale-while-revalidate=${HTML_STALE_WHILE_REVALIDATE}`,
-    );
+    // Next.js marks every public page dynamic because the layout reads the
+    // request nonce and the draft-preview cookie, so it answers with
+    // `private, no-store` — and Vercel's CDN refuses any response carrying
+    // `private` or `no-store`. Both headers are set here: `Cache-Control` so
+    // the cache decision has something it will accept, and
+    // `Vercel-CDN-Cache-Control` because it outranks every other header.
+    // `max-age=0` keeps browsers revalidating, so nobody is served a stale
+    // copy; only the edge holds one.
+    const ttl = `public, max-age=0, s-maxage=${HTML_S_MAXAGE}, stale-while-revalidate=${HTML_STALE_WHILE_REVALIDATE}`;
+    response.headers.set("Cache-Control", ttl);
+    response.headers.set("Vercel-CDN-Cache-Control", ttl);
   }
   return response;
 }

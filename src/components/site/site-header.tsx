@@ -81,11 +81,15 @@ export function SiteHeader({ logoSrc }: { logoSrc?: string | null }) {
             <Wordmark logoSrc={logoSrc} />
           </div>
 
+          {/* These pages read a request header, so Next calls them dynamic and its
+              default prefetch stops at the shared layout — a click would still wait
+              on a full server render. `prefetch={true}` asks for the page payload. */}
           <nav aria-label="Main" className="nav-segment absolute left-1/2 hidden -translate-x-1/2 items-center lg:flex">
             {NAV_ITEMS.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={true}
                 aria-current={isActive(pathname, item.href) ? "page" : undefined}
                 data-active={isActive(pathname, item.href) ? "true" : undefined}
                 className="nav-segment-item"

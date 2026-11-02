@@ -704,6 +704,12 @@
   .skip-link:focus-visible {
     top: 1rem;
   }
+
+  .skeleton {
+    background-color: var(--color-line);
+    border-radius: var(--radius-pill);
+    animation: skeleton-breathe 1.4s ease-in-out infinite;
+  }
 }
 
 @layer utilities {
@@ -809,10 +815,24 @@
       0 6px 16px -10px rgb(34 29 22 / 0.4);
   }
 
+  @keyframes skeleton-breathe {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .reveal {
       opacity: 1;
       transform: none;
+    }
+
+    .skeleton {
+      animation: none;
     }
   }
 }
