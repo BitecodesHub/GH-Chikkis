@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AtSign, Mail, MapPin, Star } from "lucide-react";
+import { Mail, MapPin, Star } from "lucide-react";
 import type { BusinessSettings } from "@/lib/types";
 import { BRAND_COUPLET } from "@/lib/seo";
 import { Wordmark } from "./wordmark";
@@ -20,6 +20,26 @@ function instagramHandle(url: string): string {
   } catch {
     return "Instagram";
   }
+}
+
+/** lucide-react dropped brand glyphs, so the Instagram outline is drawn here. */
+function InstagramMark({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+      <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+    </svg>
+  );
 }
 
 export function SiteFooter({
@@ -98,7 +118,7 @@ export function SiteFooter({
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 transition-colors hover:text-paper"
                 >
-                  <AtSign aria-hidden="true" className="size-4 text-paper/60" />
+                  <InstagramMark className="size-4 text-paper/60" />
                   {instagramHandle(business.instagramUrl)}
                 </a>
               </li>

@@ -59,7 +59,20 @@ async function loadSettings(): Promise<AppSettings> {
   if (existing) {
     const { _id, ...settings } = existing;
     void _id;
-    return { ...defaultSettings(), ...settings, business: { ...defaultSettings().business, ...settings.business }, security: { ...defaultSettings().security, ...settings.security }, whatsapp: { ...defaultSettings().whatsapp, ...settings.whatsapp }, invoice: { ...defaultSettings().invoice, ...settings.invoice }, reviews: { ...defaultSettings().reviews, ...settings.reviews }, backup: { ...defaultSettings().backup, ...settings.backup } };
+    const merged: AppSettings = { ...defaultSettings(), ...settings, business: { ...defaultSettings().business, ...settings.business }, security: { ...defaultSettings().security, ...settings.security }, whatsapp: { ...defaultSettings().whatsapp, ...settings.whatsapp }, invoice: { ...defaultSettings().invoice, ...settings.invoice }, reviews: { ...defaultSettings().reviews, ...settings.reviews }, backup: { ...defaultSettings().backup, ...settings.backup } };
+
+    // Early documents were created with the contact links blank, and a blank
+    // reads as "hidden" to the footer. Fill the account we have been given,
+    // once, so the stored record becomes editable instead of overridden.
+    if (!merged.business.instagramUrl.trim()) {
+      await collection.updateOne(
+        { _id: "global" },
+        { $set: { "business.instagramUrl": defaultSettings().business.instagramUrl } },
+      );
+      merged.business.instagramUrl = defaultSettings().business.instagramUrl;
+    }
+
+    return merged;
   }
   const defaults = defaultSettings();
   await collection.updateOne(
