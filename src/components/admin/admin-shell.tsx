@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   BarChart3,
@@ -190,6 +190,7 @@ function NavContent({
   onNavigate?: () => void;
   onSignOut?: () => void;
 }) {
+  const router = useRouter();
   return (
     <div className="flex h-full flex-col">
       <div className="px-5 pt-6 pb-5">
@@ -242,6 +243,11 @@ function NavContent({
                     <li key={item.href}>
                       <Link
                         href={item.href}
+                        // The default warm-up only fetches the shared layout, so the
+                        // click still waits for the page. Ask for the page on aim.
+                        prefetch={false}
+                        onPointerEnter={() => router.prefetch(item.href)}
+                        onFocus={() => router.prefetch(item.href)}
                         onClick={onNavigate}
                         aria-current={active ? "page" : undefined}
                         className={cn(

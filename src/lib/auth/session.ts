@@ -116,10 +116,14 @@ async function loadSession(): Promise<SessionContext | null> {
     await sessions.updateOne({ _id: row._id }, { $set: { revokedAt: nowIso() } });
     return null;
   }
-  const lastSeen = new Date(row.lastSeenAt);
-  if (now.getTime() - lastSeen.getTime() > 60_000) {
-    const settings = await getSettings();
-    const nextIdle = new Date(now.getTime() + settings.security.idleMinutes * 60_000);
+  const settings = await getSettings();
+  const idleMs = settings.security.idleMinutes * 60_000;
+  // Extending the window on every visit put a write in front of most admin
+  // screens — an Atlas round trip before the page could read anything. The
+  // client renews the window while the workspace has focus, so the sign-in
+  // here only moves once half of it is spent.
+  if (row.idleExpiresAt.getTime() - now.getTime() < idleMs / 2) {
+    const nextIdle = new Date(now.getTime() + idleMs);
     await sessions.updateOne(
       { _id: row._id },
       { $set: { lastSeenAt: now.toISOString(), idleExpiresAt: nextIdle } },

@@ -60,7 +60,9 @@ const EXCLUDED_COLLECTIONS = new Set(["sessions", "rate_limits", "backup_runs"])
 const FILE_PREFIX = "ghchikkis-";
 
 function backupDir(): string {
-  return path.resolve(process.cwd(), env.backup.localDir || ".backups");
+  // Runtime data, not a build asset: without the ignore the tracer copies the
+  // whole project into every server bundle.
+  return path.resolve(/* turbopackIgnore: true */ process.cwd(), env.backup.localDir || ".backups");
 }
 
 function requireKey(): string {
@@ -220,7 +222,7 @@ async function writeLocalBackupFile(
 export async function verifyBackupFile(fileName: string): Promise<BackupVerification> {
   const secret = requireKey();
   const safe = safeFileName(fileName);
-  const file = await readFile(path.join(backupDir(), safe));
+  const file = await readFile(path.join(/* turbopackIgnore: true */ backupDir(), safe));
   const payload = parsePayload(decryptBuffer(file, secret));
   const counts: Record<string, number> = {};
   let documentCount = 0;
@@ -244,7 +246,7 @@ export async function decodeBackupFile(
 ): Promise<{ fileName: string; payload: BackupPayload; verification: BackupVerification }> {
   const secret = requireKey();
   const safe = safeFileName(fileName);
-  const file = await readFile(path.join(backupDir(), safe));
+  const file = await readFile(path.join(/* turbopackIgnore: true */ backupDir(), safe));
   const payload = parsePayload(decryptBuffer(file, secret));
   const verification = await verifyBackupFile(safe);
   return { fileName: safe, payload, verification };
@@ -254,12 +256,12 @@ export async function listBackupFiles(): Promise<
   { name: string; sizeBytes: number; modifiedAt: string }[]
 > {
   try {
-    const names = await readdir(backupDir());
+    const names = await readdir(/* turbopackIgnore: true */ backupDir());
     const files = await Promise.all(
       names
         .filter((name) => name.startsWith(FILE_PREFIX) && name.endsWith(".gcb"))
         .map(async (name) => {
-          const info = await stat(path.join(backupDir(), name));
+          const info = await stat(path.join(/* turbopackIgnore: true */ backupDir(), name));
           return { name, sizeBytes: info.size, modifiedAt: info.mtime.toISOString() };
         }),
     );
@@ -281,7 +283,7 @@ async function pruneOldBackups(currentFileName: string): Promise<number> {
     if (index === 0) continue;
     if (new Date(file.modifiedAt).getTime() >= cutoff) continue;
     try {
-      await unlink(path.join(backupDir(), file.name));
+      await unlink(path.join(/* turbopackIgnore: true */ backupDir(), file.name));
       removed += 1;
     } catch {
       // A missing or locked old file must not fail a completed backup.
