@@ -66,8 +66,14 @@ export async function saveSettingsAction(formData: FormData): Promise<void> {
   if (business.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(business.email)) {
     fail("Enter a valid business email address, or leave it blank.");
   }
-  if (business.whatsappNumber && !normalizePhone(business.whatsappNumber)) {
-    fail("Enter a valid WhatsApp number, including the country code.");
+  if (business.whatsappNumber) {
+    const normalized = normalizePhone(business.whatsappNumber);
+    if (!normalized) {
+      fail("Enter a valid WhatsApp number, including the country code.");
+    }
+    // Store the full international form so links and invoices never carry a
+    // bare 10-digit number.
+    business.whatsappNumber = `+${normalized.phone}`;
   }
   if (business.instagramUrl) {
     try {

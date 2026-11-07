@@ -33,7 +33,9 @@ export function maskPhone(phone: string): string {
 }
 
 export function waLink(phone: string, message: string): string {
-  const digits = phone.replace(/\D/g, "");
+  // Normalize first: a 10-digit number saved without its country code makes a
+  // wa.me address WhatsApp cannot open.
+  const digits = normalizePhone(phone)?.phone ?? phone.replace(/\D/g, "");
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
 

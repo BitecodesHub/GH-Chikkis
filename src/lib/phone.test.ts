@@ -49,4 +49,8 @@ describe("waLink", () => {
       "https://wa.me/919876543210?text=Bulk%20order%3F%20250%20g",
     );
   });
+
+  it("adds the country code to a bare 10-digit number", () => {
+    expect(waLink("9876543210", "Hi")).toBe("https://wa.me/919876543210?text=Hi");
+  });
 });
