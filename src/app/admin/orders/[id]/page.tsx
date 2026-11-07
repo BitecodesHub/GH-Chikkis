@@ -115,6 +115,13 @@ export default async function OrderDetailPage({
 
   const isGift = order.type === "GIFT";
   const isSales = order.type === "SALES";
+  // Customers collect from the shop or arrange their own porter, so new orders
+  // carry no delivery details. Older and imported ones still can, and their
+  // charge is part of the total, so those keep the panel.
+  const hasDelivery =
+    order.delivery.method !== "HOME_COLLECTION" ||
+    order.delivery.chargePaise > 0 ||
+    Boolean(order.delivery.notes);
   const canManage = hasPermission(user, "orders.manage");
   const canPayments = hasPermission(user, "payments.manage");
   const canRecordCost = hasPermission(user, "expenses.manage");
@@ -242,7 +249,10 @@ export default async function OrderDetailPage({
             : isGift
               ? "Gifting · excluded from revenue"
               : "Sales",
-        ].join(" · ")}
+          order.expectedDate ? `Expected ${formatDateDDMMYYYY(order.expectedDate)}` : "",
+        ]
+          .filter(Boolean)
+          .join(" · ")}
         actions={
           <>
             <Link href="/admin/orders" className="btn btn-quiet btn-sm">
@@ -457,12 +467,14 @@ export default async function OrderDetailPage({
                 <dt className="text-ink-soft">Subtotal</dt>
                 <dd>{formatINR(order.subtotalPaise)}</dd>
               </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-ink-soft">
-                  Delivery · {DELIVERY_METHOD_LABELS[order.delivery.method]}
-                </dt>
-                <dd>{formatINR(order.delivery.chargePaise)}</dd>
-              </div>
+              {order.delivery.chargePaise > 0 ? (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-ink-soft">
+                    Delivery · {DELIVERY_METHOD_LABELS[order.delivery.method]}
+                  </dt>
+                  <dd>{formatINR(order.delivery.chargePaise)}</dd>
+                </div>
+              ) : null}
               <div className="flex justify-between gap-4 border-t border-line pt-2 font-medium">
                 <dt>{isGift ? "Gift value (not invoiced)" : "Total"}</dt>
                 <dd>{formatINR(order.totalPaise)}</dd>
@@ -922,38 +934,34 @@ export default async function OrderDetailPage({
             ) : null}
           </section>
 
-          <section className="surface p-5" aria-labelledby="order-delivery">
-            <h2
-              id="order-delivery"
-              className="flex items-center gap-2 font-[family-name:var(--font-display)] text-xl"
-            >
-              <Truck aria-hidden="true" className="size-4 text-brass" />
-              Delivery
-            </h2>
-            <dl className="mt-3 space-y-2 text-[0.9375rem]">
-              <div className="flex justify-between gap-3">
-                <dt className="text-ink-muted">Method</dt>
-                <dd>{DELIVERY_METHOD_LABELS[order.delivery.method]}</dd>
-              </div>
-              {!isGift ? (
+          {hasDelivery ? (
+            <section className="surface p-5" aria-labelledby="order-delivery">
+              <h2
+                id="order-delivery"
+                className="flex items-center gap-2 font-[family-name:var(--font-display)] text-xl"
+              >
+                <Truck aria-hidden="true" className="size-4 text-brass" />
+                Delivery
+              </h2>
+              <dl className="mt-3 space-y-2 text-[0.9375rem]">
                 <div className="flex justify-between gap-3">
-                  <dt className="text-ink-muted">Charge</dt>
-                  <dd>{formatINR(order.delivery.chargePaise)}</dd>
+                  <dt className="text-ink-muted">Method</dt>
+                  <dd>{DELIVERY_METHOD_LABELS[order.delivery.method]}</dd>
                 </div>
+                {!isGift ? (
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-ink-muted">Charge</dt>
+                    <dd>{formatINR(order.delivery.chargePaise)}</dd>
+                  </div>
+                ) : null}
+              </dl>
+              {order.delivery.notes ? (
+                <p className="mt-3 border-t border-line pt-3 whitespace-pre-wrap text-[0.875rem] text-ink-soft">
+                  {order.delivery.notes}
+                </p>
               ) : null}
-              <div className="flex justify-between gap-3">
-                <dt className="text-ink-muted">Expected</dt>
-                <dd>
-                  {order.expectedDate ? formatDateDDMMYYYY(order.expectedDate) : "Not set"}
-                </dd>
-              </div>
-            </dl>
-            {order.delivery.notes ? (
-              <p className="mt-3 border-t border-line pt-3 whitespace-pre-wrap text-[0.875rem] text-ink-soft">
-                {order.delivery.notes}
-              </p>
-            ) : null}
-          </section>
+            </section>
+          ) : null}
 
           {isGift ? (
             <section className="surface p-5" aria-labelledby="order-gift">
@@ -1114,7 +1122,7 @@ export default async function OrderDetailPage({
                     <input type="hidden" name="idempotencyKey" value={randomUUID()} />
                     <button type="submit" className="btn btn-solid btn-sm">
                       <Send aria-hidden="true" className="size-4" />
-                      Send invoice details
+                      {messageMode.mode === "LIVE" ? "Send invoice details" : "Save test message"}
                     </button>
                     <span className="text-[0.75rem] text-ink-muted">
                       Uses the invoice-details template and the current order.

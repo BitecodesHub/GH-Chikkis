@@ -40,7 +40,6 @@ interface NavItem {
   icon: LucideIcon;
   permission?: Permission;
   exact?: boolean;
-  soon?: boolean;
 }
 
 const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
@@ -223,22 +222,6 @@ function NavContent({
                     ? pathname === item.href
                     : pathname === item.href || pathname.startsWith(`${item.href}/`);
                   const Icon = item.icon;
-                  if (item.soon) {
-                    return (
-                      <li key={item.href}>
-                        <span
-                          aria-disabled="true"
-                          className="flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2 text-[0.875rem] text-paper/35"
-                        >
-                          <Icon aria-hidden="true" className="size-4" />
-                          <span className="flex-1">{item.label}</span>
-                          <span className="rounded-full border border-paper/15 px-1.5 py-0.5 text-[0.5625rem] uppercase tracking-[0.1em]">
-                            Soon
-                          </span>
-                        </span>
-                      </li>
-                    );
-                  }
                   return (
                     <li key={item.href}>
                       <Link
