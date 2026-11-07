@@ -47,8 +47,13 @@ export async function passwordSignIn(formData: FormData): Promise<void> {
   });
   if (!limit.allowed) redirect("/login?error=rate");
 
-  await ensureBootstrapAdmin();
-  const user = await getUserByEmail(email);
+  // Bootstrapping already read the account it looks after, so signing in with
+  // that address does not pay for the same read twice.
+  const bootstrapped = await ensureBootstrapAdmin();
+  const user =
+    bootstrapped && bootstrapped.email.trim().toLowerCase() === email
+      ? bootstrapped
+      : await getUserByEmail(email);
   // Verified first and checked after, so an account that is locked out for
   // other reasons still costs the same scrypt run as a real sign-in.
   const passwordOk = verifyPassword(password, user?.passwordHash);
@@ -59,14 +64,16 @@ export async function passwordSignIn(formData: FormData): Promise<void> {
     ip: requestIp(requestHeaders),
     userAgent: requestHeaders.get("user-agent") ?? undefined,
   });
-  await recordSignIn(user._id);
-  await recordAudit({
-    actor: mapUser(user),
-    action: "auth.signin",
-    entityType: "session",
-    entityId: user._id,
-    summary: `Signed in with email and password as ${user.email}`,
-  });
+  await Promise.all([
+    recordSignIn(user._id),
+    recordAudit({
+      actor: mapUser(user),
+      action: "auth.signin",
+      entityType: "session",
+      entityId: user._id,
+      summary: `Signed in with email and password as ${user.email}`,
+    }),
+  ]);
   redirect("/admin");
 }
 
