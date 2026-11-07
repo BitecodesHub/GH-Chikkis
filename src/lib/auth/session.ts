@@ -85,22 +85,27 @@ async function loadSession(): Promise<SessionContext | null> {
   const sessions = db.collection<SessionDoc>("sessions");
   // The sign-in document and the account behind it come back together: two
   // round trips to Atlas on the front of every admin screen became one, and
-  // revocation still takes effect on the very next request.
-  const [row] = await sessions
-    .aggregate<SessionDoc & { user: UserDoc | null }>([
-      { $match: { tokenHash: hashToken(token), revokedAt: { $exists: false } } },
-      { $limit: 1 },
-      {
-        $lookup: {
-          from: "users",
-          localField: "userId",
-          foreignField: "_id",
-          as: "user",
+  // revocation still takes effect on the very next request. The idle setting
+  // rides along in the same wave instead of waiting behind it.
+  const [rows, settings] = await Promise.all([
+    sessions
+      .aggregate<SessionDoc & { user: UserDoc | null }>([
+        { $match: { tokenHash: hashToken(token), revokedAt: { $exists: false } } },
+        { $limit: 1 },
+        {
+          $lookup: {
+            from: "users",
+            localField: "userId",
+            foreignField: "_id",
+            as: "user",
+          },
         },
-      },
-      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-    ])
-    .toArray();
+        { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+      ])
+      .toArray(),
+    getSettings(),
+  ]);
+  const [row] = rows;
   if (!row) return null;
   const now = new Date();
   if (row.expiresAt <= now) {
@@ -116,7 +121,6 @@ async function loadSession(): Promise<SessionContext | null> {
     await sessions.updateOne({ _id: row._id }, { $set: { revokedAt: nowIso() } });
     return null;
   }
-  const settings = await getSettings();
   const idleMs = settings.security.idleMinutes * 60_000;
   // Extending the window on every visit put a write in front of most admin
   // screens — an Atlas round trip before the page could read anything. The

@@ -10,9 +10,10 @@ const globalForMongo = globalThis as unknown as {
 export function getMongoClient(): Promise<MongoClient> {
   if (!globalForMongo.mongoClientPromise) {
     const client = new MongoClient(env.mongodbUri, {
-      // A dashboard render asks for six reads at once. A pool of five made the
-      // sixth wait for a connection, which on Atlas costs a full round trip.
-      maxPoolSize: 10,
+      // A dashboard render asks for a dozen reads at once. A pool of ten made
+      // the last few wait for a connection, which on Atlas costs a full round
+      // trip, so the pool is wider than the busiest single screen.
+      maxPoolSize: 24,
       serverSelectionTimeoutMS: 5000,
       connectTimeoutMS: 5000,
       retryWrites: true,

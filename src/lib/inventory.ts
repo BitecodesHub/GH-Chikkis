@@ -190,34 +190,37 @@ export async function listInventoryItems(options: {
       { category: { $regex: escaped, $options: "i" } },
     ];
   }
-  const docs = await db
-    .collection<InventoryItemDoc>("inventory_items")
-    .find(filter)
-    .sort({ active: -1, name: 1 })
-    .limit(300)
-    .toArray();
-  const ids = docs.map((doc) => String(doc._id));
-  if (ids.length === 0) return [];
-  const totals = await db
-    .collection<InventoryMovementDoc>("inventory_movements")
-    .aggregate<{ _id: string; total: number }>([
-      { $match: { itemId: { $in: ids } } },
-      {
-        $group: {
-          _id: "$itemId",
-          total: {
-            $sum: {
-              $cond: [
-                { $eq: ["$type", "USAGE"] },
-                { $multiply: ["$quantity", -1] },
-                "$quantity",
-              ],
+  // The movement totals do not need the item ids first: grouping every movement
+  // and picking the wanted ids afterwards lets both reads share one wave instead
+  // of one waiting behind the other.
+  const [docs, totals] = await Promise.all([
+    db
+      .collection<InventoryItemDoc>("inventory_items")
+      .find(filter)
+      .sort({ active: -1, name: 1 })
+      .limit(300)
+      .toArray(),
+    db
+      .collection<InventoryMovementDoc>("inventory_movements")
+      .aggregate<{ _id: string; total: number }>([
+        {
+          $group: {
+            _id: "$itemId",
+            total: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$type", "USAGE"] },
+                  { $multiply: ["$quantity", -1] },
+                  "$quantity",
+                ],
+              },
             },
           },
         },
-      },
-    ])
-    .toArray();
+      ])
+      .toArray(),
+  ]);
+  if (docs.length === 0) return [];
   const totalById = new Map(totals.map((row) => [String(row._id), roundQuantity(Number(row.total ?? 0))]));
   return docs.map((doc) => ({
     ...mapItem(doc),
