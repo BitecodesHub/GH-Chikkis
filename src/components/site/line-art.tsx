@@ -469,6 +469,7 @@ function PourScene() {
         strokeWidth="6"
         strokeLinecap="round"
         opacity="0.35"
+        className="art-flow-under"
       />
       <path
         d="M132 88C130 108 122 126 112 162"
@@ -478,8 +479,8 @@ function PourScene() {
         strokeLinecap="round"
         className="art-flow"
       />
-      <circle cx={126} cy={158} r={2.6} fill={JAGGERY} />
-      <circle cx={98} cy={154} r={2} fill={JAGGERY} opacity="0.8" />
+      <circle cx={126} cy={158} r={2.6} fill={JAGGERY} className="art-drop" />
+      <circle cx={98} cy={154} r={2} fill={JAGGERY} opacity="0.8" className="art-drop" />
     </>
   );
 }

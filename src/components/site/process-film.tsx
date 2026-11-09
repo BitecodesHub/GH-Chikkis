@@ -98,7 +98,10 @@ export function ProcessFilm({ steps }: { steps: Step[] }) {
 
       for (let i = 0; i < count; i++) {
         const layer = layerRefs.current[i];
-        if (layer) layer.style.opacity = i === idx ? "1" : "0";
+        if (layer) {
+          layer.style.opacity = i === idx ? "1" : "0";
+          layer.style.setProperty("--p", clamp(render - i, 0, 1).toFixed(4));
+        }
         const pane = paneRefs.current[i];
         if (pane) {
           pane.style.transform =
@@ -114,7 +117,7 @@ export function ProcessFilm({ steps }: { steps: Step[] }) {
         const text = textRefs.current[i];
         if (text) {
           const d = render - i;
-          const op = clamp(Math.min((d + 0.15) / 0.15, (1 - d) / 0.12), 0, 1);
+          const op = clamp(Math.min((d + 0.04) / 0.04, (1 - d) / 0.04), 0, 1);
           const shift = (1 - op) * 24 * (d < 0.5 ? 1 : -1);
           text.style.opacity = String(op);
           text.style.transform = `translateY(${shift}px)`;
@@ -255,7 +258,7 @@ export function ProcessFilm({ steps }: { steps: Step[] }) {
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <div className="grid h-full w-full place-items-center">
+                    <div className="film-scene grid h-full w-full place-items-center">
                       <ProcessArt step={index} decorative className="w-[min(64vw,18rem)] md:w-full" />
                     </div>
                   )}
@@ -289,7 +292,7 @@ export function ProcessFilm({ steps }: { steps: Step[] }) {
             ref={(el) => {
               textRefs.current[index] = el;
             }}
-            className="pointer-events-none absolute inset-x-0 bottom-0 px-5 pb-16 md:inset-y-0 md:right-auto md:flex md:max-w-[36rem] md:flex-col md:justify-center md:px-[7vw] md:pb-0"
+            className="pointer-events-none absolute inset-x-0 bottom-0 px-5 pb-16 md:inset-y-0 md:right-auto md:flex md:max-w-[36rem] md:flex-col md:justify-start md:px-[7vw] md:pb-0 md:pt-[30vh]"
           >
             <p className="eyebrow text-brass">Step 0{index + 1}</p>
             <h2 className="display-l mt-3 text-paper">{step.title}</h2>

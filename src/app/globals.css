@@ -902,3 +902,50 @@ html {
   background: var(--color-brass);
   background-clip: padding-box;
 }
+
+/* Still chapters answer the scroll. The film writes --p (0..1) on each
+   chapter layer, so the moving parts of the illustration track the scroll
+   instead of looping on their own. */
+.film-scene .art-flow,
+.film-scene .art-rock,
+.film-scene .art-press,
+.film-scene .art-roll,
+.film-scene .art-slice,
+.film-scene .art-fall {
+  animation: none;
+}
+
+.film-scene .art-flow-under {
+  opacity: calc(var(--p, 0.5) * 0.35);
+}
+
+.film-scene .art-flow {
+  stroke-dasharray: 96;
+  stroke-dashoffset: calc((1 - var(--p, 0.5)) * 96);
+}
+
+.film-scene .art-rock {
+  transform: rotate(calc((var(--p, 0.5) - 0.5) * 10deg));
+}
+
+.film-scene .art-press {
+  transform: translateY(calc((1 - var(--p, 0.5)) * -6px));
+}
+
+.film-scene .art-roll {
+  transform: translateX(calc((var(--p, 0.5) - 0.5) * 56px));
+}
+
+.film-scene .art-slice {
+  transform: translateX(calc(var(--p, 0.5) * -72px));
+}
+
+.film-scene .art-fall {
+  transform: translateY(calc((1 - var(--p, 0.5)) * -26px));
+  opacity: var(--p, 0.5);
+}
+
+.film-scene .art-drop {
+  opacity: calc(0.35 + var(--p, 0.5) * 0.65);
+  transform: translateY(calc((1 - var(--p, 0.5)) * -8px));
+}
