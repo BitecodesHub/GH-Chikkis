@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/site/page-header";
-import { ProcessArt } from "@/components/site/line-art";
+import { ProcessFilm } from "@/components/site/process-film";
 import {
   contentSteps,
   contentText,
@@ -29,26 +29,7 @@ export default async function ProcessPage() {
       />
 
       <section className="container-page py-14 md:py-20">
-        <ol className="mx-auto max-w-3xl">
-          {steps.map((step, index) => (
-            <li
-              key={step.title}
-              className="grid gap-5 border-t border-line py-9 first:border-t-0 first:pt-0 sm:grid-cols-[auto_1fr] sm:gap-8"
-            >
-              <div className="flex items-center gap-5 sm:flex-col sm:items-start sm:gap-4">
-                <span className="meta tabular-nums">0{index + 1}</span>
-                <ProcessArt step={index} className="w-[6.5rem] shrink-0 sm:w-[7.75rem]" />
-              </div>
-              <div>
-                <h2 className="display-m text-[clamp(1.6rem,3vw,2.2rem)]">{step.title}</h2>
-                <p className="mt-3 max-w-xl text-[1.0625rem] leading-relaxed text-ink-soft">
-                  {step.body}
-                </p>
-                {step.note ? <p className="meta mt-3">{step.note}</p> : null}
-              </div>
-            </li>
-          ))}
-        </ol>
+        <ProcessFilm steps={steps} />
 
         <div className="mx-auto mt-10 max-w-3xl">
           <p className="surface p-6 text-[0.9375rem] leading-relaxed text-ink-soft md:p-8">

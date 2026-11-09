@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
     // on a page costs a trip to the function region. Five minutes at the edge
     // with a day of stale-serving keeps repeat visits instant while a swapped
     // picture still lands on the next fetch after the window opens.
-    ...["products", "brand", "ingredients", "templates", "uploads"].map((dir) => ({
+    ...["products", "brand", "ingredients", "templates", "uploads", "process"].map((dir) => ({
       source: `/${dir}/:path*`,
       headers: [
         {
