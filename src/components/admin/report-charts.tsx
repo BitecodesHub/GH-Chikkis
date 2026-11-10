@@ -35,22 +35,12 @@ const tooltipStyle = {
   color: "#221d16",
 };
 
-export function TrendChart({
-  series,
-  monthly = false,
-}: {
-  series: ReportSeriesPoint[];
-  monthly?: boolean;
-}) {
+export function TrendChart({ series }: { series: ReportSeriesPoint[] }) {
   return (
     <div
       className="h-72 w-full"
       role="img"
-      aria-label={
-        monthly
-          ? "Chart of sales revenue, payments, expenses and estimated profit for the last 12 months"
-          : "Chart of sales revenue, payments, expenses and estimated profit for the selected period"
-      }
+      aria-label="Chart of sales revenue, payments, expenses and estimated profit for the selected period"
     >
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={series} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} accessibilityLayer>

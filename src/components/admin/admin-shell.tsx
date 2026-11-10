@@ -5,9 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   BarChart3,
-  Bell,
-  Boxes,
-  DatabaseBackup,
   ExternalLink,
   FileText,
   History,
@@ -47,7 +44,6 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     label: "Overview",
     items: [
       { label: "Dashboard", href: "/admin", icon: LayoutDashboard, exact: true },
-      { label: "Alerts", href: "/admin/alerts", icon: Bell },
     ],
   },
   {
@@ -87,12 +83,6 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
         href: "/admin/content",
         icon: FileText,
         permission: "content.edit",
-      },
-      {
-        label: "Inventory",
-        href: "/admin/inventory",
-        icon: Boxes,
-        permission: "inventory.manage",
       },
     ],
   },
@@ -150,12 +140,6 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
         href: "/admin/audit",
         icon: History,
         permission: "audit.view",
-      },
-      {
-        label: "Backups",
-        href: "/admin/backups",
-        icon: DatabaseBackup,
-        permission: "backups.manage",
       },
       {
         label: "Imports",

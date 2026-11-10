@@ -4,6 +4,7 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   BarChart3,
+  CalendarRange,
   Gift,
   Minus,
   ReceiptText,
@@ -283,11 +284,17 @@ export default async function AdminReportsPage({
 
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="surface lg:col-span-2" aria-labelledby="period-trend">
-          <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-4">
             <h2 id="period-trend" className="font-[family-name:var(--font-display)] text-xl">
               Period trend
             </h2>
-            <span className="meta">Daily up to 45 days, monthly after that</span>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <span className="meta">Daily up to 45 days, monthly beyond · {rangeLabel(range)}</span>
+              <Link href="#report-range" className="btn btn-outline btn-sm">
+                <CalendarRange aria-hidden="true" className="size-3.5" />
+                Edit period
+              </Link>
+            </div>
           </div>
           <div className="px-3 py-5 sm:px-5">
             <TrendChart series={data.series} />
@@ -306,18 +313,6 @@ export default async function AdminReportsPage({
           </div>
         </section>
       </div>
-
-      <section className="surface" aria-labelledby="monthly-trend">
-        <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-5 py-4">
-          <h2 id="monthly-trend" className="font-[family-name:var(--font-display)] text-xl">
-            Last 12 months
-          </h2>
-          <span className="meta">Always the latest 12 months, regardless of the filter</span>
-        </div>
-        <div className="px-3 py-5 sm:px-5">
-          <TrendChart series={data.monthly} monthly />
-        </div>
-      </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="surface" aria-labelledby="sales-by-product">

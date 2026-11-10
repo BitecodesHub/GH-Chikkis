@@ -369,7 +369,7 @@ export async function buildReportPdf(
     data.salesByProduct.map((row) => [row.label, formatINR(row.amountPaise), String(row.count ?? 0)]),
   );
 
-  sectionTitle(ctx, "Last 12 months");
+  sectionTitle(ctx, "Monthly trend");
   drawTable(
     ctx,
     [

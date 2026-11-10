@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus, Search, ShoppingBag } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { FilterNav } from "@/components/admin/filter-nav";
+import { OrderDeleteButton } from "@/components/admin/order-delete-button";
 import { requirePermission } from "@/lib/auth/session";
 import { cn } from "@/lib/cn";
 import { formatDateDDMMYYYY } from "@/lib/dates";
@@ -62,6 +63,7 @@ export default async function AdminOrdersPage({
   const pages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
   const canManage = hasPermission(user, "orders.manage");
   const filtersActive = Boolean(query || status || type);
+  const justDeleted = params.deleted === "1";
 
   const pageHref = (nextPage: number) => {
     const search = new URLSearchParams();
@@ -88,6 +90,15 @@ export default async function AdminOrdersPage({
           ) : null
         }
       />
+
+      {justDeleted ? (
+        <p
+          role="status"
+          className="border border-olive-soft bg-paper-raised px-4 py-3 text-[0.875rem]"
+        >
+          Order deleted. It no longer appears in the order list, reports or exports.
+        </p>
+      ) : null}
 
       <section className="surface" aria-labelledby="order-list">
         <div className="border-b border-line px-5 py-4">
@@ -205,6 +216,9 @@ export default async function AdminOrdersPage({
                   >
                     Total
                   </th>
+                  <th scope="col" className="px-5 py-3 text-right font-semibold">
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
@@ -278,6 +292,15 @@ export default async function AdminOrdersPage({
                         <span className="text-[0.8125rem] text-ink-muted">Gift</span>
                       ) : (
                         formatINR(order.totalPaise)
+                      )}
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      {canManage && !order.historical ? (
+                        <OrderDeleteButton orderId={order.id} orderRef={order.ref} />
+                      ) : (
+                        <span className="text-[0.75rem] text-ink-muted">
+                          {order.historical ? "Imported" : ""}
+                        </span>
                       )}
                     </td>
                   </tr>

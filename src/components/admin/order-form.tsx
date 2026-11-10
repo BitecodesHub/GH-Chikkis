@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronDown, LoaderCircle, Minus, Plus, Save, X } from "lucide-react";
@@ -191,6 +191,7 @@ export function OrderForm({
   idempotencyKey?: string;
 }) {
   const [state, formAction, pending] = useActionState(saveOrderAction, EMPTY_STATE);
+  const nextLineKey = useRef((order?.items.length ?? 0) + 2);
   const [type, setType] = useState<OrderType>(order?.type ?? "SALES");
   const [lines, setLines] = useState<LineState[]>(() => initialLines(order));
   const [open, setOpen] = useState<Record<string, boolean>>({});
@@ -307,36 +308,46 @@ export function OrderForm({
   };
 
   const addLine = () => {
-    setLines((current) => [...current, blankLine(`line-${Date.now()}-${current.length}`)]);
+    const key = `line-${nextLineKey.current++}`;
+    setLines((current) => [...current, blankLine(key)]);
   };
 
   // One tap on a variety tile either adds it or bumps the count on the line
   // that already holds it, which is how 60 orders a day actually get keyed.
   const addFromTile = (product: OrderProductOption) => {
     const packagingId = product.packaging[0]?.id ?? "";
-    setLines((current) => {
-      const existing = current.findIndex(
-        (entry) => entry.productId === product.id && entry.packagingId === packagingId,
-      );
-      if (existing >= 0) {
-        return current.map((entry, index) =>
+    const existing = lines.findIndex(
+      (entry) => entry.productId === product.id && entry.packagingId === packagingId,
+    );
+    if (existing >= 0) {
+      setLines((current) =>
+        current.map((entry, index) =>
           index === existing
             ? { ...entry, quantity: stepQuantity(entry.quantity, 1) }
             : entry,
-        );
+        ),
+      );
+      return;
+    }
+    const freshKey = `line-${nextLineKey.current++}`;
+    const fresh = blankLine(freshKey);
+    fresh.productId = product.id;
+    fresh.packagingId = packagingId;
+    const option = product.packaging.find((entry) => entry.id === packagingId);
+    if (option) {
+      fresh.weight = String(option.grams);
+      if (option.standardPricePaise !== null) {
+        fresh.rate = toRupees(Math.round(option.standardPricePaise / option.grams));
       }
-      const fresh = blankLine(`line-${Date.now()}-${current.length}`);
-      fresh.productId = product.id;
-      fresh.packagingId = packagingId;
-      const option = product.packaging.find((entry) => entry.id === packagingId);
-      if (option) {
-        fresh.weight = String(option.grams);
-        if (option.standardPricePaise !== null) {
-          fresh.rate = toRupees(Math.round(option.standardPricePaise / option.grams));
-        }
-      }
-      // The form opens with one empty line; a tap fills it rather than piling
-      // a chosen line underneath a blank one.
+    }
+    if (!product.packaging.some((entry) => entry.standardPricePaise !== null)) {
+      // Nothing to prefill, so put the price box in front of the owner instead
+      // of leaving the line at ₹0 with the field hidden under Details.
+      setOpen((current) => ({ ...current, [freshKey]: true }));
+    }
+    // The form opens with one empty line; a tap fills it rather than piling
+    // a chosen line underneath a blank one.
+    setLines((current) => {
       const blank = current.findIndex((entry) => !entry.productId);
       if (blank >= 0) {
         return current.map((entry, index) => (index === blank ? fresh : entry));
@@ -454,6 +465,18 @@ export function OrderForm({
             <p className="mt-1 text-[0.8125rem] text-ink-muted">
               Tap a variety to add it. Tap it again for another one.
             </p>
+            {products.length > 0 &&
+            products.every((product) =>
+              product.packaging.every((option) => option.standardPricePaise === null),
+            ) ? (
+              <p className="mt-2 text-[0.8125rem] text-terracotta">
+                No variety has a standard price yet.{" "}
+                <Link href="/admin/products" className="link-underline">
+                  Set prices in Products
+                </Link>{" "}
+                to prefill new orders, or type the price on each line below.
+              </p>
+            ) : null}
           </div>
           <button type="button" onClick={addLine} disabled={lines.length >= 30} className="btn btn-quiet btn-sm">
             <Plus aria-hidden="true" className="size-4" />
@@ -487,8 +510,16 @@ export function OrderForm({
                   <span className="mt-1 block truncate text-[0.75rem] font-medium leading-tight">
                     {product.name}
                   </span>
-                  <span className="block text-[0.6875rem] text-ink-muted">
-                    {product.active ? (product.packaging[0]?.grams ? `${product.packaging[0].grams} g` : "add") : "paused"}
+                  <span className="block truncate text-[0.6875rem] text-ink-muted">
+                    {product.active
+                      ? product.packaging[0]
+                        ? `${product.packaging[0].grams} g${
+                            product.packaging[0].standardPricePaise !== null
+                              ? ` · ${formatINR(product.packaging[0].standardPricePaise)}`
+                              : ""
+                          }`
+                        : "add"
+                      : "paused"}
                   </span>
                 </button>
               </li>

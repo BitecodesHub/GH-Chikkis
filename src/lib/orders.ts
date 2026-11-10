@@ -557,8 +557,41 @@ function escapeRegex(value: string): string {
 }
 
 export interface OrderListResult {
-  items: Order[];
+  items: OrderListItem[];
   total: number;
+}
+
+type OrderListDoc = Pick<
+  OrderDoc,
+  | "_id"
+  | "ref"
+  | "type"
+  | "status"
+  | "customerSnapshot"
+  | "totalPaise"
+  | "balancePaise"
+  | "orderDate"
+  | "paymentStatus"
+  | "historical"
+> & { invoice?: { version: number } };
+
+export type OrderListItem = Pick<
+  Order,
+  | "id"
+  | "ref"
+  | "type"
+  | "status"
+  | "customerSnapshot"
+  | "totalPaise"
+  | "balancePaise"
+  | "orderDate"
+  | "paymentStatus"
+  | "historical"
+> & { invoice?: { version: number } };
+
+function mapOrderListItem(doc: OrderListDoc): OrderListItem {
+  const { _id, ...rest } = doc;
+  return { id: _id, ...rest };
 }
 
 export async function listOrders(options: {
@@ -592,15 +625,30 @@ export async function listOrders(options: {
   const offset = Math.max(options.offset ?? 0, 0);
   const [docs, total] = await Promise.all([
     db
-      .collection<OrderDoc>("orders")
-      .find(filter)
+      .collection<OrderListDoc>("orders")
+      .find(filter, {
+        // The list shows a handful of columns; invoice snapshots and status
+        // history stay out of the response so a page of orders is light.
+        projection: {
+          ref: 1,
+          type: 1,
+          status: 1,
+          customerSnapshot: 1,
+          totalPaise: 1,
+          balancePaise: 1,
+          orderDate: 1,
+          paymentStatus: 1,
+          historical: 1,
+          "invoice.version": 1,
+        },
+      })
       .sort({ createdAt: -1 })
       .skip(offset)
       .limit(limit)
       .toArray(),
     db.collection("orders").countDocuments(filter),
   ]);
-  return { items: docs.map(mapOrder), total };
+  return { items: docs.map(mapOrderListItem), total };
 }
 
 export async function listCustomerOrders(customerId: string): Promise<Order[]> {
@@ -614,15 +662,31 @@ export async function listCustomerOrders(customerId: string): Promise<Order[]> {
   return docs.map(mapOrder);
 }
 
-export async function listRecentOrders(limit = 6): Promise<Order[]> {
+export async function listRecentOrders(limit = 6): Promise<OrderListItem[]> {
   const db = await getDb();
   const docs = await db
-    .collection<OrderDoc>("orders")
-    .find({})
+    .collection<OrderListDoc>("orders")
+    .find(
+      {},
+      {
+        projection: {
+          ref: 1,
+          type: 1,
+          status: 1,
+          customerSnapshot: 1,
+          totalPaise: 1,
+          balancePaise: 1,
+          orderDate: 1,
+          paymentStatus: 1,
+          historical: 1,
+          "invoice.version": 1,
+        },
+      },
+    )
     .sort({ createdAt: -1 })
     .limit(limit)
     .toArray();
-  return docs.map(mapOrder);
+  return docs.map(mapOrderListItem);
 }
 
 export async function countOrders(options?: { status?: OrderStatus }): Promise<number> {

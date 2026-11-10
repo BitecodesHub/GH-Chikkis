@@ -413,9 +413,8 @@ export async function runBackup(
       title: "Encrypted backup failed",
       message: `${message} Last successful backup: ${
         (await latestSuccessfulBackup())?.startedAt ?? "never"
-      }. Retry from the Backups page.`,
+      }.`,
       permission: "backups.manage",
-      link: "/admin/backups",
     });
   } catch {
     // The alert is best-effort; the failed run is already stored.

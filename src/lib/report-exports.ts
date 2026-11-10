@@ -100,7 +100,7 @@ export function buildReportCsv(data: ReportData, businessName: string): string {
   );
   blocks.push(
     csvBlock([
-      ["Last 12 months", "Sales revenue (INR)", "Payments received (INR)", "Expenses (INR)", "Estimated profit (INR)"],
+      ["Monthly trend", "Sales revenue (INR)", "Payments received (INR)", "Expenses (INR)", "Estimated profit (INR)"],
       ...data.monthly.map((point) => [
         point.label,
         rupees(point.revenuePaise),
@@ -269,7 +269,7 @@ export async function buildReportExcel(
 
   addDataSheet(
     workbook,
-    "Last 12 months",
+    "Monthly trend",
     [
       { header: "Month", width: 16 },
       { header: "Sales revenue (INR)", width: 20, money: true },

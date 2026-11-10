@@ -39,10 +39,14 @@ export async function passwordSignIn(formData: FormData): Promise<void> {
   if (!email || !password) redirect("/login?error=password");
 
   const requestHeaders = await headers();
+  // A shop's whole team signs in from one connection, and each idle sign-out
+  // costs another attempt. The old ceiling of eight per quarter hour locked
+  // real staff out, so the per-address window is sized for four people rather
+  // than one. Password guesses are still checked against a scrypt hash.
   const limit = await rateLimit({
     scope: "login:password",
     identifier: requestIp(requestHeaders),
-    limit: 8,
+    limit: 30,
     windowSeconds: 900,
   });
   if (!limit.allowed) redirect("/login?error=rate");

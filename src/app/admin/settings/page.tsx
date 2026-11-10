@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import {
   Building2,
-  DatabaseBackup,
   KeyRound,
   PlugZap,
   ReceiptText,
@@ -142,8 +140,9 @@ export default async function AdminSettingsPage({
                 className="field"
               />
               <p className="help mt-1">
-                Where the “Open in WhatsApp” invoice handoff goes, and the number behind the
-                WhatsApp buttons and the chat bubble on the website. Leave blank to hide them.
+                The number behind the website’s WhatsApp buttons and the floating chat bubble,
+                and the “Open in WhatsApp” invoice handoff. Leave it blank and the website shows
+                no WhatsApp button at all.
               </p>
             </div>
             <div>
@@ -595,16 +594,6 @@ export default async function AdminSettingsPage({
             </li>
           ))}
         </ul>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-3">
-          <p className="flex items-center gap-2 text-[0.75rem] text-ink-muted">
-            <DatabaseBackup aria-hidden="true" className="size-3.5" />
-            Backup files stay on the configured storage, encrypted. Restore steps live in the
-            handover documentation.
-          </p>
-          <Link href="/admin/backups" className="text-[0.8125rem] text-olive-deep hover:underline">
-            Open backups
-          </Link>
-        </div>
       </section>
     </div>
   );

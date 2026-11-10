@@ -2,27 +2,22 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowUpRight,
-  Boxes,
   Inbox,
   Plus,
   ReceiptText,
   ShoppingBag,
-  TriangleAlert,
 } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
 import { hasPermission, canSeeMoney } from "@/lib/permissions";
 import { getOutstandingTotalPaise, getReportMetricsForWindows } from "@/lib/reports";
 import { listRecentOrders } from "@/lib/orders";
 import { listRecentEnquiries } from "@/lib/enquiries";
-import { listAlertsForUser } from "@/lib/alerts";
-import { listInventoryItems } from "@/lib/inventory";
 import {
   dateRangeForPreset,
   formatDateDDMMYYYY,
   relativeTime,
 } from "@/lib/dates";
 import { formatINR } from "@/lib/money";
-import { stockLabel } from "@/lib/quantity";
 import {
   ORDER_STATUS_LABELS,
   PERMISSION_LABELS,
@@ -39,12 +34,6 @@ const STATUS_STYLES: Record<OrderStatus, string> = {
   CONFIRMED: "border-olive-soft text-olive",
   COMPLETED: "border-olive-deep text-olive-deep",
   CANCELLED: "border-terracotta text-terracotta",
-};
-
-const SEVERITY_STYLES: Record<string, string> = {
-  INFO: "bg-olive-soft",
-  WARNING: "bg-brass",
-  CRITICAL: "bg-terracotta",
 };
 
 function greeting(): string {
@@ -84,27 +73,23 @@ export default async function AdminDashboardPage({
   const canViewOrders = hasPermission(user, "orders.view");
   const canManageOrders = hasPermission(user, "orders.manage");
   const canManageEnquiries = hasPermission(user, "enquiries.manage");
-  const canManageInventory = hasPermission(user, "inventory.manage");
 
   const now = new Date();
   const today = dateRangeForPreset("today", now);
   const month = dateRangeForPreset("month", now);
 
-  const [reportMetrics, outstandingTotal, alerts, recentOrders, recentEnquiries, inventory] =
+  const [reportMetrics, outstandingTotal, recentOrders, recentEnquiries] =
     await Promise.all([
       canMoney ? getReportMetricsForWindows([today, month]) : null,
       canMoney ? getOutstandingTotalPaise() : null,
-      listAlertsForUser(user, { status: "OPEN", limit: 5 }),
       canViewOrders ? listRecentOrders(6) : Promise.resolve([]),
       canManageEnquiries ? listRecentEnquiries(5) : Promise.resolve([]),
-      canManageInventory ? listInventoryItems({}) : Promise.resolve([]),
     ]);
 
   const todayMetrics = reportMetrics?.[0] ?? null;
   const monthMetrics = reportMetrics?.[1] ?? null;
 
   const firstName = user.name.split(/\s+/)[0] || user.name;
-  const activeInventory = inventory.filter((item) => item.active);
 
   const headerActions =
     canManageOrders || canMoney ? (
@@ -222,9 +207,9 @@ export default async function AdminDashboardPage({
         </section>
       ) : null}
 
-      <div className="grid items-start gap-6 lg:grid-cols-3">
+      <div className="grid items-start gap-6">
         {canViewOrders ? (
-          <section className="surface lg:col-span-2" aria-labelledby="recent-orders">
+          <section className="surface" aria-labelledby="recent-orders">
             <div className="flex items-baseline justify-between gap-4 border-b border-line px-5 py-4">
               <h2
                 id="recent-orders"
@@ -288,59 +273,9 @@ export default async function AdminDashboardPage({
           </section>
         ) : null}
 
-        <section className="surface" aria-labelledby="open-alerts">
-          <div className="flex items-baseline justify-between gap-4 border-b border-line px-5 py-4">
-            <h2
-              id="open-alerts"
-              className="flex items-center gap-2 font-[family-name:var(--font-display)] text-xl"
-            >
-              <TriangleAlert aria-hidden="true" className="size-4 text-brass" />
-              Open alerts
-            </h2>
-            <Link href="/admin/alerts" className="text-[0.8125rem] text-olive-deep hover:underline">
-              View all
-            </Link>
-          </div>
-          {alerts.length === 0 ? (
-            <p className="px-5 py-10 text-center text-[0.875rem] text-ink-muted">
-              Nothing needs attention.
-            </p>
-          ) : (
-            <ul className="divide-y divide-line">
-              {alerts.map((alert) => (
-                <li key={alert.id} className="px-5 py-4">
-                  <div className="flex items-start gap-2.5">
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        "mt-1.5 size-1.5 shrink-0 rotate-45",
-                        SEVERITY_STYLES[alert.severity] ?? "bg-ink-muted",
-                      )}
-                    />
-                    <div>
-                      <p className="text-[0.875rem] font-medium">
-                        {alert.link ? (
-                          <Link href={alert.link} className="hover:underline">
-                            {alert.title}
-                          </Link>
-                        ) : (
-                          alert.title
-                        )}
-                      </p>
-                      <p className="mt-0.5 text-[0.8125rem] text-ink-muted">{alert.message}</p>
-                      <p className="mt-1 text-[0.75rem] text-ink-muted">
-                        {relativeTime(alert.createdAt)}
-                      </p>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
       </div>
 
-      <div className="grid items-start gap-6 lg:grid-cols-2">
+      <div className="grid items-start gap-6">
         {canManageEnquiries ? (
           <section className="surface" aria-labelledby="recent-enquiries">
             <div className="flex items-baseline justify-between gap-4 border-b border-line px-5 py-4">
@@ -397,47 +332,6 @@ export default async function AdminDashboardPage({
           </section>
         ) : null}
 
-        {canManageInventory ? (
-          <section className="surface" aria-labelledby="inventory-snapshot">
-            <div className="flex items-baseline justify-between gap-4 border-b border-line px-5 py-4">
-              <h2
-                id="inventory-snapshot"
-                className="flex items-center gap-2 font-[family-name:var(--font-display)] text-xl"
-              >
-                <Boxes aria-hidden="true" className="size-4 text-brass" />
-                Inventory on hand
-              </h2>
-              <Link href="/admin/inventory" className="text-[0.8125rem] text-olive-deep hover:underline">
-                Manage
-              </Link>
-            </div>
-            {activeInventory.length === 0 ? (
-              <p className="px-5 py-10 text-center text-[0.875rem] text-ink-muted">
-                No inventory items yet.{" "}
-                <Link href="/admin/inventory/new" className="text-olive-deep hover:underline">
-                  Add the first item
-                </Link>
-                .
-              </p>
-            ) : (
-              <ul className="divide-y divide-line">
-                {activeInventory.slice(0, 6).map((item) => (
-                  <li key={item.id} className="flex items-baseline justify-between gap-4 px-5 py-3">
-                    <Link
-                      href={`/admin/inventory/${item.id}`}
-                      className="min-w-0 truncate text-[0.9375rem] hover:underline"
-                    >
-                      {item.name}
-                    </Link>
-                    <span className="text-[0.875rem] whitespace-nowrap">
-                      {stockLabel(item.currentQuantity, item.unit)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        ) : null}
       </div>
 
       <p className="text-[0.75rem] text-ink-muted">

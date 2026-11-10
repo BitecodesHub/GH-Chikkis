@@ -72,7 +72,10 @@ export async function POST(request: Request) {
     to: typeof input.to === "string" ? input.to : "",
   });
 
-  const [data, settings] = await Promise.all([getReportData(range), getSettings()]);
+  const [data, settings] = await Promise.all([
+    getReportData(range, { includeInventory: true }),
+    getSettings(),
+  ]);
   const businessName = settings.business.name || "GH Chikkis";
 
   let bytes: Uint8Array;

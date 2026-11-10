@@ -4,7 +4,6 @@ import {
   addDays,
   businessDateEndUtc,
   businessDateStartUtc,
-  businessToday,
   dayLabel,
   eachDay,
   monthLabel,
@@ -173,8 +172,9 @@ export function buildReportSeries(
   docs: RangeDocs,
   from: string,
   to: string,
+  forceMonths = false,
 ): ReportSeriesPoint[] {
-  const useMonths = dayCount(from, to) > 45;
+  const useMonths = forceMonths || dayCount(from, to) > 45;
   const keys = useMonths ? monthsBetween(from, to) : eachDay(from, to);
   const buckets = new Map<string, { revenue: number; refunds: number; expenses: number; payments: number }>();
   for (const key of keys) {
@@ -211,36 +211,27 @@ export function buildReportSeries(
   });
 }
 
-function monthlySpan(): DateSpan {
-  const todayKey = businessToday();
-  const [yearPart, monthPart] = todayKey.split("-").map(Number);
-  let year = yearPart;
-  let month = monthPart - 11;
-  while (month <= 0) {
-    month += 12;
-    year -= 1;
-  }
-  return { from: `${year}-${String(month).padStart(2, "0")}-01`, to: todayKey };
-}
-
 function previousRange(range: DateRange): DateRange {
   const span = dayCount(range.from, range.to);
   const to = addDays(range.from, -1);
   return { preset: "custom", from: addDays(to, -(span - 1)), to };
 }
 
-export async function getReportData(range: DateRange): Promise<ReportData> {
+export async function getReportData(
+  range: DateRange,
+  options?: { includeInventory?: boolean },
+): Promise<ReportData> {
   const prevRange = previousRange(range);
-  const monthly = monthlySpan();
-  const wide = widest([range, prevRange, monthly]);
+  const wide = widest([range, prevRange]);
+  // The screen has no inventory section; only the export files do. Reading the
+  // collection here charged every report view for data it never showed.
   const [wideDocs, enquiryCounts, inventory] = await Promise.all([
     fetchRangeDocs(wide.from, wide.to),
     countEnquiriesPerRange([range, prevRange]),
-    listInventoryItems({}),
+    options?.includeInventory ? listInventoryItems({}) : Promise.resolve(null),
   ]);
   const docs = docsInRange(wideDocs, range.from, range.to);
   const prevDocs = docsInRange(wideDocs, prevRange.from, prevRange.to);
-  const monthlyDocs = docsInRange(wideDocs, monthly.from, monthly.to);
 
   const metrics = metricsFromDocs(docs, enquiryCounts[0]);
   const validSales = docs.orders.filter(
@@ -331,20 +322,22 @@ export async function getReportData(range: DateRange): Promise<ReportData> {
       metrics: metricsFromDocs(prevDocs, enquiryCounts[1]),
     },
     series: buildReportSeries(docs, range.from, range.to),
-    monthly: buildReportSeries(monthlyDocs, monthly.from, monthly.to),
+    monthly: buildReportSeries(docs, range.from, range.to, true),
     salesByProduct,
     expensesByCategory,
     paymentsByMethod,
     topCustomers,
     outstandingOrders,
     giftOrdersList,
-    inventory: inventory.map((item) => ({
-      itemId: item.id,
-      name: item.name,
-      unit: item.unit,
-      quantity: item.currentQuantity,
-      category: item.category,
-    })),
+    inventory: inventory
+      ? inventory.map((item) => ({
+          itemId: item.id,
+          name: item.name,
+          unit: item.unit,
+          quantity: item.currentQuantity,
+          category: item.category,
+        }))
+      : [],
   };
 }
 

@@ -63,7 +63,7 @@ function entityHref(user: User, entityType: string, entityId?: string): string |
     case "import":
       return hasPermission(user, "customers.manage") ? `/admin/imports/${entityId}` : null;
     case "backup":
-      return hasPermission(user, "backups.manage") ? "/admin/backups" : null;
+      return null;
     case "report":
       return hasPermission(user, "reports.view") ? "/admin/reports" : null;
     default:

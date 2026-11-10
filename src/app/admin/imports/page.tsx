@@ -128,8 +128,9 @@ export default async function AdminImportsPage({
                 Historical orders
               </h2>
               <p className="mt-1 text-[0.875rem] text-ink-soft">
-                Saved as historical sales with their original invoice date. Existing customers are
-                matched by phone and no messages are sent.
+                Saved as historical sales with their original invoice date, so a report for
+                any past period includes them. Existing customers are matched by phone and no
+                messages are sent.
               </p>
             </div>
           </div>
