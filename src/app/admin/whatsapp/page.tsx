@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   Clock,
   FileText,
-  MessageCircle,
   PauseCircle,
   PlayCircle,
   RefreshCw,
@@ -18,6 +17,7 @@ import {
 } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { FilterNav } from "@/components/admin/filter-nav";
+import { WhatsAppMark } from "@/components/site/whatsapp-mark";
 import { requirePermission } from "@/lib/auth/session";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/dates";
@@ -355,7 +355,7 @@ export default async function WhatsAppPage({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-start gap-3">
             {snapshot.mode === "LIVE" ? (
-              <MessageCircle aria-hidden="true" className="mt-0.5 size-5 text-olive-deep" />
+              <WhatsAppMark className="mt-0.5 size-5 text-olive-deep" />
             ) : (
               <Settings2 aria-hidden="true" className="mt-0.5 size-5 text-brass" />
             )}
