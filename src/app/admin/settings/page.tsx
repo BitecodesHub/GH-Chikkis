@@ -42,7 +42,8 @@ function Notice({ params }: { params: Record<string, string | string[] | undefin
   if (params.saved === "1") {
     return (
       <p role="status" className="rounded-2xl border border-olive bg-paper-raised px-4 py-3 text-[0.875rem]">
-        Settings saved. New invoices and public pages pick up the changes immediately.
+        Settings saved. Invoices use them right away; the public website shows them within a
+        couple of minutes.
       </p>
     );
   }
@@ -416,9 +417,9 @@ export default async function AdminSettingsPage({
           </div>
         </section>
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-paper/95 px-4 py-3 shadow-[0_18px_40px_-18px_rgba(20,16,10,0.45)] backdrop-blur">
           <p className="text-[0.75rem] text-ink-muted">
-            Every change is recorded in the audit log with your account and the time.
+            Edits apply only after you save. Each save is recorded in the audit log.
           </p>
           <button type="submit" className="btn btn-solid">
             <Save aria-hidden="true" className="size-4" />

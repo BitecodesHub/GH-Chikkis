@@ -167,8 +167,24 @@ export async function saveSettingsAction(formData: FormData): Promise<void> {
     await clearReviewsSnapshot();
   }
 
+  const contactFields = [
+    "whatsappNumber",
+    "phoneDisplay",
+    "email",
+    "instagramUrl",
+    "googleReviewUrl",
+    "addressLine",
+    "mapsUrl",
+    "gstin",
+    "city",
+    "state",
+    "tagline",
+  ] as const;
   const changed = [
     before.business.name !== after.business.name ? "business profile" : null,
+    contactFields.some((field) => before.business[field] !== after.business[field])
+      ? "website contact details"
+      : null,
     before.invoice.thankYou !== after.invoice.thankYou ||
     before.invoice.footerNote !== after.invoice.footerNote
       ? "invoice text"
