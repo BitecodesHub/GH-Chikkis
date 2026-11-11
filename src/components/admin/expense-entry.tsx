@@ -292,7 +292,7 @@ export function ExpenseEntry({
                       </span>
                     )}
                   </span>
-                  <span className="mt-1 block truncate text-[0.75rem] font-medium leading-tight">
+                  <span className="mt-1 line-clamp-2 block min-h-[2.1em] text-[0.75rem] font-medium leading-tight">
                     {entry.name}
                   </span>
                   <span className="block text-[0.6875rem] text-ink-muted">{entry.unit}</span>

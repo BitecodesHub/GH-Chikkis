@@ -1,8 +1,7 @@
 /**
  * The kitchen buys the same handful of raw materials, so the expense desk can
  * show what each one looks like instead of making the owner read a name. The
- * photographs live in `public/ingredients` and `credits.json` beside them
- * records where each came from.
+ * photographs were supplied by the owner and live in `public/ingredients`.
  */
 export interface IngredientArt {
   key: string;
@@ -11,79 +10,126 @@ export interface IngredientArt {
 }
 
 const ART: Record<string, IngredientArt> = {
-  groundnut: {
-    key: "groundnut",
-    src: "/ingredients/groundnut.jpg",
-    alt: "Groundnuts in their shells",
+  cashews: {
+    key: "cashews",
+    src: "/ingredients/cashews.jpg",
+    alt: "Whole cashew nuts",
   },
-  "white-til": {
-    key: "white-til",
-    src: "/ingredients/white-til.jpg",
+  "cashews-crushed": {
+    key: "cashews-crushed",
+    src: "/ingredients/cashews-crushed.jpg",
+    alt: "Crushed cashew pieces",
+  },
+  almond: {
+    key: "almond",
+    src: "/ingredients/almond.jpg",
+    alt: "Whole almonds",
+  },
+  "almond-crushed": {
+    key: "almond-crushed",
+    src: "/ingredients/almond-crushed.jpg",
+    alt: "Chopped almonds",
+  },
+  pista: {
+    key: "pista",
+    src: "/ingredients/pista.jpg",
+    alt: "Pistachios in their shells",
+  },
+  "pista-crushed": {
+    key: "pista-crushed",
+    src: "/ingredients/pista-crushed.jpg",
+    alt: "Chopped pistachios",
+  },
+  "black-tal": {
+    key: "black-tal",
+    src: "/ingredients/black-tal.jpg",
+    alt: "Black sesame seeds",
+  },
+  "white-tal": {
+    key: "white-tal",
+    src: "/ingredients/white-tal.jpg",
     alt: "White sesame seeds",
-  },
-  "black-til": {
-    key: "black-til",
-    src: "/ingredients/black-til.jpg",
-    alt: "Black sesame seeds in a white bowl",
-  },
-  jaggery: {
-    key: "jaggery",
-    src: "/ingredients/jaggery.jpg",
-    alt: "Cubes of jaggery",
-  },
-  ghee: {
-    key: "ghee",
-    src: "/ingredients/ghee.jpg",
-    alt: "Ghee in a steel jar",
   },
   daliya: {
     key: "daliya",
-    src: "/ingredients/daliya.jpg",
-    alt: "Daliya — cracked wheat",
+    src: "/ingredients/daliya-chana.jpg",
+    alt: "Daliya — chana dal",
   },
   mamra: {
     key: "mamra",
-    src: "/ingredients/mamra.jpg",
-    alt: "Mamra — flattened rice flakes",
+    src: "/ingredients/mamra-bowl.jpg",
+    alt: "Mamra — puffed rice in a clay bowl",
   },
-  coconut: {
-    key: "coconut",
-    src: "/ingredients/coconut.jpg",
-    alt: "Grated coconut on a plate",
+  shing: {
+    key: "shing",
+    src: "/ingredients/shing.jpg",
+    alt: "Peanuts in a jute sack",
   },
-  "dry-fruit": {
-    key: "dry-fruit",
-    src: "/ingredients/dry-fruit.jpg",
-    alt: "Walnuts, pistachios, cashews and almonds",
+  "kopra-chhin": {
+    key: "kopra-chhin",
+    src: "/ingredients/kopra-chhin.jpg",
+    alt: "Coconut halves",
   },
-  "gift-box": {
-    key: "gift-box",
-    src: "/ingredients/gift-box.jpg",
-    alt: "Gift boxes tied with ribbon",
+  jaggery: {
+    key: "jaggery",
+    src: "/ingredients/jaggery-cubes.jpg",
+    alt: "Jaggery pieces in a brass bowl",
   },
-  "kraft-paper": {
-    key: "kraft-paper",
-    src: "/ingredients/kraft-paper.jpg",
-    alt: "A roll of brown paper",
+  "jaggery-organic": {
+    key: "jaggery-organic",
+    src: "/ingredients/jaggery-organic.jpg",
+    alt: "Organic jaggery block with sugarcane",
+  },
+  ghee: {
+    key: "ghee",
+    src: "/ingredients/ghee-bowl.jpg",
+    alt: "Ghee in a copper bowl",
+  },
+  "box-250gm": {
+    key: "box-250gm",
+    src: "/ingredients/box-250gm.jpg",
+    alt: "Clear 250 g sweet box",
+  },
+  "box-500gm": {
+    key: "box-500gm",
+    src: "/ingredients/box-500gm.jpg",
+    alt: "Clear 500 g sweet box",
+  },
+  "butter-paper": {
+    key: "butter-paper",
+    src: "/ingredients/butter-paper.jpg",
+    alt: "Sheets of butter paper",
+  },
+  "silica-bag": {
+    key: "silica-bag",
+    src: "/ingredients/silica-bag.jpg",
+    alt: "Silica gel sachets",
   },
 };
 
-// Read top to bottom: the specific spelling wins, so black sesame is checked
-// before sesame and peanuts before nuts in general.
+// Read top to bottom: the specific cut wins over the whole nut, organic jaggery
+// over plain jaggery, and black til over the white one.
 const MATCHERS: [RegExp, string][] = [
-  [/black\s*(til|sesame)|kali\s*til/, "black-til"],
-  [/\btil\b|sesame/, "white-til"],
-  [/groundnut|peanut/, "groundnut"],
+  [/(cashew|kaju).*(crush|chopped)|(crush|chopped).*(cashew|kaju)/, "cashews-crushed"],
+  [/almond.*(crush|chopped)|(crush|chopped).*almond|badam.*crush/, "almond-crushed"],
+  [/pista.*(crush|chopped)|(crush|chopped).*pista/, "pista-crushed"],
+  [/organic.*jaggery|jaggery.*organic/, "jaggery-organic"],
+  [/black\s*(tal|til|sesame)|kali\s*(tal|til)/, "black-tal"],
+  [/\b(tal|til)\b|sesame/, "white-tal"],
+  [/cashew|kaju/, "cashews"],
+  [/almond|badam/, "almond"],
+  [/pista|pistachio/, "pista"],
   [/jaggery|\bgur\b/, "jaggery"],
   [/\bghee\b/, "ghee"],
-  [/daliya|dalia|broken wheat|bulgur/, "daliya"],
-  [/mamra|poha|flattened rice/, "mamra"],
-  [/coconut|copra/, "coconut"],
-  [/dry\s*-?\s*fruit|mixed nut|almond|cashew|kaju|pista|raisin|badam/, "dry-fruit"],
-  // Wrapping before packaging: the category word "Packaging" rides along with
-  // every stock line, so the loose box rule would swallow "Wrapping paper".
-  [/wrap|label|tape|kraft|stickers?|brown paper/, "kraft-paper"],
-  [/packag|carton|gift box|\bbox(es)?\b/, "gift-box"],
+  [/daliya|dalia|broken wheat|bulgur|chana\s*dal/, "daliya"],
+  [/mamra|poha|flattened rice|puffed rice/, "mamra"],
+  [/coconut|copra|kopra/, "kopra-chhin"],
+  [/\b(shing|sing)\b|groundnut|peanut/, "shing"],
+  [/butter\s*paper|parchment|baking paper/, "butter-paper"],
+  [/silica/, "silica-bag"],
+  [/box.*250/, "box-250gm"],
+  [/box.*500/, "box-500gm"],
+  [/box|carton/, "box-250gm"],
 ];
 
 /** The photograph for whatever was bought, or null when nothing fits. */

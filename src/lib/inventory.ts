@@ -87,6 +87,37 @@ export const INVENTORY_MOVEMENT_LABELS: Record<InventoryMovementType, string> = 
   ADJUSTMENT: "Adjustment",
 };
 
+// Kitchen order, not alphabet: each nut sits beside its crushed form, the two
+// tals together, then grains and sweets, then packing. Items the Owner adds
+// later fall in alphabetically after these.
+const ITEM_ORDER = [
+  "Cashews",
+  "Cashews - crushed",
+  "Almond",
+  "Almond - Crushed",
+  "Pista",
+  "Pista - Crushed",
+  "Black Tal",
+  "White Tal",
+  "Daliya",
+  "Mamra",
+  "Shing",
+  "Kopra Chhin",
+  "Jaggery",
+  "Jaggery - Organic",
+  "Ghee",
+  "Box - 250gm",
+  "Box - 500gm",
+  "Butter paper",
+  "Silica bag",
+];
+
+const ITEM_RANK = new Map(ITEM_ORDER.map((name, index) => [name.toLowerCase(), index]));
+
+function inventoryRank(name: string): number {
+  return ITEM_RANK.get(name.trim().toLowerCase()) ?? ITEM_ORDER.length;
+}
+
 export { formatStockQuantity, parseInventoryQuantity, roundQuantity, stockLabel } from "./quantity";
 
 export function defaultExpenseCategoryForInventory(category: string): string {
@@ -222,10 +253,16 @@ export async function listInventoryItems(options: {
   ]);
   if (docs.length === 0) return [];
   const totalById = new Map(totals.map((row) => [String(row._id), roundQuantity(Number(row.total ?? 0))]));
-  return docs.map((doc) => ({
-    ...mapItem(doc),
-    currentQuantity: totalById.get(String(doc._id)) ?? 0,
-  }));
+  return docs
+    .map((doc) => ({
+      ...mapItem(doc),
+      currentQuantity: totalById.get(String(doc._id)) ?? 0,
+    }))
+    .sort((a, b) => {
+      if (a.active !== b.active) return a.active ? -1 : 1;
+      const rank = inventoryRank(a.name) - inventoryRank(b.name);
+      return rank !== 0 ? rank : a.name.localeCompare(b.name);
+    });
 }
 
 export async function inventoryCategories(): Promise<string[]> {

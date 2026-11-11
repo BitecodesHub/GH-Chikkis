@@ -94,17 +94,25 @@ const PRODUCTS: SeedProduct[] = [
 ];
 
 const INVENTORY_ITEMS: { name: string; category: string; unit: string }[] = [
-  { name: "Groundnuts", category: "Ingredients/raw materials", unit: "kg" },
-  { name: "White sesame", category: "Ingredients/raw materials", unit: "kg" },
-  { name: "Black sesame", category: "Ingredients/raw materials", unit: "kg" },
-  { name: "Dry fruit mix", category: "Ingredients/raw materials", unit: "kg" },
-  { name: "Desiccated coconut", category: "Ingredients/raw materials", unit: "kg" },
-  { name: "Mamra (flattened rice)", category: "Ingredients/raw materials", unit: "kg" },
+  { name: "Cashews", category: "Ingredients/raw materials", unit: "kg" },
+  { name: "Cashews - crushed", category: "Ingredients/raw materials", unit: "kg" },
+  { name: "Almond", category: "Ingredients/raw materials", unit: "kg" },
+  { name: "Almond - Crushed", category: "Ingredients/raw materials", unit: "kg" },
+  { name: "Pista", category: "Ingredients/raw materials", unit: "kg" },
+  { name: "Pista - Crushed", category: "Ingredients/raw materials", unit: "kg" },
+  { name: "Black Tal", category: "Ingredients/raw materials", unit: "kg" },
+  { name: "White Tal", category: "Ingredients/raw materials", unit: "kg" },
   { name: "Daliya", category: "Ingredients/raw materials", unit: "kg" },
+  { name: "Mamra", category: "Ingredients/raw materials", unit: "kg" },
+  { name: "Shing", category: "Ingredients/raw materials", unit: "kg" },
+  { name: "Kopra Chhin", category: "Ingredients/raw materials", unit: "kg" },
   { name: "Jaggery", category: "Ingredients/raw materials", unit: "kg" },
+  { name: "Jaggery - Organic", category: "Ingredients/raw materials", unit: "kg" },
   { name: "Ghee", category: "Ingredients/raw materials", unit: "kg" },
-  { name: "Packaging boxes", category: "Packaging", unit: "pieces" },
-  { name: "Wrapping paper and labels", category: "Packaging", unit: "pieces" },
+  { name: "Box - 250gm", category: "Packaging", unit: "pieces" },
+  { name: "Box - 500gm", category: "Packaging", unit: "pieces" },
+  { name: "Butter paper", category: "Packaging", unit: "pieces" },
+  { name: "Silica bag", category: "Packaging", unit: "pieces" },
 ];
 
 async function seedProducts(): Promise<number> {
