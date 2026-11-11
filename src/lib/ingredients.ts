@@ -105,6 +105,16 @@ const ART: Record<string, IngredientArt> = {
     src: "/ingredients/silica-bag.jpg",
     alt: "Silica gel sachets",
   },
+  "plastic-bag-small": {
+    key: "plastic-bag-small",
+    src: "/ingredients/plastic-bag-small.jpg",
+    alt: "Small clear plastic carry bag",
+  },
+  "plastic-bag-big": {
+    key: "plastic-bag-big",
+    src: "/ingredients/plastic-bag-big.jpg",
+    alt: "Large clear plastic carry bag",
+  },
 };
 
 // Read top to bottom: the specific cut wins over the whole nut, organic jaggery
@@ -127,6 +137,9 @@ const MATCHERS: [RegExp, string][] = [
   [/\b(shing|sing)\b|groundnut|peanut/, "shing"],
   [/butter\s*paper|parchment|baking paper/, "butter-paper"],
   [/silica/, "silica-bag"],
+  [/(plastic|poly).*small|small.*(plastic|poly)/, "plastic-bag-small"],
+  [/(plastic|poly|carry).*(big|large)|(big|large).*(plastic|poly|carry)/, "plastic-bag-big"],
+  [/(plastic|poly)\s*bag|carry\s*bag/, "plastic-bag-small"],
   [/box.*250/, "box-250gm"],
   [/box.*500/, "box-500gm"],
   [/box|carton/, "box-250gm"],

@@ -24,12 +24,17 @@ describe("ingredientArt", () => {
     expect(key("Box - 500gm", "Packaging")).toBe("box-500gm");
     expect(key("Butter paper", "Packaging")).toBe("butter-paper");
     expect(key("Silica bag", "Packaging")).toBe("silica-bag");
+    expect(key("Plastic bag - Small", "Packaging")).toBe("plastic-bag-small");
+    expect(key("Plastic bag - Big", "Packaging")).toBe("plastic-bag-big");
   });
 
   it("reads the purchase description the same way as the item name", () => {
     expect(key("Purchase of 5 kg of Ghee", "Ingredients/raw materials")).toBe("ghee");
     expect(key("Purchase of 2 kg of Black Tal", "Ingredients/raw materials")).toBe("black-tal");
     expect(key("Purchase of 1 pieces of Box - 500gm", "Packaging")).toBe("box-500gm");
+    expect(key("Purchase of 100 pieces of Plastic bag - Big", "Packaging")).toBe(
+      "plastic-bag-big",
+    );
   });
 
   it("still recognises the names older expenses carry", () => {
@@ -47,6 +52,8 @@ describe("ingredientArt", () => {
     expect(key("Chopped cashews")).toBe("cashews-crushed");
     expect(key("Kali til")).toBe("black-tal");
     expect(key("Organic jaggery block")).toBe("jaggery-organic");
+    expect(key("Small poly bag")).toBe("plastic-bag-small");
+    expect(key("Large carry bag")).toBe("plastic-bag-big");
   });
 
   it("stays quiet on costs that are not stock", () => {

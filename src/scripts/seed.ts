@@ -113,6 +113,8 @@ const INVENTORY_ITEMS: { name: string; category: string; unit: string }[] = [
   { name: "Box - 500gm", category: "Packaging", unit: "pieces" },
   { name: "Butter paper", category: "Packaging", unit: "pieces" },
   { name: "Silica bag", category: "Packaging", unit: "pieces" },
+  { name: "Plastic bag - Small", category: "Packaging", unit: "pieces" },
+  { name: "Plastic bag - Big", category: "Packaging", unit: "pieces" },
 ];
 
 async function seedProducts(): Promise<number> {

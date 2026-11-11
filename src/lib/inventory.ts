@@ -110,6 +110,8 @@ const ITEM_ORDER = [
   "Box - 500gm",
   "Butter paper",
   "Silica bag",
+  "Plastic bag - Small",
+  "Plastic bag - Big",
 ];
 
 const ITEM_RANK = new Map(ITEM_ORDER.map((name, index) => [name.toLowerCase(), index]));
