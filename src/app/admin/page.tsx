@@ -30,8 +30,7 @@ import { cn } from "@/lib/cn";
 export const metadata: Metadata = { title: "Dashboard" };
 
 const STATUS_STYLES: Record<OrderStatus, string> = {
-  NEW: "border-brass text-brass",
-  CONFIRMED: "border-olive-soft text-olive",
+  PENDING: "border-brass text-brass",
   COMPLETED: "border-olive-deep text-olive-deep",
   CANCELLED: "border-terracotta text-terracotta",
 };

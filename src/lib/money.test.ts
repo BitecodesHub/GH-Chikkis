@@ -58,6 +58,29 @@ describe("ratePerGramFromStandard", () => {
 });
 
 describe("calculateLineAmount", () => {
+  it("preserves exact piece prices instead of rounding through a per-gram rate", () => {
+    expect(calculateLineAmount({
+      ratePerGramPaise: 36, actualWeightGrams: 275, weightBasis: "PER_UNIT",
+      quantity: 3, basisPricePaise: 10000,
+    }).lineTotalPaise).toBe(30000);
+  });
+
+  it("preserves a total-basis price without multiplying it by quantity", () => {
+    expect(calculateLineAmount({
+      ratePerGramPaise: 36, actualWeightGrams: 275, weightBasis: "TOTAL",
+      quantity: 3, basisPricePaise: 10000, adjustmentPaise: -50,
+    }).lineTotalPaise).toBe(9950);
+  });
+
+  it("honours an explicit zero price and rejects invalid exact prices", () => {
+    const input = { ratePerGramPaise: 36, actualWeightGrams: 275,
+      weightBasis: "PER_UNIT" as const, quantity: 1 };
+    expect(calculateLineAmount({ ...input, basisPricePaise: 0 }).lineTotalPaise).toBe(0);
+    for (const price of [-1, 0.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => calculateLineAmount({ ...input, basisPricePaise: price })).toThrow();
+    }
+  });
+
   it("scales by quantity only when the basis is per unit", () => {
     const perUnit = calculateLineAmount({
       ratePerGramPaise: 60,

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/lib/auth/session";
 import { hasPermission } from "@/lib/permissions";
-import { ExpenseError, createExpense } from "@/lib/expenses";
+import { ExpenseError, createExpense, deleteExpense } from "@/lib/expenses";
 import { InventoryError, parseInventoryQuantity, recordPurchase } from "@/lib/inventory";
 import { parseRupeesToPaise } from "@/lib/money";
 import { PAYMENT_METHODS, type PaymentMethod } from "@/lib/types";
@@ -13,6 +13,28 @@ export interface ExpenseFormState {
   ok: boolean;
   message?: string;
   errors?: Record<string, string>;
+}
+
+export async function deleteExpenseAction(id: string): Promise<ExpenseFormState> {
+  const { user } = await requirePermission("expenses.manage");
+  if (!id || id.length > 100) return { ok: false, message: "Choose a valid expense." };
+  try {
+    await deleteExpense(
+      id,
+      { id: user.id, name: user.name, email: user.email },
+      hasPermission(user, "inventory.manage"),
+    );
+  } catch (error) {
+    if (error instanceof ExpenseError) return { ok: false, message: error.message };
+    console.error("Expense deletion failed", error);
+    return { ok: false, message: "Could not delete the expense. Please retry; if this continues, contact an administrator." };
+  }
+  revalidatePath("/admin/expenses");
+  revalidatePath("/admin/inventory", "layout");
+  revalidatePath("/admin/reports", "layout");
+  revalidatePath("/admin/audit");
+  revalidatePath("/admin");
+  return { ok: true, message: "Expense deleted. Reports and stock updated." };
 }
 
 function readPaymentMethod(value: FormDataEntryValue | null): PaymentMethod | null {

@@ -1,11 +1,13 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { getDb } from "./db";
+import type { ClientSession } from "mongodb";
+import { getDb, getMongoClient } from "./db";
 import { businessToday, isValidBusinessDate, nowIso } from "./dates";
 import { recordAudit } from "./audit";
 import { createExpense } from "./expenses";
 import { roundQuantity, stockLabel } from "./quantity";
 import { cleanSingleLine } from "./text";
+import { EXPENSE_CATALOG } from "./expense-catalog";
 import type {
   Expense,
   InventoryItem,
@@ -87,37 +89,14 @@ export const INVENTORY_MOVEMENT_LABELS: Record<InventoryMovementType, string> = 
   ADJUSTMENT: "Adjustment",
 };
 
-// Kitchen order, not alphabet: each nut sits beside its crushed form, the two
-// tals together, then grains and sweets, then packing. Items the Owner adds
-// later fall in alphabetically after these.
-const ITEM_ORDER = [
-  "Cashews",
-  "Cashews - crushed",
-  "Almond",
-  "Almond - Crushed",
-  "Pista",
-  "Pista - Crushed",
-  "Black Tal",
-  "White Tal",
-  "Daliya",
-  "Mamra",
-  "Shing",
-  "Kopra Chhin",
-  "Jaggery",
-  "Jaggery - Organic",
-  "Ghee",
-  "Box - 250gm",
-  "Box - 500gm",
-  "Butter paper",
-  "Silica bag",
-  "Plastic bag - Small",
-  "Plastic bag - Big",
-];
-
-const ITEM_RANK = new Map(ITEM_ORDER.map((name, index) => [name.toLowerCase(), index]));
+// Kitchen order, not alphabet: the owner's exact expense-desk sequence.
+// Items the owner adds later fall in alphabetically after these.
+const ITEM_RANK = new Map(
+  EXPENSE_CATALOG.map((item, index) => [item.name.trim().toLowerCase(), index]),
+);
 
 function inventoryRank(name: string): number {
-  return ITEM_RANK.get(name.trim().toLowerCase()) ?? ITEM_ORDER.length;
+  return ITEM_RANK.get(name.trim().toLowerCase()) ?? EXPENSE_CATALOG.length;
 }
 
 export { formatStockQuantity, parseInventoryQuantity, roundQuantity, stockLabel } from "./quantity";
@@ -172,7 +151,7 @@ async function assertNameAvailable(name: string, excludeId?: string): Promise<vo
   }
 }
 
-async function computeCurrentQuantity(itemId: string): Promise<number> {
+async function computeCurrentQuantity(itemId: string, session?: ClientSession): Promise<number> {
   const db = await getDb();
   const result = await db
     .collection<InventoryMovementDoc>("inventory_movements")
@@ -192,17 +171,17 @@ async function computeCurrentQuantity(itemId: string): Promise<number> {
           },
         },
       },
-    ])
+    ], { session })
     .toArray();
   return roundQuantity(Number(result[0]?.total ?? 0));
 }
 
-async function syncItemQuantity(itemId: string): Promise<number> {
+async function syncItemQuantity(itemId: string, session?: ClientSession): Promise<number> {
   const db = await getDb();
-  const quantity = await computeCurrentQuantity(itemId);
+  const quantity = await computeCurrentQuantity(itemId, session);
   await db
     .collection<InventoryItemDoc>("inventory_items")
-    .updateOne({ _id: itemId }, { $set: { currentQuantity: quantity, updatedAt: nowIso() } });
+    .updateOne({ _id: itemId }, { $set: { currentQuantity: quantity, updatedAt: nowIso() } }, { session });
   return quantity;
 }
 
@@ -303,7 +282,7 @@ export async function getInventoryDetail(
   const expenses = expenseIds.length
     ? await db
         .collection<Omit<Expense, "id"> & { _id: string }>("expenses")
-        .find({ _id: { $in: expenseIds } })
+        .find({ _id: { $in: expenseIds }, deletedAt: { $exists: false } })
         .toArray()
     : [];
   const expenseById = new Map(
@@ -409,6 +388,7 @@ async function insertMovement(
   item: InventoryItem,
   movement: Omit<InventoryMovement, "id" | "createdAt" | "createdBy" | "itemId">,
   actor: InventoryActor,
+  session?: ClientSession,
 ): Promise<InventoryMovementDoc> {
   const db = await getDb();
   const doc: InventoryMovementDoc = {
@@ -419,7 +399,7 @@ async function insertMovement(
     createdByName: actor.name,
     createdAt: nowIso(),
   };
-  await db.collection<InventoryMovementDoc>("inventory_movements").insertOne(doc);
+  await db.collection<InventoryMovementDoc>("inventory_movements").insertOne(doc, { session });
   return doc;
 }
 
@@ -503,27 +483,42 @@ export async function recordUsage(
   input: UsageInput,
   actor: InventoryActor,
 ): Promise<InventoryItem> {
-  const item = await getInventoryItem(itemId);
-  if (!item) throw new InventoryError("That inventory item no longer exists.");
-  if (!item.active) throw new InventoryError("This item is archived. Reactivate it first.");
-  const quantity = roundQuantity(input.quantity);
-  if (!Number.isFinite(quantity) || quantity <= 0) {
-    throw new InventoryError("Enter the quantity used.", "quantity");
+  const db = await getDb();
+  const client = await getMongoClient();
+  const session = client.startSession();
+  let result;
+  try {
+    result = await session.withTransaction(async () => {
+      const doc = await db.collection<InventoryItemDoc>("inventory_items").findOne({ _id: itemId }, { session });
+      if (!doc) throw new InventoryError("That inventory item no longer exists.");
+      const item = { ...mapItem(doc), currentQuantity: await computeCurrentQuantity(itemId, session) };
+      if (!item.active) throw new InventoryError("This item is archived. Reactivate it first.");
+      const quantity = roundQuantity(input.quantity);
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        throw new InventoryError("Enter the quantity used.", "quantity");
+      }
+      const date = normalizeDate(input.date, "usage date");
+      if (quantity > item.currentQuantity) {
+        throw new InventoryError(
+          `Only ${stockLabel(item.currentQuantity, item.unit)} is recorded in stock.`,
+          "quantity",
+        );
+      }
+      const notes = cleanSingleLine(input.notes, 300);
+      await insertMovement(
+        item,
+        { type: "USAGE", quantity, date, notes: notes || undefined },
+        actor,
+        session,
+      );
+      // The shared item write serializes stock checks with other stock transactions.
+      const currentQuantity = await syncItemQuantity(item.id, session);
+      return { item, quantity, notes, currentQuantity };
+    }, { readConcern: { level: "snapshot" }, writeConcern: { w: "majority" } });
+  } finally {
+    await session.endSession();
   }
-  const date = normalizeDate(input.date, "usage date");
-  if (quantity > item.currentQuantity) {
-    throw new InventoryError(
-      `Only ${stockLabel(item.currentQuantity, item.unit)} is recorded in stock.`,
-      "quantity",
-    );
-  }
-  const notes = cleanSingleLine(input.notes, 300);
-  await insertMovement(
-    item,
-    { type: "USAGE", quantity, date, notes: notes || undefined },
-    actor,
-  );
-  const currentQuantity = await syncItemQuantity(item.id);
+  const { item, quantity, notes, currentQuantity } = result;
   await recordAudit({
     actor,
     action: "inventory.usage",
@@ -539,36 +534,50 @@ export async function recordAdjustment(
   input: AdjustmentInput,
   actor: InventoryActor,
 ): Promise<InventoryItem> {
-  const item = await getInventoryItem(itemId);
-  if (!item) throw new InventoryError("That inventory item no longer exists.");
-  if (!item.active) throw new InventoryError("This item is archived. Reactivate it first.");
-  const counted = roundQuantity(input.countedQuantity);
-  if (!Number.isFinite(counted) || counted < 0) {
-    throw new InventoryError("Enter the counted quantity, zero or more.", "countedQuantity");
+  const db = await getDb();
+  const client = await getMongoClient();
+  const session = client.startSession();
+  let result;
+  try {
+    result = await session.withTransaction(async () => {
+      const doc = await db.collection<InventoryItemDoc>("inventory_items").findOne({ _id: itemId }, { session });
+      if (!doc) throw new InventoryError("That inventory item no longer exists.");
+      const item = { ...mapItem(doc), currentQuantity: await computeCurrentQuantity(itemId, session) };
+      if (!item.active) throw new InventoryError("This item is archived. Reactivate it first.");
+      const counted = roundQuantity(input.countedQuantity);
+      if (!Number.isFinite(counted) || counted < 0) {
+        throw new InventoryError("Enter the counted quantity, zero or more.", "countedQuantity");
+      }
+      const date = normalizeDate(input.date, "adjustment date");
+      const reason = cleanSingleLine(input.reason, 300);
+      if (!reason) {
+        throw new InventoryError("Give a reason for the stock adjustment.", "reason");
+      }
+      const delta = roundQuantity(counted - item.currentQuantity);
+      if (delta === 0) {
+        throw new InventoryError(
+          "The counted quantity matches the recorded stock, so there is nothing to adjust.",
+          "countedQuantity",
+        );
+      }
+      await insertMovement(
+        item,
+        {
+          type: "ADJUSTMENT",
+          quantity: delta,
+          date,
+          notes: `${reason} · counted ${stockLabel(counted, item.unit)}`,
+        },
+        actor,
+        session,
+      );
+      const currentQuantity = await syncItemQuantity(item.id, session);
+      return { item, counted, reason, currentQuantity };
+    }, { readConcern: { level: "snapshot" }, writeConcern: { w: "majority" } });
+  } finally {
+    await session.endSession();
   }
-  const date = normalizeDate(input.date, "adjustment date");
-  const reason = cleanSingleLine(input.reason, 300);
-  if (!reason) {
-    throw new InventoryError("Give a reason for the stock adjustment.", "reason");
-  }
-  const delta = roundQuantity(counted - item.currentQuantity);
-  if (delta === 0) {
-    throw new InventoryError(
-      "The counted quantity matches the recorded stock, so there is nothing to adjust.",
-      "countedQuantity",
-    );
-  }
-  await insertMovement(
-    item,
-    {
-      type: "ADJUSTMENT",
-      quantity: delta,
-      date,
-      notes: `${reason} · counted ${stockLabel(counted, item.unit)}`,
-    },
-    actor,
-  );
-  const currentQuantity = await syncItemQuantity(item.id);
+  const { item, counted, reason, currentQuantity } = result;
   await recordAudit({
     actor,
     action: "inventory.adjustment",

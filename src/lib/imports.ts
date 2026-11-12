@@ -259,9 +259,10 @@ interface PaymentDoc extends Document {
 }
 
 const ORDER_STATUS_ALIASES: Record<string, OrderStatus> = {
-  NEW: "NEW",
-  OPEN: "NEW",
-  CONFIRMED: "CONFIRMED",
+  NEW: "PENDING",
+  OPEN: "PENDING",
+  PENDING: "PENDING",
+  CONFIRMED: "PENDING",
   COMPLETE: "COMPLETED",
   COMPLETED: "COMPLETED",
   DONE: "COMPLETED",

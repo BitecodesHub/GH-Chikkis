@@ -77,6 +77,8 @@ export function calculateLineAmount(input: {
   weightBasis: WeightBasis;
   quantity: number;
   adjustmentPaise?: number;
+  /** Exact price for the basis weight; wins over the per-gram rate. */
+  basisPricePaise?: number;
 }): LineCalculation {
   const { ratePerGramPaise, actualWeightGrams, weightBasis, quantity } = input;
   if (!Number.isInteger(ratePerGramPaise) || ratePerGramPaise < 0) {
@@ -92,10 +94,15 @@ export function calculateLineAmount(input: {
   if (!Number.isInteger(adjustment)) {
     throw new Error("Adjustment must be whole paise.");
   }
+  const basisPrice = input.basisPricePaise;
+  if (basisPrice !== undefined && (!Number.isInteger(basisPrice) || basisPrice < 0)) {
+    throw new Error("Price must be a non-negative whole number of paise.");
+  }
   const multiplier = weightBasis === "PER_UNIT" ? quantity : 1;
-  const standardAmountPaise = Math.round(
-    ratePerGramPaise * actualWeightGrams * multiplier,
-  );
+  const standardAmountPaise =
+    basisPrice !== undefined
+      ? basisPrice * multiplier
+      : Math.round(ratePerGramPaise * actualWeightGrams * multiplier);
   const lineTotalPaise = standardAmountPaise + adjustment;
   if (lineTotalPaise < 0) {
     throw new Error("The adjustment cannot make a line negative.");

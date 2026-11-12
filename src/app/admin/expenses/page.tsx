@@ -11,6 +11,8 @@ import { dateRangeFromParams, formatDateDDMMYYYY, rangeLabel } from "@/lib/dates
 import { formatINR } from "@/lib/money";
 import { cn } from "@/lib/cn";
 import type { Expense } from "@/lib/types";
+import { hasPermission } from "@/lib/permissions";
+import { DeleteExpense } from "./delete-expense";
 
 export const metadata: Metadata = { title: "Expenses" };
 
@@ -27,7 +29,8 @@ export default async function AdminExpensesPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requirePermission("expenses.manage");
+  const { user } = await requirePermission("expenses.manage");
+  const canManageInventory = hasPermission(user, "inventory.manage");
   const params = await searchParams;
   const range = dateRangeFromParams(params);
   const category = typeof params.category === "string" ? params.category : "";
@@ -264,6 +267,7 @@ export default async function AdminExpensesPage({
                   <th scope="col" className="px-5 py-3 text-right font-semibold">
                     Amount
                   </th>
+                  <th scope="col" className="px-5 py-3 font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
@@ -311,6 +315,23 @@ export default async function AdminExpensesPage({
                     </td>
                     <td className="px-5 py-3 text-right whitespace-nowrap">
                       {formatINR(expense.amountPaise)}
+                    </td>
+                    <td className="px-5 py-3">
+                      {expense.source === "GIFT" || expense.giftOrderId ? (
+                        expense.giftOrderId ? (
+                          <Link href={`/admin/orders/${encodeURIComponent(expense.giftOrderId)}`} className="text-xs underline">
+                            Use order deletion
+                          </Link>
+                        ) : <span className="text-xs text-ink-muted">Use order deletion</span>
+                      ) : (expense.source === "PURCHASE" || expense.inventoryItemId) && !canManageInventory ? (
+                        <span className="text-xs text-ink-muted">Inventory permission required</span>
+                      ) : (
+                        <DeleteExpense
+                          id={expense.id}
+                          description={`${expense.description || expense.category} (${formatINR(expense.amountPaise)})`}
+                          purchase={expense.source === "PURCHASE" || Boolean(expense.inventoryItemId)}
+                        />
+                      )}
                     </td>
                   </tr>
                   );

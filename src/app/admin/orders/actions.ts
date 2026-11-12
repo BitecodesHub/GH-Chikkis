@@ -14,6 +14,8 @@ import {
   createOrder,
   deleteOrder,
   getOrder,
+  setOrderCompleted,
+  setPaymentReceived,
   updateOrder,
   type OrderInput,
   type OrderItemInput,
@@ -26,6 +28,7 @@ import {
   type OrderStatus,
   type OrderType,
   type PaymentMethod,
+  type PaymentStatus,
   type WeightBasis,
 } from "@/lib/types";
 
@@ -56,6 +59,10 @@ function parseItems(formData: FormData): OrderItemInput[] {
   }
   return parsed.map((rawItem): OrderItemInput => {
     const item = rawItem && typeof rawItem === "object" ? (rawItem as Record<string, unknown>) : {};
+    if (item.basisPricePaise === null) {
+      throw new OrderError("Enter a price for every order line. Use 0 only when it is intentionally free.", "items");
+    }
+    const hasBasisPrice = item.basisPricePaise !== undefined;
     return {
       productId: String(item.productId ?? ""),
       packagingId: item.packagingId ? String(item.packagingId) : null,
@@ -64,6 +71,7 @@ function parseItems(formData: FormData): OrderItemInput[] {
         item.weightBasis === "TOTAL" ? ("TOTAL" as WeightBasis) : ("PER_UNIT" as WeightBasis),
       quantity: Math.round(Number(item.quantity ?? 0)),
       ratePerGramPaise: Math.round(Number(item.ratePerGramPaise ?? 0)),
+      ...(hasBasisPrice ? { basisPricePaise: Math.round(Number(item.basisPricePaise)) } : {}),
       adjustmentPaise: Math.round(Number(item.adjustmentPaise ?? 0)),
       notes: typeof item.notes === "string" ? item.notes : undefined,
     };
@@ -222,6 +230,52 @@ export async function changeOrderStatusAction(formData: FormData): Promise<void>
   }
   revalidateOrderPaths(orderId);
   redirect(`/admin/orders/${orderId}?status=1`);
+}
+
+export interface OrderToggleState {
+  ok: boolean;
+  message?: string;
+  status?: OrderStatus;
+  paymentStatus?: PaymentStatus;
+  balancePaise?: number;
+}
+
+export async function toggleOrderCompletedAction(
+  orderId: string,
+  completed: boolean,
+): Promise<OrderToggleState> {
+  const { user } = await requirePermission("orders.manage");
+  try {
+    const order = await setOrderCompleted(orderId, completed, actorFrom(user));
+    revalidateOrderPaths(order.id);
+    revalidatePath("/admin/reports");
+    if (order.customerId) revalidatePath(`/admin/customers/${order.customerId}`);
+    return { ok: true, status: order.status };
+  } catch (error) {
+    if (error instanceof OrderError) return { ok: false, message: error.message };
+    throw error;
+  }
+}
+
+export async function togglePaymentReceivedAction(
+  orderId: string,
+  received: boolean,
+): Promise<OrderToggleState> {
+  const { user } = await requirePermission("payments.manage");
+  try {
+    const order = await setPaymentReceived(orderId, received, actorFrom(user));
+    revalidateOrderPaths(order.id);
+    revalidatePath("/admin/reports");
+    if (order.customerId) revalidatePath(`/admin/customers/${order.customerId}`);
+    return {
+      ok: true,
+      paymentStatus: order.paymentStatus,
+      balancePaise: order.balancePaise,
+    };
+  } catch (error) {
+    if (error instanceof OrderError) return { ok: false, message: error.message };
+    throw error;
+  }
 }
 
 export async function deleteOrderAction(formData: FormData): Promise<void> {

@@ -120,9 +120,9 @@ const ART: Record<string, IngredientArt> = {
 // Read top to bottom: the specific cut wins over the whole nut, organic jaggery
 // over plain jaggery, and black til over the white one.
 const MATCHERS: [RegExp, string][] = [
-  [/(cashew|kaju).*(crush|chopped)|(crush|chopped).*(cashew|kaju)/, "cashews-crushed"],
-  [/almond.*(crush|chopped)|(crush|chopped).*almond|badam.*crush/, "almond-crushed"],
-  [/pista.*(crush|chopped)|(crush|chopped).*pista/, "pista-crushed"],
+  [/(cashew|kaju).*(crush|chopped|grated)|(crush|chopped|grated).*(cashew|kaju)/, "cashews-crushed"],
+  [/almond.*(crush|chopped|grated)|(crush|chopped|grated).*almond|badam.*(crush|chopped|grated)/, "almond-crushed"],
+  [/pista.*(crush|chopped|grated)|(crush|chopped|grated).*pista/, "pista-crushed"],
   [/organic.*jaggery|jaggery.*organic/, "jaggery-organic"],
   [/black\s*(tal|til|sesame)|kali\s*(tal|til)/, "black-tal"],
   [/\b(tal|til)\b|sesame/, "white-tal"],

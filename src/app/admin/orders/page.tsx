@@ -4,16 +4,15 @@ import { ChevronLeft, ChevronRight, Plus, Search, ShoppingBag } from "lucide-rea
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { FilterNav } from "@/components/admin/filter-nav";
 import { OrderDeleteButton } from "@/components/admin/order-delete-button";
+import { OrderToggle } from "@/components/admin/order-toggle";
 import { requirePermission } from "@/lib/auth/session";
-import { cn } from "@/lib/cn";
 import { formatDateDDMMYYYY } from "@/lib/dates";
 import { formatINR } from "@/lib/money";
-import { listOrders } from "@/lib/orders";
+import { listOrders, type OrderPaymentFilter } from "@/lib/orders";
 import { hasPermission } from "@/lib/permissions";
 import {
   ORDER_STATUSES,
   ORDER_STATUS_LABELS,
-  PAYMENT_STATUS_LABELS,
   type OrderStatus,
   type OrderType,
 } from "@/lib/types";
@@ -22,14 +21,13 @@ export const metadata: Metadata = { title: "Orders" };
 
 const PAGE_SIZE = 30;
 
-const STATUS_STYLES: Record<OrderStatus, string> = {
-  NEW: "border-brass text-brass",
-  CONFIRMED: "border-olive-soft text-olive",
-  COMPLETED: "border-olive-deep text-olive-deep",
-  CANCELLED: "border-terracotta text-terracotta",
-};
+const PAYMENT_FILTERS: { value: OrderPaymentFilter; label: string }[] = [
+  { value: "DUE", label: "Payment due" },
+  { value: "PARTIALLY_PAID", label: "Partially paid" },
+  { value: "FULLY_PAID", label: "Fully paid" },
+];
 
-function filterSummary(query: string, status: string, type: string): string {
+function filterSummary(query: string, status: string, type: string, payment: string): string {
   const parts: string[] = [];
   if (query) parts.push(`text “${query}”`);
   if (status) {
@@ -37,6 +35,10 @@ function filterSummary(query: string, status: string, type: string): string {
     parts.push(`status ${label ? label.toLowerCase() : status}`);
   }
   if (type) parts.push(type === "SALES" ? "sales orders only" : "gifting orders only");
+  if (payment) {
+    const label = PAYMENT_FILTERS.find((filter) => filter.value === payment)?.label;
+    parts.push((label ?? payment).toLowerCase());
+  }
   return `Filtered by ${parts.join(", ")}. Try removing a filter to see more orders.`;
 }
 
@@ -50,19 +52,25 @@ export default async function AdminOrdersPage({
   const query = typeof params.q === "string" ? params.q : "";
   const rawStatus = typeof params.status === "string" ? params.status : "";
   const rawType = typeof params.type === "string" ? params.type : "";
+  const rawPayment = typeof params.payment === "string" ? params.payment : "";
   const status = ORDER_STATUSES.includes(rawStatus as OrderStatus) ? rawStatus : "";
   const type = rawType === "SALES" || rawType === "GIFT" ? rawType : "";
+  const payment = PAYMENT_FILTERS.some((filter) => filter.value === rawPayment)
+    ? (rawPayment as OrderPaymentFilter)
+    : "";
   const page = Math.max(Number(params.page ?? 1) || 1, 1);
   const { items, total } = await listOrders({
     query,
     status: status as OrderStatus | "",
     type: type as OrderType | "",
+    payment,
     limit: PAGE_SIZE,
     offset: (page - 1) * PAGE_SIZE,
   });
   const pages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
   const canManage = hasPermission(user, "orders.manage");
-  const filtersActive = Boolean(query || status || type);
+  const canPay = hasPermission(user, "payments.manage");
+  const filtersActive = Boolean(query || status || type || payment);
   const justDeleted = params.deleted === "1";
 
   const pageHref = (nextPage: number) => {
@@ -70,6 +78,7 @@ export default async function AdminOrdersPage({
     if (query) search.set("q", query);
     if (status) search.set("status", status);
     if (type) search.set("type", type);
+    if (payment) search.set("payment", payment);
     if (nextPage > 1) search.set("page", String(nextPage));
     const suffix = search.toString();
     return `/admin/orders${suffix ? `?${suffix}` : ""}`;
@@ -143,6 +152,19 @@ export default async function AdminOrdersPage({
                 <option value="GIFT">Gifting</option>
               </select>
             </div>
+            <div>
+              <label htmlFor="order-payment" className="label">
+                Payment
+              </label>
+              <select id="order-payment" name="payment" defaultValue={payment} className="field min-w-36">
+                <option value="">All payments</option>
+                {PAYMENT_FILTERS.map((filter) => (
+                  <option key={filter.value} value={filter.value}>
+                    {filter.label}
+                  </option>
+                ))}
+              </select>
+            </div>
             <FilterNav />
             <button type="submit" className="sr-only">
               Apply filters
@@ -170,7 +192,7 @@ export default async function AdminOrdersPage({
               <Search aria-hidden="true" className="mx-auto size-7 text-brass" />
               <p className="display-s mt-4">No orders match these filters.</p>
               <p className="mt-2 text-[0.9375rem] text-ink-soft">
-                {filterSummary(query, status, type)}
+                {filterSummary(query, status, type, payment)}
               </p>
               <Link href="/admin/orders" className="btn btn-outline mt-6">
                 Clear filters
@@ -239,21 +261,37 @@ export default async function AdminOrdersPage({
                         {order.customerSnapshot.name} · {formatDateDDMMYYYY(order.orderDate)}
                       </p>
                       <div className="mt-1.5 flex flex-wrap items-center gap-2 md:hidden">
-                        <span className={cn("pill", STATUS_STYLES[order.status])}>
-                          {ORDER_STATUS_LABELS[order.status]}
-                        </span>
+                        <OrderToggle
+                          kind="completion"
+                          orderId={order.id}
+                          type={order.type}
+                          status={order.status}
+                          paymentStatus={order.paymentStatus}
+                          canManage={canManage}
+                          canPay={canPay}
+                        />
                         {order.type === "GIFT" ? (
                           <span className="text-[0.75rem] text-ink-muted">
                             Gift · not invoiced
                           </span>
                         ) : (
-                          <span className="text-[0.75rem] text-ink-soft">
-                            {formatINR(order.totalPaise)} ·{" "}
-                            {PAYMENT_STATUS_LABELS[order.paymentStatus]}
-                            {order.balancePaise > 0 && order.status !== "CANCELLED"
-                              ? ` · ${formatINR(order.balancePaise)} due`
-                              : ""}
-                          </span>
+                          <>
+                            <OrderToggle
+                              kind="payment"
+                              orderId={order.id}
+                              type={order.type}
+                              status={order.status}
+                              paymentStatus={order.paymentStatus}
+                              canManage={canManage}
+                              canPay={canPay}
+                            />
+                            <span className="text-[0.75rem] text-ink-soft">
+                              {formatINR(order.totalPaise)}
+                              {order.balancePaise > 0 && order.status !== "CANCELLED"
+                                ? ` · ${formatINR(order.balancePaise)} due`
+                                : ""}
+                            </span>
+                          </>
                         )}
                       </div>
                     </td>
@@ -267,22 +305,34 @@ export default async function AdminOrdersPage({
                       {formatDateDDMMYYYY(order.orderDate)}
                     </td>
                     <td className="hidden px-5 py-3 md:table-cell">
-                      <span className={cn("pill", STATUS_STYLES[order.status])}>
-                        {ORDER_STATUS_LABELS[order.status]}
-                      </span>
+                      <OrderToggle
+                        kind="completion"
+                        orderId={order.id}
+                        type={order.type}
+                        status={order.status}
+                        paymentStatus={order.paymentStatus}
+                        canManage={canManage}
+                        canPay={canPay}
+                      />
                     </td>
                     <td className="hidden px-5 py-3 md:table-cell">
                       {order.type === "GIFT" ? (
                         <span className="text-[0.8125rem] text-ink-muted">Not applicable</span>
                       ) : (
-                        <div>
-                          <span className="text-[0.8125rem]">
-                            {PAYMENT_STATUS_LABELS[order.paymentStatus]}
-                          </span>
+                        <div className="flex flex-col items-start gap-1">
+                          <OrderToggle
+                            kind="payment"
+                            orderId={order.id}
+                            type={order.type}
+                            status={order.status}
+                            paymentStatus={order.paymentStatus}
+                            canManage={canManage}
+                            canPay={canPay}
+                          />
                           {order.balancePaise > 0 && order.status !== "CANCELLED" ? (
-                            <p className="text-[0.75rem] text-terracotta">
+                            <span className="text-[0.75rem] text-terracotta">
                               {formatINR(order.balancePaise)} due
-                            </p>
+                            </span>
                           ) : null}
                         </div>
                       )}

@@ -2,11 +2,12 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
-import { LoaderCircle, Package } from "lucide-react";
+import { Banknote, LoaderCircle, Package } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { PAYMENT_METHODS } from "@/lib/types";
 import { formatStockQuantity } from "@/lib/quantity";
 import { ingredientArt } from "@/lib/ingredients";
+import { SALARY_EXPENSE_CATEGORY, SALARY_TILE_NAME } from "@/lib/expense-catalog";
 import { ExpenseForm } from "@/components/admin/expense-form";
 import { IngredientPhoto } from "@/components/admin/ingredient-photo";
 import type { ExpenseFormState } from "@/app/admin/expenses/actions";
@@ -25,6 +26,10 @@ type EntryAction = (
 ) => Promise<ExpenseFormState>;
 
 const EMPTY: ExpenseFormState = { ok: false };
+
+// Salary is the last tile but never a stock item: selecting it books a plain
+// Labour expense through the ordinary expense action.
+const SALARY_TILE_ID = "__salary__";
 
 // Mirrors defaultExpenseCategoryForInventory on the server, which the client
 // bundle cannot import.
@@ -205,8 +210,20 @@ export function ExpenseEntry({
 }) {
   const [selected, setSelected] = useState<string>(items[0]?.id ?? "");
   const item = items.find((entry) => entry.id === selected);
+  const salarySelected = selected === SALARY_TILE_ID;
   const showStock = canRecordStock && items.length > 0;
   const [mode, setMode] = useState<"stock" | "other">(showStock ? "stock" : "other");
+
+  const tiles: StockTile[] = [
+    ...items,
+    {
+      id: SALARY_TILE_ID,
+      name: SALARY_TILE_NAME,
+      unit: "expense",
+      category: SALARY_EXPENSE_CATEGORY,
+      currentQuantity: 0,
+    },
+  ];
 
   if (!showStock) {
     return <ExpenseForm categories={categories} today={today} action={otherAction} />;
@@ -262,13 +279,16 @@ export function ExpenseEntry({
                 from Inventory.
               </p>
             </div>
-            {item ? (
+            {salarySelected ? (
+              <p className="text-[0.875rem] font-medium">{SALARY_TILE_NAME}</p>
+            ) : item ? (
               <p className="text-[0.875rem] font-medium">{item.name}</p>
             ) : null}
           </div>
           <ul className="flex flex-wrap gap-2 p-4">
-            {items.map((entry) => {
+            {tiles.map((entry) => {
               const art = ingredientArt(entry.name, entry.category);
+              const isSalary = entry.id === SALARY_TILE_ID;
               return (
               <li key={entry.id}>
                 <button
@@ -288,7 +308,11 @@ export function ExpenseEntry({
                       <IngredientPhoto art={art} sizes="88px" />
                     ) : (
                       <span className="grid size-full place-items-center text-ink-muted">
-                        <Package aria-hidden="true" className="size-6" />
+                        {isSalary ? (
+                          <Banknote aria-hidden="true" className="size-6" />
+                        ) : (
+                          <Package aria-hidden="true" className="size-6" />
+                        )}
                       </span>
                     )}
                   </span>
@@ -301,7 +325,18 @@ export function ExpenseEntry({
               );
             })}
           </ul>
-          {item ? (
+          {salarySelected ? (
+            <ExpenseForm
+              key={SALARY_TILE_ID}
+              categories={categories}
+              today={today}
+              action={otherAction}
+              embedded
+              title={SALARY_TILE_NAME}
+              hint="Salary is not stock — this books a plain expense under Labour."
+              defaults={{ description: SALARY_TILE_NAME, category: SALARY_EXPENSE_CATEGORY }}
+            />
+          ) : item ? (
             <StockPurchaseForm
               key={item.id}
               item={item}

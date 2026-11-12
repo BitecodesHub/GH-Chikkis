@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { OrderDeleteButton } from "@/components/admin/order-delete-button";
+import { OrderToggle } from "@/components/admin/order-toggle";
 import { requirePermission } from "@/lib/auth/session";
 import { cn } from "@/lib/cn";
 import { formatDateDDMMYYYY, formatDateTime, businessToday } from "@/lib/dates";
@@ -45,12 +46,12 @@ import {
   DELIVERY_METHOD_LABELS,
   ORDER_STATUSES,
   ORDER_STATUS_LABELS,
+  ORDER_STATUS_HISTORY_LABELS,
   PAYMENT_METHODS,
   PAYMENT_METHOD_LABELS,
   PAYMENT_STATUS_LABELS,
   type EmailMessage,
   type NotificationStatus,
-  type OrderStatus,
 } from "@/lib/types";
 import {
   addOrderExpenseAction,
@@ -69,13 +70,6 @@ import {
 } from "../message-actions";
 
 export const metadata: Metadata = { title: "Order" };
-
-const STATUS_STYLES: Record<OrderStatus, string> = {
-  NEW: "border-brass text-brass",
-  CONFIRMED: "border-olive-soft text-olive",
-  COMPLETED: "border-olive-deep text-olive-deep",
-  CANCELLED: "border-terracotta text-terracotta",
-};
 
 const MESSAGE_STATUS_STYLES: Record<NotificationStatus, string> = {
   QUEUED: "border-brass text-brass",
@@ -342,9 +336,17 @@ export default async function OrderDetailPage({
               >
                 {formatINR(outstanding)}
               </dd>
-              <p className="mt-1 text-[0.75rem] text-ink-muted">
-                {PAYMENT_STATUS_LABELS[order.paymentStatus]}
-              </p>
+              <div className="mt-2">
+                <OrderToggle
+                  kind="payment"
+                  orderId={order.id}
+                  type={order.type}
+                  status={order.status}
+                  paymentStatus={order.paymentStatus}
+                  canManage={canManage}
+                  canPay={canPayments}
+                />
+              </div>
             </div>
           </>
         ) : (
@@ -377,11 +379,17 @@ export default async function OrderDetailPage({
           </>
         )}
         <div className="surface px-5 py-4">
-          <dt className="meta">Status</dt>
+          <dt className="meta">Order completed</dt>
           <dd className="mt-1">
-            <span className={cn("pill", STATUS_STYLES[order.status])}>
-              {ORDER_STATUS_LABELS[order.status]}
-            </span>
+            <OrderToggle
+              kind="completion"
+              orderId={order.id}
+              type={order.type}
+              status={order.status}
+              paymentStatus={order.paymentStatus}
+              canManage={canManage}
+              canPay={canPayments}
+            />
           </dd>
           <p className="mt-2 text-[0.75rem] text-ink-muted">
             Updated {formatDateTime(order.updatedAt)}
@@ -391,6 +399,22 @@ export default async function OrderDetailPage({
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-6">
+          {order.comments ? (
+            <section
+              className="surface border-l-4 border-l-brass p-5"
+              aria-labelledby="order-notes"
+            >
+              <h2
+                id="order-notes"
+                className="font-[family-name:var(--font-display)] text-xl"
+              >
+                Order note
+              </h2>
+              <p className="mt-2 whitespace-pre-wrap text-[0.9375rem] text-ink-soft">
+                {order.comments}
+              </p>
+            </section>
+          ) : null}
           <section className="surface" aria-labelledby="order-items">
             <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-line px-5 py-4">
               <h2 id="order-items" className="font-[family-name:var(--font-display)] text-xl">
@@ -412,7 +436,7 @@ export default async function OrderDetailPage({
                       Qty
                     </th>
                     <th scope="col" className="px-5 py-3 text-right font-semibold">
-                      Rate/g
+                      Price
                     </th>
                     <th scope="col" className="px-5 py-3 text-right font-semibold">
                       Amount
@@ -447,7 +471,12 @@ export default async function OrderDetailPage({
                       <td className="px-5 py-3 text-right whitespace-nowrap">
                         {item.imported
                           ? "—"
-                          : formatINR(item.ratePerGramPaise, { alwaysPaise: true })}
+                          : formatINR(
+                              item.basisPricePaise ??
+                                (item.weightBasis === "PER_UNIT"
+                                  ? Math.round(item.ratePerGramPaise * item.actualWeightGrams)
+                                  : item.standardAmountPaise),
+                            )}
                       </td>
                       <td className="px-5 py-3 text-right whitespace-nowrap">
                         {formatINR(item.lineTotalPaise)}
@@ -856,7 +885,7 @@ export default async function OrderDetailPage({
                 <li key={`${entry.at}-${index}`} className="flex gap-3">
                   <span className="mt-1.5 size-2 shrink-0 rounded-full bg-brass" />
                   <div>
-                    <p className="font-medium">{ORDER_STATUS_LABELS[entry.status]}</p>
+                    <p className="font-medium">{ORDER_STATUS_HISTORY_LABELS[entry.status]}</p>
                     <p className="text-[0.8125rem] text-ink-muted">
                       {formatDateTime(entry.at)}
                       {entry.byName ? ` · ${entry.byName}` : ""}
@@ -897,7 +926,7 @@ export default async function OrderDetailPage({
                       name="note"
                       maxLength={500}
                       className="field"
-                      placeholder="Confirmed on WhatsApp"
+                      placeholder="Completed and handed over"
                     />
                   </div>
                   <button type="submit" className="btn btn-outline btn-sm">
@@ -993,20 +1022,6 @@ export default async function OrderDetailPage({
                   {order.gift.note}
                 </p>
               ) : null}
-            </section>
-          ) : null}
-
-          {order.comments ? (
-            <section className="surface p-5" aria-labelledby="order-notes">
-              <h2
-                id="order-notes"
-                className="font-[family-name:var(--font-display)] text-xl"
-              >
-                Order notes
-              </h2>
-              <p className="mt-3 whitespace-pre-wrap text-[0.9375rem] text-ink-soft">
-                {order.comments}
-              </p>
             </section>
           ) : null}
 

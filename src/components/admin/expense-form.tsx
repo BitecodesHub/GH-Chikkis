@@ -22,32 +22,48 @@ export function ExpenseForm({
   categories,
   today,
   action,
+  title,
+  hint,
+  defaults,
+  embedded,
 }: {
   categories: string[];
   today: string;
   action: (previous: ExpenseFormState, formData: FormData) => Promise<ExpenseFormState>;
+  title?: string;
+  hint?: string;
+  defaults?: { description?: string; category?: string };
+  embedded?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(action, EMPTY);
   const errors = state.errors ?? {};
   const options = categories.length > 0 ? categories : ["Miscellaneous"];
+  const initialCategory =
+    (defaults?.category && options.find((category) => category === defaults.category)) || options[0];
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form action={formAction} className={embedded ? "border-t border-line px-5 py-5" : "space-y-6"}>
       {state.message ? (
         <p
           role="alert"
-          className="border border-terracotta bg-paper-raised px-4 py-3 text-[0.875rem]"
+          className={cn(
+            "border border-terracotta bg-paper-raised px-4 py-3 text-[0.875rem]",
+            embedded && "mb-4",
+          )}
         >
           {state.message}
         </p>
       ) : null}
 
-      <section className="surface p-5 sm:p-6" aria-labelledby="expense-details">
+      <section
+        className={embedded ? undefined : "surface p-5 sm:p-6"}
+        aria-labelledby="expense-details"
+      >
         <h2 id="expense-details" className="font-[family-name:var(--font-display)] text-xl">
-          Other expense
+          {title ?? "Other expense"}
         </h2>
         <p className="mt-1 text-[0.875rem] text-ink-soft">
-          Labour, transport, utilities, marketing — anything that is not stock you count.
+          {hint ?? "Labour, transport, utilities, marketing — anything that is not stock you count."}
         </p>
         <div className="mt-5 grid gap-5 md:grid-cols-2">
           <div>
@@ -86,7 +102,7 @@ export function ExpenseForm({
             <select
               id="expense-category"
               name="category"
-              defaultValue={options[0]}
+              defaultValue={initialCategory}
               className={cn("field", errors.category && "field-error")}
             >
               {options.map((category) => (
@@ -124,6 +140,7 @@ export function ExpenseForm({
               name="description"
               maxLength={500}
               required
+              defaultValue={defaults?.description ?? ""}
               className={cn("field", errors.description && "field-error")}
               placeholder="What was this expense for?"
             />
@@ -157,8 +174,8 @@ export function ExpenseForm({
         </div>
       </section>
 
-      <div className="flex flex-wrap gap-3">
-        <button type="submit" className="btn btn-solid" disabled={pending}>
+      <div className={cn("flex flex-wrap gap-3", embedded && "mt-5")}>
+        <button type="submit" className={cn("btn btn-solid", embedded && "btn-sm")} disabled={pending}>
           {pending ? (
             <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
           ) : (
@@ -166,9 +183,11 @@ export function ExpenseForm({
           )}
           Record expense
         </button>
-        <Link href="/admin/expenses" className="btn btn-outline">
-          Cancel
-        </Link>
+        {embedded ? null : (
+          <Link href="/admin/expenses" className="btn btn-outline">
+            Cancel
+          </Link>
+        )}
       </div>
     </form>
   );

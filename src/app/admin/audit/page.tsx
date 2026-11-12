@@ -12,8 +12,6 @@ import {
   formatDateTime,
   parseBusinessDate,
 } from "@/lib/dates";
-import { hasPermission } from "@/lib/permissions";
-import type { User } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Audit log" };
 
@@ -39,44 +37,12 @@ const ENTITY_TYPES = [
 
 const ENTITY_LABELS = new Map<string, string>(ENTITY_TYPES);
 
-function entityHref(user: User, entityType: string, entityId?: string): string | null {
-  if (!entityId) return null;
-  switch (entityType) {
-    case "order":
-      return hasPermission(user, "orders.view") ? `/admin/orders/${entityId}` : null;
-    case "customer":
-      return hasPermission(user, "customers.view") ? `/admin/customers/${entityId}` : null;
-    case "enquiry":
-      return hasPermission(user, "enquiries.manage") ? `/admin/enquiries/${entityId}` : null;
-    case "product":
-      return hasPermission(user, "catalogue.manage") ? `/admin/products/${entityId}` : null;
-    case "inventory_item":
-      return hasPermission(user, "inventory.manage") ? `/admin/inventory/${entityId}` : null;
-    case "notification_job":
-      return hasPermission(user, "messaging.manage") ? "/admin/whatsapp" : null;
-    case "email":
-      return hasPermission(user, "messaging.manage") ? "/admin/emails" : null;
-    case "settings":
-      return hasPermission(user, "settings.manage") ? "/admin/settings" : null;
-    case "user":
-      return hasPermission(user, "users.manage") ? `/admin/users/${entityId}` : null;
-    case "import":
-      return hasPermission(user, "customers.manage") ? `/admin/imports/${entityId}` : null;
-    case "backup":
-      return null;
-    case "report":
-      return hasPermission(user, "reports.view") ? "/admin/reports" : null;
-    default:
-      return null;
-  }
-}
-
 export default async function AdminAuditPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { user } = await requirePermission("audit.view");
+  await requirePermission("audit.view");
   const params = await searchParams;
   const query = typeof params.q === "string" ? params.q.trim() : "";
   const action = typeof params.action === "string" ? params.action.trim() : "";
@@ -254,7 +220,6 @@ export default async function AdminAuditPage({
         ) : (
           <ul className="divide-y divide-line border-t border-line">
             {entries.map((entry) => {
-              const href = entityHref(user, entry.entityType, entry.entityId);
               return (
                 <li key={entry.id} className="px-5 py-4">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -268,18 +233,6 @@ export default async function AdminAuditPage({
                     {entry.actorEmail}
                     {" · "}
                     {ENTITY_LABELS.get(entry.entityType) ?? "Workspace"}
-                    {entry.entityId ? (
-                      <>
-                        {" "}
-                        {href ? (
-                          <Link href={href} className="text-olive-deep hover:underline">
-                            {entry.entityId}
-                          </Link>
-                        ) : (
-                          <span className="font-mono">{entry.entityId}</span>
-                        )}
-                      </>
-                    ) : null}
                     {entry.requestId ? ` · request ${entry.requestId}` : ""}
                   </p>
                   {entry.diff && entry.diff.length > 0 ? (

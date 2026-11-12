@@ -1,12 +1,13 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { cache } from "react";
-import { getDb } from "./db";
+import { getDb, getMongoClient } from "./db";
+import { roundQuantity } from "./quantity";
 import { businessToday, isValidBusinessDate, nowIso } from "./dates";
 import { recordAudit } from "./audit";
 import { getSettings } from "./settings";
 import { cleanSingleLine, cleanText } from "./text";
-import { PAYMENT_METHODS, type Expense, type PaymentMethod } from "./types";
+import { PAYMENT_METHODS, type AuditEntry, type Expense, type InventoryItem, type InventoryMovement, type PaymentMethod } from "./types";
 
 interface ExpenseDoc extends Omit<Expense, "id"> {
   _id: string;
@@ -134,9 +135,95 @@ export async function createExpense(
   return mapExpense(doc);
 }
 
+// Tombstone, stock reversal and audit must commit together.
+export async function deleteExpense(
+  id: string,
+  actor: ExpenseActor,
+  canManageInventory: boolean,
+): Promise<void> {
+  const db = await getDb();
+  const client = await getMongoClient();
+  const session = client.startSession();
+  try {
+    await session.withTransaction(async () => {
+      const expenses = db.collection<ExpenseDoc>("expenses");
+      const expense = await expenses.findOne({ _id: id }, { session });
+      if (!expense) throw new ExpenseError("That expense no longer exists.");
+      if (expense.source === "GIFT" || expense.giftOrderId) {
+        throw new ExpenseError("Gift expenses must be removed by deleting the linked order. Use order deletion instead.");
+      }
+      const movements = db.collection<Omit<InventoryMovement, "id"> & { _id: string }>("inventory_movements");
+      const linked = await movements.find({ expenseId: id }, { session }).limit(2).toArray();
+      const isPurchase = expense.source === "PURCHASE" || Boolean(expense.inventoryItemId) || linked.length > 0;
+      if (isPurchase && !canManageInventory) {
+        throw new ExpenseError("Deleting a stock purchase requires inventory.manage permission.");
+      }
+      if (expense.deletedAt !== undefined) return; // A retry must never reverse stock twice.
+      const now = nowIso();
+      let reversalSummary = "";
+      if (isPurchase) {
+        const purchase = linked[0];
+        if (linked.length !== 1 || !purchase || purchase.type !== "PURCHASE" ||
+            !expense.inventoryItemId || purchase.itemId !== expense.inventoryItemId ||
+            !Number.isFinite(purchase.quantity) || purchase.quantity <= 0) {
+          throw new ExpenseError("The original purchase movement is missing or inconsistent. Reconcile the inventory link before deleting this expense.");
+        }
+        const items = db.collection<Omit<InventoryItem, "id"> & { _id: string }>("inventory_items");
+        const item = await items.findOne({ _id: purchase.itemId }, { session });
+        if (!item) throw new ExpenseError("The linked inventory item is missing. Reconcile inventory before deleting this expense.");
+        const totals = await movements.aggregate<{ total: number }>([
+          { $match: { itemId: purchase.itemId } },
+          { $group: { _id: null, total: { $sum: { $cond: [
+            { $eq: ["$type", "USAGE"] }, { $multiply: ["$quantity", -1] }, "$quantity",
+          ] } } } },
+        ], { session }).toArray();
+        const stock = roundQuantity(Number(totals[0]?.total ?? 0));
+        const remaining = roundQuantity(stock - purchase.quantity);
+        if (!Number.isFinite(remaining) || remaining < 0) {
+          throw new ExpenseError("Not enough stock to reverse this purchase. Reconcile used stock before deleting the expense.");
+        }
+        // The shared item write serializes stock checks against other mutations.
+        await items.updateOne({ _id: item._id }, {
+          $set: { currentQuantity: remaining, updatedAt: now },
+        }, { session });
+        await movements.insertOne({
+          _id: `expense-reversal:${id}`,
+          itemId: purchase.itemId,
+          type: "ADJUSTMENT",
+          quantity: -purchase.quantity,
+          date: businessToday(),
+          // expenseId is uniquely indexed for the ORIGINAL purchase only.
+          notes: `Deleted expense ${id}; reversal of purchase movement ${purchase._id}`,
+          createdBy: actor.id,
+          createdByName: actor.name,
+          createdAt: now,
+        }, { session });
+        reversalSummary = `; reversed ${purchase.quantity} ${expense.unit || item.unit} of ${item.name}`;
+      }
+      await expenses.updateOne({ _id: id, deletedAt: { $exists: false } }, {
+        $set: { deletedAt: now, deletedBy: actor.id },
+      }, { session });
+      // Insert directly so an audit failure also rolls back the deletion.
+      await db.collection<Omit<AuditEntry, "id"> & { _id: string }>("audit_logs").insertOne({
+        _id: randomUUID(),
+        actorId: actor.id,
+        actorEmail: actor.email,
+        action: "expense.delete",
+        entityType: "expense",
+        entityId: id,
+        summary: `Deleted ${expense.category} expense of ₹${(expense.amountPaise / 100).toFixed(2)} on ${expense.date}${reversalSummary}`.slice(0, 500),
+        diff: [{ field: "deletedAt", from: "", to: now }],
+        at: now,
+      }, { session });
+    }, { readConcern: { level: "snapshot" }, writeConcern: { w: "majority" } });
+  } finally {
+    await session.endSession();
+  }
+}
+
 export async function getExpense(id: string): Promise<Expense | null> {
   const db = await getDb();
-  const doc = await db.collection<ExpenseDoc>("expenses").findOne({ _id: id });
+  const doc = await db.collection<ExpenseDoc>("expenses").findOne({ _id: id, deletedAt: { $exists: false } });
   return doc ? mapExpense(doc) : null;
 }
 
@@ -144,7 +231,7 @@ export async function listExpenses(
   options: ExpenseListOptions = {},
 ): Promise<ExpenseListResult> {
   const db = await getDb();
-  const filter: Record<string, unknown> = {};
+  const filter: Record<string, unknown> = { deletedAt: { $exists: false } };
   if (options.from || options.to) {
     const range: Record<string, string> = {};
     if (options.from) range.$gte = options.from;

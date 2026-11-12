@@ -1,6 +1,8 @@
 import "server-only";
 import fontkit from "@pdf-lib/fontkit";
-import { PDFDocument, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage, type RGB } from "pdf-lib";
 import { formatDateDDMMYYYY } from "./dates";
 import { formatINR } from "./money";
 import { loadFontBytes } from "./pdf-fonts";
@@ -75,6 +77,7 @@ interface RenderContext {
   doc: PDFDocument;
   regular: PDFFont;
   semibold: PDFFont;
+  logo: PDFImage;
   snapshot: InvoiceSnapshot;
   pages: PDFPage[];
 }
@@ -121,10 +124,12 @@ function drawWordmark(page: PDFPage, context: RenderContext, compact: boolean): 
   });
 
   let y = PAGE_HEIGHT - 58;
-  text(page, snapshot.business.name.toUpperCase(), MARGIN, y, {
-    font: semibold,
-    size: compact ? 14 : 19,
-    color: COLORS.oliveDeep,
+  const logoSize = context.logo.scaleToFit(150, compact ? 32 : 55);
+  page.drawImage(context.logo, {
+    x: MARGIN,
+    y: PAGE_HEIGHT - 24 - logoSize.height,
+    width: logoSize.width,
+    height: logoSize.height,
   });
   if (compact) {
     textRight(page, `Invoice ${snapshot.ref} · continued`, PAGE_WIDTH - MARGIN, y + 1, {
@@ -135,13 +140,7 @@ function drawWordmark(page: PDFPage, context: RenderContext, compact: boolean): 
     return y - 24;
   }
 
-  y -= 13;
-  text(page, "HANDMADE CHIKKIS · SMALL BATCH", MARGIN, y, {
-    font: regular,
-    size: 7.2,
-    color: COLORS.brass,
-  });
-  y -= 12;
+  y = PAGE_HEIGHT - 92;
   text(page, snapshot.business.addressLine, MARGIN, y, {
     font: regular,
     size: 8,
@@ -242,11 +241,6 @@ function drawTableHeader(page: PDFPage, context: RenderContext, y: number): numb
     size: 7.2,
     color: COLORS.oliveDeep,
   });
-  textRight(page, "RATE / G", 470, baseline, {
-    font: semibold,
-    size: 7.2,
-    color: COLORS.oliveDeep,
-  });
   textRight(page, "AMOUNT", PAGE_WIDTH - MARGIN - 8, baseline, {
     font: semibold,
     size: 7.2,
@@ -318,17 +312,6 @@ function drawItemRow(
     size: 9,
     color: COLORS.ink,
   });
-  textRight(
-    page,
-    item.imported ? "—" : `${formatINR(item.ratePerGramPaise, { alwaysPaise: true })}/g`,
-    470,
-    rowTop,
-    {
-      font: regular,
-      size: 9,
-      color: COLORS.ink,
-    },
-  );
   textRight(page, formatINR(item.lineTotalPaise), PAGE_WIDTH - MARGIN - 8, rowTop, {
     font: semibold,
     size: 9,
@@ -502,9 +485,10 @@ export async function renderInvoicePdf(snapshot: InvoiceSnapshot): Promise<Uint8
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit);
   const bytes = await loadFontBytes();
-  const [regular, semibold] = await Promise.all([
+  const [regular, semibold, logo] = await Promise.all([
     doc.embedFont(bytes.regular, { subset: true }),
     doc.embedFont(bytes.semibold, { subset: true }),
+    readFile(path.join(process.cwd(), "public/brand/logo.png")).then((image) => doc.embedPng(image)),
   ]);
 
   doc.setTitle(`Invoice ${snapshot.ref}`);
@@ -517,6 +501,7 @@ export async function renderInvoicePdf(snapshot: InvoiceSnapshot): Promise<Uint8
     doc,
     regular,
     semibold,
+    logo,
     snapshot,
     pages: [],
   };

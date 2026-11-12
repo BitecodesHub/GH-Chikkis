@@ -50,18 +50,17 @@ export const TEMPLATE_DEFAULTS: TemplateDefault[] = [
       "thank_you",
     ],
     placeholderHelp:
-      "customer_name, order_ref, invoice_date, items (variety, packaging, weight, quantity, unit price and line total), total, thank_you",
+      "customer_name, order_ref, invoice_date, items (variety, weight and quantity), total, thank_you",
     body: [
-      "Invoice {{order_ref}} · {{invoice_date}}",
-      "",
       "Dear {{customer_name}},",
       "",
       "{{items}}",
       "",
       "Total amount: {{total}}",
       "",
-      "{{thank_you}}",
-      "Warm regards, Team GH Chikkis.",
+      "Thank you for choosing GH Chikkis! We truly appreciate your support.",
+      "Warm regards,",
+      "Team GH Chikkis.",
     ].join("\n"),
   },
   {

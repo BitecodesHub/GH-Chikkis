@@ -73,7 +73,7 @@ async function fetchRangeDocs(from: string, to: string): Promise<RangeDocs> {
       .toArray(),
     db
       .collection<ExpenseDoc>("expenses")
-      .find({ date: dateFilter })
+      .find({ date: dateFilter, deletedAt: { $exists: false } })
       .sort({ date: 1, createdAt: 1 })
       .toArray(),
   ]);

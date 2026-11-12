@@ -1,8 +1,8 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { cache } from "react";
-import { MongoServerError } from "mongodb";
-import { getDb } from "./db";
+import { MongoServerError, type ClientSession } from "mongodb";
+import { getDb, getMongoClient } from "./db";
 import { nowIso, businessToday, isValidBusinessDate } from "./dates";
 import { recordAudit } from "./audit";
 import { createAlert } from "./alerts";
@@ -13,6 +13,7 @@ import { getSettings } from "./settings";
 import { cleanSingleLine, cleanText } from "./text";
 import { enqueueOrderCompletedMessage, flagOrderJobsForReview } from "./messaging";
 import type { Customer, Enquiry, Expense, InvoiceSnapshot, InvoiceVersion, Order, OrderDelivery, OrderItem, OrderStatus, OrderType, PaymentMethod, PaymentStatus, Refund, Payment, DeliveryMethod, WeightBasis, GiftDetails } from "./types";
+import { ORDER_STATUSES, normalizeOrderStatus } from "./types";
 
 interface OrderDoc extends Omit<Order, "id"> {
   _id: string;
@@ -60,6 +61,7 @@ export interface OrderItemInput {
   weightBasis: WeightBasis;
   quantity: number;
   ratePerGramPaise: number;
+  basisPricePaise?: number;
   adjustmentPaise?: number;
   notes?: string;
 }
@@ -92,6 +94,7 @@ export interface PaymentInput {
   reference?: string;
   notes?: string;
   idempotencyKey?: string;
+  source?: "TOGGLE";
 }
 
 export interface RefundInput {
@@ -105,7 +108,7 @@ export interface RefundInput {
 
 function mapOrder(doc: OrderDoc): Order {
   const { _id, ...rest } = doc;
-  return { id: _id, ...rest };
+  return { id: _id, ...rest, status: normalizeOrderStatus(doc.status) };
 }
 
 function mapInvoiceVersion(doc: InvoiceVersionDoc): InvoiceVersion {
@@ -226,6 +229,11 @@ async function resolveItems(input: OrderItemInput[]): Promise<ResolvedItem[]> {
     if (!Number.isFinite(adjustmentPaise)) {
       throw new OrderError(`${label}: enter a valid adjustment.`, "items");
     }
+    const hasBasisPrice = raw.basisPricePaise !== undefined && raw.basisPricePaise !== null;
+    const basisPricePaise = hasBasisPrice ? Math.round(Number(raw.basisPricePaise)) : undefined;
+    if (hasBasisPrice && (!Number.isFinite(basisPricePaise) || (basisPricePaise as number) < 0)) {
+      throw new OrderError(`${label}: enter a valid price for this weight.`, "items");
+    }
 
     let amounts;
     try {
@@ -235,6 +243,7 @@ async function resolveItems(input: OrderItemInput[]): Promise<ResolvedItem[]> {
         weightBasis,
         quantity,
         adjustmentPaise,
+        ...(hasBasisPrice ? { basisPricePaise } : {}),
       });
     } catch (error) {
       throw new OrderError(
@@ -252,6 +261,7 @@ async function resolveItems(input: OrderItemInput[]): Promise<ResolvedItem[]> {
       weightBasis,
       quantity,
       ratePerGramPaise,
+      ...(hasBasisPrice ? { basisPricePaise } : {}),
       standardAmountPaise: amounts.standardAmountPaise,
       adjustmentPaise,
       lineTotalPaise: amounts.lineTotalPaise,
@@ -271,6 +281,7 @@ function buildOrderItems(items: ResolvedItem[]): OrderItem[] {
     weightBasis: item.weightBasis,
     quantity: item.quantity,
     ratePerGramPaise: item.ratePerGramPaise,
+    ...(item.basisPricePaise !== undefined ? { basisPricePaise: item.basisPricePaise } : {}),
     standardAmountPaise: item.standardAmountPaise,
     adjustmentPaise: item.adjustmentPaise ?? 0,
     lineTotalPaise: item.lineTotalPaise,
@@ -479,22 +490,25 @@ async function ensureGiftExpense(
 
 async function paymentTotals(
   orderId: string,
+  session?: ClientSession,
 ): Promise<{ paidPaise: number; refundedPaise: number }> {
   const db = await getDb();
   const [payments, refunds] = await Promise.all([
     db
       .collection("payments")
-      .aggregate([
-        { $match: { orderId, voidedAt: { $exists: false } } },
-        { $group: { _id: null, total: { $sum: "$amountPaise" } } },
-      ])
+      .aggregate(
+        [
+          { $match: { orderId, voidedAt: { $exists: false } } },
+          { $group: { _id: null, total: { $sum: "$amountPaise" } } },
+        ],
+        { session },
+      )
       .toArray(),
     db
       .collection("refunds")
-      .aggregate([
-        { $match: { orderId } },
-        { $group: { _id: null, total: { $sum: "$amountPaise" } } },
-      ])
+      .aggregate([{ $match: { orderId } }, { $group: { _id: null, total: { $sum: "$amountPaise" } } }], {
+        session,
+      })
       .toArray(),
   ]);
   return {
@@ -519,11 +533,11 @@ function summaryFor(
   };
 }
 
-async function refreshPaymentSummary(orderId: string): Promise<void> {
+async function refreshPaymentSummary(orderId: string, session?: ClientSession): Promise<void> {
   const db = await getDb();
-  const doc = await db.collection<OrderDoc>("orders").findOne({ _id: orderId });
+  const doc = await db.collection<OrderDoc>("orders").findOne({ _id: orderId }, { session });
   if (!doc) return;
-  const { paidPaise, refundedPaise } = await paymentTotals(orderId);
+  const { paidPaise, refundedPaise } = await paymentTotals(orderId, session);
   const summary = summaryFor(doc.type, doc.totalPaise, paidPaise, refundedPaise);
   await db.collection<OrderDoc>("orders").updateOne(
     { _id: orderId },
@@ -535,6 +549,7 @@ async function refreshPaymentSummary(orderId: string): Promise<void> {
         paymentStatus: summary.paymentStatus,
       },
     },
+    { session },
   );
 }
 
@@ -591,21 +606,36 @@ export type OrderListItem = Pick<
 
 function mapOrderListItem(doc: OrderListDoc): OrderListItem {
   const { _id, ...rest } = doc;
-  return { id: _id, ...rest };
+  return { id: _id, ...rest, status: normalizeOrderStatus(doc.status) };
 }
+
+export type OrderPaymentFilter = "" | "DUE" | "PARTIALLY_PAID" | "FULLY_PAID";
 
 export async function listOrders(options: {
   query?: string;
   status?: OrderStatus | "";
   type?: OrderType | "";
+  payment?: OrderPaymentFilter;
   customerId?: string;
   limit?: number;
   offset?: number;
 }): Promise<OrderListResult> {
   const db = await getDb();
   const filter: Record<string, unknown> = {};
-  if (options.status) filter.status = options.status;
+  if (options.status === "PENDING") {
+    filter.status = { $in: ["PENDING", "NEW", "CONFIRMED"] };
+  } else if (options.status) {
+    filter.status = options.status;
+  }
   if (options.type) filter.type = options.type;
+  if (options.payment === "DUE") {
+    filter.paymentStatus = { $in: ["UNPAID", "PARTIALLY_PAID"] };
+    filter.balancePaise = { $gt: 0 };
+  } else if (options.payment === "PARTIALLY_PAID") {
+    filter.paymentStatus = "PARTIALLY_PAID";
+  } else if (options.payment === "FULLY_PAID") {
+    filter.paymentStatus = "FULLY_PAID";
+  }
   if (options.customerId) filter.customerId = options.customerId;
   const query = (options.query ?? "").trim();
   if (query) {
@@ -691,6 +721,9 @@ export async function listRecentOrders(limit = 6): Promise<OrderListItem[]> {
 
 export async function countOrders(options?: { status?: OrderStatus }): Promise<number> {
   const db = await getDb();
+  if (options?.status === "PENDING") {
+    return db.collection("orders").countDocuments({ status: { $in: ["PENDING", "NEW", "CONFIRMED"] } });
+  }
   return db.collection("orders").countDocuments(options?.status ? { status: options.status } : {});
 }
 
@@ -900,7 +933,7 @@ export async function createOrder(input: OrderInput, actor: OrderActor): Promise
       _id: id,
       ref,
       type: input.type,
-      status: "NEW",
+      status: "PENDING",
       customerId: customer.id,
       customerSnapshot: customerSnapshot(customer),
       items: orderItems,
@@ -913,7 +946,7 @@ export async function createOrder(input: OrderInput, actor: OrderActor): Promise
       orderDate,
       statusHistory: [
         {
-          status: "NEW",
+          status: "PENDING",
           at: now,
           by: actor.id,
           byName: actor.name,
@@ -1075,8 +1108,6 @@ export async function updateOrder(
     }
   }
 
-  const { paidPaise, refundedPaise } = await paymentTotals(orderId);
-  const summary = summaryFor(input.type, totalPaise, paidPaise, refundedPaise);
   const comments = cleanText(input.comments, 4000);
 
   const db = await getDb();
@@ -1097,12 +1128,13 @@ export async function updateOrder(
         updatedAt: now,
         updatedBy: actor.id,
         updatedByName: actor.name,
-        paymentStatus: summary.paymentStatus,
-        balancePaise: summary.balancePaise,
         ...(invoice ? { invoice } : {}),
       },
     },
   );
+  // The total may have moved; reconcile against the payments as they stand
+  // now rather than a snapshot read before the write.
+  await refreshPaymentSummary(orderId);
 
   const updated = await getOrder(orderId);
   if (!updated) throw new OrderError("The order could not be saved.");
@@ -1147,11 +1179,12 @@ export async function changeOrderStatus(
   status: OrderStatus,
   note: string,
   actor: OrderActor,
+  options?: { notify?: boolean },
 ): Promise<Order> {
   const order = await getOrder(orderId);
   if (!order) throw new OrderError("That order could not be found.");
-  if (!["NEW", "CONFIRMED", "COMPLETED", "CANCELLED"].includes(status)) {
-    throw new OrderError("Choose one of the four order statuses.");
+  if (!ORDER_STATUSES.includes(status)) {
+    throw new OrderError("Choose a valid order status.");
   }
   if (order.status === status) {
     return order;
@@ -1215,7 +1248,7 @@ export async function changeOrderStatus(
     }
   }
 
-  if (status === "COMPLETED" && order.type === "SALES") {
+  if (status === "COMPLETED" && order.type === "SALES" && options?.notify !== false) {
     try {
       await enqueueOrderCompletedMessage(orderId, actor);
     } catch (error) {
@@ -1234,6 +1267,139 @@ export async function changeOrderStatus(
 
   const updated = await getOrder(orderId);
   if (!updated) throw new OrderError("The order could not be updated.");
+  return updated;
+}
+
+// The list-row switches: fulfilment and money are separate facts, so each
+// toggle only touches its own field. No customer messages fire from here.
+export async function setOrderCompleted(
+  orderId: string,
+  completed: boolean,
+  actor: OrderActor,
+): Promise<Order> {
+  const db = await getDb();
+  const collection = db.collection<OrderDoc>("orders");
+  const raw = await collection.findOne({ _id: orderId });
+  if (!raw) throw new OrderError("That order could not be found.");
+  if (raw.status === "CANCELLED") {
+    throw new OrderError("Cancelled orders stay cancelled. Their invoice and history remain as issued.");
+  }
+  const target: OrderStatus = completed ? "COMPLETED" : "PENDING";
+  if (normalizeOrderStatus(raw.status) === target) {
+    return mapOrder(raw);
+  }
+  const now = nowIso();
+  // Guard on the raw stored status: legacy rows still say NEW or CONFIRMED,
+  // which read as PENDING but would not match a filter on "PENDING".
+  const result = await collection.updateOne(
+    { _id: orderId, status: raw.status },
+    {
+      $set: { status: target, updatedAt: now, updatedBy: actor.id, updatedByName: actor.name },
+      $push: {
+        statusHistory: { status: target, at: now, by: actor.id, byName: actor.name },
+      },
+    },
+  );
+  if (result.matchedCount === 0) {
+    const fresh = await getOrder(orderId);
+    if (!fresh) throw new OrderError("That order could not be found.");
+    return fresh;
+  }
+  await recordAudit({
+    actor: { id: actor.id, email: actor.email },
+    action: "order.status",
+    entityType: "order",
+    entityId: orderId,
+    summary: `Order ${raw.ref} marked ${completed ? "completed" : "pending"}`,
+  });
+  const updated = await getOrder(orderId);
+  if (!updated) throw new OrderError("The order could not be updated.");
+  return updated;
+}
+
+export async function setPaymentReceived(
+  orderId: string,
+  received: boolean,
+  actor: OrderActor,
+): Promise<Order> {
+  const db = await getDb();
+  const client = await getMongoClient();
+  const session = client.startSession();
+  let audit: { action: string; entityId: string; summary: string } | null = null;
+  try {
+    audit = await session.withTransaction(async () => {
+      const order = await db.collection<OrderDoc>("orders").findOne({ _id: orderId }, { session });
+      if (!order) throw new OrderError("That order could not be found.");
+      if (order.type !== "SALES") throw new OrderError("Gift records do not take payments.");
+      if (order.status === "CANCELLED") {
+        throw new OrderError("Cancelled orders cannot take payments.");
+      }
+      const { paidPaise, refundedPaise } = await paymentTotals(orderId, session);
+      const net = paidPaise - refundedPaise;
+      if (received) {
+        const balance = balanceFor(order.totalPaise, net);
+        if (balance <= 0) return null;
+        const { payment, created } = await insertPayment(
+          orderId,
+          order,
+          {
+            orderId,
+            amountPaise: balance,
+            method: "OTHER",
+            date: businessToday(),
+            source: "TOGGLE",
+            notes: "Marked received from the order list",
+          },
+          actor,
+          `toggle-${orderId}-${randomUUID()}`,
+          session,
+        );
+        if (!created) return null;
+        return {
+          action: "payment.create",
+          entityId: payment.id,
+          summary: `Marked ${order.ref} as paid (${formatINR(balance)})`,
+        };
+      }
+      if (refundedPaise > 0) {
+        throw new OrderError(
+          "This order has refunds, so the switch cannot undo it. Adjust the payments on the order instead.",
+        );
+      }
+      const toggled = await db.collection<PaymentDoc>("payments").updateMany(
+        { orderId, source: "TOGGLE", voidedAt: { $exists: false } },
+        { $set: { voidedAt: nowIso(), voidReason: "Payment switch set back to pending" } },
+        { session },
+      );
+      if (toggled.matchedCount === 0) {
+        if (net > 0) {
+          throw new OrderError(
+            "The payments on this order were recorded by hand. Void them on the order instead of using the switch.",
+          );
+        }
+        return null;
+      }
+      await refreshPaymentSummary(orderId, session);
+      return {
+        action: "payment.void",
+        entityId: orderId,
+        summary: `Set ${order.ref} back to payment pending`,
+      };
+    });
+  } finally {
+    await session.endSession();
+  }
+  if (audit) {
+    await recordAudit({
+      actor: { id: actor.id, email: actor.email },
+      action: audit.action,
+      entityType: "payment",
+      entityId: audit.entityId,
+      summary: audit.summary,
+    });
+  }
+  const updated = await getOrder(orderId);
+  if (!updated) throw new OrderError("That order could not be found.");
   return updated;
 }
 
@@ -1291,12 +1457,13 @@ async function insertPayment(
   input: PaymentInput,
   actor: OrderActor,
   fallbackKey: string,
-): Promise<Payment> {
+  session?: ClientSession,
+): Promise<{ payment: Payment; created: boolean }> {
   const db = await getDb();
   const collection = db.collection<PaymentDoc>("payments");
   const idempotencyKey = input.idempotencyKey || fallbackKey;
-  const existing = await collection.findOne({ idempotencyKey });
-  if (existing) return mapPayment(existing);
+  const existing = await collection.findOne({ idempotencyKey }, { session });
+  if (existing) return { payment: mapPayment(existing), created: false };
 
   const date = normalizeBusinessDate(input.date, "paymentDate", "payment date");
   const doc: PaymentDoc = {
@@ -1306,6 +1473,7 @@ async function insertPayment(
     method: input.method,
     paidAt: nowIso(),
     date,
+    ...(input.source ? { source: input.source } : {}),
     ...(cleanSingleLine(input.reference, 120) ? { reference: cleanSingleLine(input.reference, 120) } : {}),
     ...(cleanText(input.notes, 1000) ? { notes: cleanText(input.notes, 1000) } : {}),
     createdBy: actor.id,
@@ -1314,23 +1482,25 @@ async function insertPayment(
     idempotencyKey,
   };
   try {
-    await collection.insertOne(doc);
+    await collection.insertOne(doc, { session });
   } catch (error) {
     if (error instanceof MongoServerError && error.code === 11000 && doc.idempotencyKey) {
-      const raced = await collection.findOne({ idempotencyKey: doc.idempotencyKey });
-      if (raced) return mapPayment(raced);
+      const raced = await collection.findOne({ idempotencyKey: doc.idempotencyKey }, { session });
+      if (raced) return { payment: mapPayment(raced), created: false };
     }
     throw error;
   }
-  await refreshPaymentSummary(orderId);
-  await recordAudit({
-    actor: { id: actor.id, email: actor.email },
-    action: "payment.create",
-    entityType: "payment",
-    entityId: doc._id,
-    summary: `Recorded ${input.method.toLowerCase()} payment on ${order.ref}`,
-  });
-  return mapPayment(doc);
+  await refreshPaymentSummary(orderId, session);
+  if (!session) {
+    await recordAudit({
+      actor: { id: actor.id, email: actor.email },
+      action: "payment.create",
+      entityType: "payment",
+      entityId: doc._id,
+      summary: `Recorded ${input.method.toLowerCase()} payment on ${order.ref}`,
+    });
+  }
+  return { payment: mapPayment(doc), created: true };
 }
 
 export async function addPayment(input: PaymentInput, actor: OrderActor): Promise<Payment> {
@@ -1347,21 +1517,45 @@ export async function addPayment(input: PaymentInput, actor: OrderActor): Promis
   if (!PAYMENT_METHODS.includes(input.method)) {
     throw new OrderError("Choose a payment method.", "method");
   }
-  const { paidPaise, refundedPaise } = await paymentTotals(order.id);
-  const balance = balanceFor(order.totalPaise, paidPaise - refundedPaise);
-  if (amountPaise > balance) {
-    throw new OrderError(
-      `This payment is more than the outstanding balance (${formatBalance(balance)}).`,
-      "amount",
-    );
+  const client = await getMongoClient();
+  const session = client.startSession();
+  let result: { payment: Payment; created: boolean } | null = null;
+  try {
+    // Two receipts saved at once must not both pass the balance check: the
+    // order-row write inside the transaction forces the loser to re-read.
+    result = await session.withTransaction(async () => {
+      const { paidPaise, refundedPaise } = await paymentTotals(order.id, session);
+      const balance = balanceFor(order.totalPaise, paidPaise - refundedPaise);
+      if (amountPaise > balance) {
+        throw new OrderError(
+          `This payment is more than the outstanding balance (${formatBalance(balance)}).`,
+          "amount",
+        );
+      }
+      return insertPayment(
+        order.id,
+        order,
+        { ...input, amountPaise },
+        actor,
+        input.idempotencyKey || `payment-${order.id}-${Date.now()}`,
+        session,
+      );
+    });
+  } finally {
+    await session.endSession();
   }
-  return insertPayment(
-    order.id,
-    order,
-    { ...input, amountPaise },
-    actor,
-    input.idempotencyKey || `payment-${order.id}-${Date.now()}`,
-  );
+  if (!result) throw new OrderError("The payment could not be saved.");
+  const { payment, created } = result;
+  if (created) {
+    await recordAudit({
+      actor: { id: actor.id, email: actor.email },
+      action: "payment.create",
+      entityType: "payment",
+      entityId: payment.id,
+      summary: `Recorded ${input.method.toLowerCase()} payment on ${order.ref}`,
+    });
+  }
+  return payment;
 }
 
 function formatBalance(paise: number): string {
@@ -1383,55 +1577,72 @@ export async function addRefund(input: RefundInput, actor: OrderActor): Promise<
   if (reason.length < 3) {
     throw new OrderError("Add a short reason for the refund.", "reason");
   }
-  const { paidPaise, refundedPaise } = await paymentTotals(order.id);
-  const net = paidPaise - refundedPaise;
-  if (net <= 0) {
-    throw new OrderError("There are no net receipts to refund on this order.", "amount");
-  }
-  if (amountPaise > net) {
-    throw new OrderError(
-      `The refund cannot exceed the net amount received (${formatBalance(net)}).`,
-      "amount",
-    );
-  }
   const date = normalizeBusinessDate(input.date, "refundDate", "refund date");
   const db = await getDb();
-  const collection = db.collection<RefundDoc>("refunds");
-  const idempotencyKey = input.idempotencyKey || `refund-${order.id}-${Date.now()}`;
-  const existing = await collection.findOne({ idempotencyKey });
-  if (existing) return mapRefund(existing);
-
-  const doc: RefundDoc = {
-    _id: randomUUID(),
-    orderId: order.id,
-    amountPaise,
-    method: input.method,
-    refundedAt: nowIso(),
-    date,
-    reason,
-    createdBy: actor.id,
-    createdByName: actor.name,
-    createdAt: nowIso(),
-    idempotencyKey,
-  };
+  const client = await getMongoClient();
+  const session = client.startSession();
+  let outcome: { refund: Refund; created: boolean } | null = null;
   try {
-    await collection.insertOne(doc);
-  } catch (error) {
-    if (error instanceof MongoServerError && error.code === 11000) {
-      const raced = await collection.findOne({ idempotencyKey });
-      if (raced) return mapRefund(raced);
-    }
-    throw error;
+    outcome = await session.withTransaction(async () => {
+      const { paidPaise, refundedPaise } = await paymentTotals(order.id, session);
+      const net = paidPaise - refundedPaise;
+      if (net <= 0) {
+        throw new OrderError("There are no net receipts to refund on this order.", "amount");
+      }
+      if (amountPaise > net) {
+        throw new OrderError(
+          `The refund cannot exceed the net amount received (${formatBalance(net)}).`,
+          "amount",
+        );
+      }
+      const collection = db.collection<RefundDoc>("refunds");
+      const idempotencyKey = input.idempotencyKey || `refund-${order.id}-${Date.now()}`;
+      const existing = await collection.findOne({ idempotencyKey }, { session });
+      if (existing) {
+        return { refund: mapRefund(existing), created: false };
+      }
+      const doc: RefundDoc = {
+        _id: randomUUID(),
+        orderId: order.id,
+        amountPaise,
+        method: input.method,
+        refundedAt: nowIso(),
+        date,
+        reason,
+        createdBy: actor.id,
+        createdByName: actor.name,
+        createdAt: nowIso(),
+        idempotencyKey,
+      };
+      try {
+        await collection.insertOne(doc, { session });
+      } catch (error) {
+        if (error instanceof MongoServerError && error.code === 11000) {
+          const raced = await collection.findOne({ idempotencyKey }, { session });
+          if (raced) {
+            return { refund: mapRefund(raced), created: false };
+          }
+        }
+        throw error;
+      }
+      await refreshPaymentSummary(order.id, session);
+      return { refund: mapRefund(doc), created: true };
+    });
+  } finally {
+    await session.endSession();
   }
-  await refreshPaymentSummary(order.id);
-  await recordAudit({
-    actor: { id: actor.id, email: actor.email },
-    action: "refund.create",
-    entityType: "refund",
-    entityId: doc._id,
-    summary: `Recorded refund on ${order.ref} · ${reason}`,
-  });
-  return mapRefund(doc);
+  if (!outcome) throw new OrderError("The refund could not be saved.");
+  const { refund, created } = outcome;
+  if (created) {
+    await recordAudit({
+      actor: { id: actor.id, email: actor.email },
+      action: "refund.create",
+      entityType: "refund",
+      entityId: refund.id,
+      summary: `Recorded refund on ${order.ref} · ${reason}`,
+    });
+  }
+  return refund;
 }
 
 export async function listPayments(orderId: string): Promise<Payment[]> {

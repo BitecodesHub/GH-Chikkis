@@ -382,10 +382,7 @@ export function invoiceItemLines(order: Pick<Order, "items">): string {
   return order.items
     .map(
       (item) =>
-        `- ${item.quantity} × ${item.productName} — ${item.packagingLabel}${weightAside(item)} @ ${formatINR(
-          item.ratePerGramPaise,
-          { alwaysPaise: true },
-        )}/g = ${formatINR(item.lineTotalPaise)}`,
+        `* ${item.quantityLabel ?? item.quantity} × ${item.productName} — ${item.imported ? item.packagingLabel : `${item.actualWeightGrams.toLocaleString("en-IN")} gm${item.weightBasis === "TOTAL" ? " total" : ""}`}`,
     )
     .join("\n");
 }

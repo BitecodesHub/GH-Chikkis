@@ -8,6 +8,7 @@ import { CONTENT_PAGES } from "../lib/types";
 import type { BusinessSettings, InventoryItem, WebsiteContent } from "../lib/types";
 import type { ProductDoc } from "../lib/products";
 import { nowIso } from "../lib/dates";
+import { EXPENSE_CATALOG } from "../lib/expense-catalog";
 
 interface SeedProduct {
   slug: string;
@@ -93,29 +94,7 @@ const PRODUCTS: SeedProduct[] = [
   },
 ];
 
-const INVENTORY_ITEMS: { name: string; category: string; unit: string }[] = [
-  { name: "Cashews", category: "Ingredients/raw materials", unit: "kg" },
-  { name: "Cashews - crushed", category: "Ingredients/raw materials", unit: "kg" },
-  { name: "Almond", category: "Ingredients/raw materials", unit: "kg" },
-  { name: "Almond - Crushed", category: "Ingredients/raw materials", unit: "kg" },
-  { name: "Pista", category: "Ingredients/raw materials", unit: "kg" },
-  { name: "Pista - Crushed", category: "Ingredients/raw materials", unit: "kg" },
-  { name: "Black Tal", category: "Ingredients/raw materials", unit: "kg" },
-  { name: "White Tal", category: "Ingredients/raw materials", unit: "kg" },
-  { name: "Daliya", category: "Ingredients/raw materials", unit: "kg" },
-  { name: "Mamra", category: "Ingredients/raw materials", unit: "kg" },
-  { name: "Shing", category: "Ingredients/raw materials", unit: "kg" },
-  { name: "Kopra Chhin", category: "Ingredients/raw materials", unit: "kg" },
-  { name: "Jaggery", category: "Ingredients/raw materials", unit: "kg" },
-  { name: "Jaggery - Organic", category: "Ingredients/raw materials", unit: "kg" },
-  { name: "Ghee", category: "Ingredients/raw materials", unit: "kg" },
-  { name: "Box - 250gm", category: "Packaging", unit: "pieces" },
-  { name: "Box - 500gm", category: "Packaging", unit: "pieces" },
-  { name: "Butter paper", category: "Packaging", unit: "pieces" },
-  { name: "Silica bag", category: "Packaging", unit: "pieces" },
-  { name: "Plastic bag - Small", category: "Packaging", unit: "pieces" },
-  { name: "Plastic bag - Big", category: "Packaging", unit: "pieces" },
-];
+const INVENTORY_ITEMS = EXPENSE_CATALOG;
 
 async function seedProducts(): Promise<number> {
   const db = await getDb();

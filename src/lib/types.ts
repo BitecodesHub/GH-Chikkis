@@ -183,14 +183,25 @@ export interface Enquiry {
   updatedByName?: string;
 }
 
-export const ORDER_STATUSES = ["NEW", "CONFIRMED", "COMPLETED", "CANCELLED"] as const;
+export const ORDER_STATUSES = ["PENDING", "COMPLETED", "CANCELLED"] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
-  NEW: "New",
-  CONFIRMED: "Confirmed",
+  PENDING: "Pending",
   COMPLETED: "Completed",
   CANCELLED: "Cancelled",
 };
+
+// Records created before the Confirmed step was retired still carry these in
+// their status history; reads normalise them to PENDING.
+export type LegacyOrderStatus = "NEW" | "CONFIRMED";
+export const ORDER_STATUS_HISTORY_LABELS: Record<OrderStatus | LegacyOrderStatus, string> = {
+  ...ORDER_STATUS_LABELS,
+  NEW: "New",
+  CONFIRMED: "Confirmed",
+};
+export function normalizeOrderStatus(value: string): OrderStatus {
+  return value === "COMPLETED" || value === "CANCELLED" ? value : "PENDING";
+}
 
 export type OrderType = "SALES" | "GIFT";
 export type PaymentStatus = "UNPAID" | "PARTIALLY_PAID" | "FULLY_PAID";
@@ -240,6 +251,8 @@ export interface OrderItem {
   weightBasis: WeightBasis;
   quantity: number;
   ratePerGramPaise: number;
+  /** Exact price for the basis weight, when entered as a piece price. */
+  basisPricePaise?: number;
   standardAmountPaise: number;
   adjustmentPaise: number;
   lineTotalPaise: number;
@@ -268,7 +281,7 @@ export interface CustomerSnapshot {
 }
 
 export interface OrderStatusChange {
-  status: OrderStatus;
+  status: OrderStatus | LegacyOrderStatus;
   at: ISODate;
   by: string;
   byName?: string;
@@ -359,6 +372,8 @@ export interface Payment {
   date: BusinessDate;
   reference?: string;
   notes?: string;
+  /** Set only by the Payment received shortcut; its undo may void these. */
+  source?: "TOGGLE";
   voidedAt?: ISODate;
   voidReason?: string;
   createdBy: string;
@@ -398,6 +413,8 @@ export interface Expense {
   source: "MANUAL" | "PURCHASE" | "GIFT";
   createdAt: ISODate;
   createdBy: string;
+  deletedAt?: ISODate;
+  deletedBy?: string;
 }
 
 export interface InventoryItem {
