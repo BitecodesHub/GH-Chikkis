@@ -5,7 +5,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/lib/auth/session";
 import { ExpenseError, createExpense } from "@/lib/expenses";
-import { parseRupeesToPaise } from "@/lib/money";
+import { recordAudit } from "@/lib/audit";
+import { formatINR, parseRupeesToPaise } from "@/lib/money";
+import { saveSeasonPrices } from "@/lib/products";
 import {
   OrderError,
   addPayment,
@@ -40,7 +42,9 @@ export interface OrderFormState {
   message?: string;
 }
 
-function parseItems(formData: FormData): OrderItemInput[] {
+type SeasonPrice = { productId: string; pricePerKgPaise: number };
+
+function parseItems(formData: FormData): { items: OrderItemInput[]; seasonPrices: SeasonPrice[] } {
   const raw = formData.get("items");
   if (typeof raw !== "string" || raw.length > 200_000) {
     throw new OrderError("The order lines could not be read. Reload and try again.", "items");
@@ -57,8 +61,20 @@ function parseItems(formData: FormData): OrderItemInput[] {
   if (parsed.length > 30) {
     throw new OrderError("An order can have at most 30 lines.", "items");
   }
-  return parsed.map((rawItem): OrderItemInput => {
+  const seasonPrices: SeasonPrice[] = [];
+  const items = parsed.map((rawItem): OrderItemInput => {
     const item = rawItem && typeof rawItem === "object" ? (rawItem as Record<string, unknown>) : {};
+    const hasKgPrice = item.pricePerKgPaise !== undefined && item.pricePerKgPaise !== null;
+    const pricePerKgPaise = hasKgPrice ? Math.round(Number(item.pricePerKgPaise)) : undefined;
+    if (
+      item.rememberPrice === true &&
+      item.productId &&
+      pricePerKgPaise !== undefined &&
+      Number.isSafeInteger(pricePerKgPaise) &&
+      pricePerKgPaise > 0
+    ) {
+      seasonPrices.push({ productId: String(item.productId), pricePerKgPaise });
+    }
     if (item.basisPricePaise === null) {
       throw new OrderError("Enter a price for every order line. Use 0 only when it is intentionally free.", "items");
     }
@@ -72,10 +88,34 @@ function parseItems(formData: FormData): OrderItemInput[] {
       quantity: Math.round(Number(item.quantity ?? 0)),
       ratePerGramPaise: Math.round(Number(item.ratePerGramPaise ?? 0)),
       ...(hasBasisPrice ? { basisPricePaise: Math.round(Number(item.basisPricePaise)) } : {}),
+      ...(pricePerKgPaise !== undefined ? { pricePerKgPaise } : {}),
       adjustmentPaise: Math.round(Number(item.adjustmentPaise ?? 0)),
       notes: typeof item.notes === "string" ? item.notes : undefined,
     };
   });
+  return { items, seasonPrices };
+}
+
+// The order is already saved, so a failure here must not turn into an error page.
+async function rememberSeasonPrices(
+  prices: SeasonPrice[],
+  actor: { id: string; email: string },
+): Promise<void> {
+  try {
+    const changes = await saveSeasonPrices(prices);
+    for (const change of changes) {
+      await recordAudit({
+        actor,
+        action: "product.price_per_kg",
+        entityType: "product",
+        entityId: change.productId,
+        summary: `${change.name} price per kg ${change.from === null ? "set" : `changed from ${formatINR(change.from)}`} to ${formatINR(change.to)} from the order desk`,
+      });
+    }
+    if (changes.length > 0) revalidatePath("/admin/orders/new");
+  } catch (error) {
+    console.error("Could not remember the price per kg", error);
+  }
 }
 
 function parseType(formData: FormData): OrderType {
@@ -130,8 +170,11 @@ export async function saveOrderAction(
   }
 
   let input: OrderInput;
+  let seasonPrices: SeasonPrice[] = [];
   try {
-    const items = parseItems(formData);
+    const parsedItems = parseItems(formData);
+    const items = parsedItems.items;
+    seasonPrices = parsedItems.seasonPrices;
     const deliveryCharge = type === "GIFT" ? 0 : parseCharge(formData, "deliveryCharge");
     const giftCost = parseCharge(formData, "giftCost");
     const expectedDate = String(formData.get("expectedDate") ?? "").trim();
@@ -190,11 +233,13 @@ export async function saveOrderAction(
     const actor = actorFrom(user);
     if (orderId) {
       const order = await updateOrder(orderId, input, actor);
+      await rememberSeasonPrices(seasonPrices, actor);
       revalidateOrderPaths(order.id);
       revalidatePath(`/admin/customers/${order.customerId ?? ""}`);
       redirect(`/admin/orders/${order.id}?saved=1`);
     }
     const order = await createOrder(input, actor);
+    await rememberSeasonPrices(seasonPrices, actor);
     revalidateOrderPaths(order.id);
     revalidatePath(`/admin/customers/${order.customerId ?? ""}`);
     if (input.enquiryId) revalidatePath(`/admin/enquiries/${input.enquiryId}`);

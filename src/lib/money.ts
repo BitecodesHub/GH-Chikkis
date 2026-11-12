@@ -66,6 +66,29 @@ export function ratePerGramFromStandard(
   return Math.round(standardPricePaise / grams);
 }
 
+/**
+ * The price per kg an order line starts from: the one remembered from the
+ * order desk, else the catalogue's packaged price scaled to a kilo.
+ */
+export function seasonPricePerKg(product: {
+  pricePerKgPaise?: number | null;
+  packaging: { grams: number; standardPricePaise: number | null }[];
+}): number | null {
+  if (typeof product.pricePerKgPaise === "number" && product.pricePerKgPaise > 0) {
+    return product.pricePerKgPaise;
+  }
+  const priced = product.packaging.find(
+    (option) => option.standardPricePaise !== null && option.standardPricePaise > 0 && option.grams > 0,
+  );
+  if (!priced || priced.standardPricePaise === null) return null;
+  return Math.round((priced.standardPricePaise * 1000) / priced.grams);
+}
+
+/** One piece at `grams`, priced from a rate per kg, to the nearest paisa. */
+export function piecePriceFromKg(pricePerKgPaise: number, grams: number): number {
+  return Math.round((pricePerKgPaise * grams) / 1000);
+}
+
 export interface LineCalculation {
   standardAmountPaise: number;
   lineTotalPaise: number;

@@ -62,6 +62,7 @@ export interface OrderItemInput {
   quantity: number;
   ratePerGramPaise: number;
   basisPricePaise?: number;
+  pricePerKgPaise?: number;
   adjustmentPaise?: number;
   notes?: string;
 }
@@ -165,6 +166,35 @@ export async function allocateOrderRef(): Promise<string> {
     : new Error("Could not allocate the next order reference.");
 }
 
+function highestRefNumber(refs: string[]): number {
+  return refs.reduce((max, ref) => {
+    const match = /^GH-(\d+)$/.exec(ref);
+    return match ? Math.max(max, Number(match[1])) : max;
+  }, 0);
+}
+
+/**
+ * Gives the newest number back after its order is deleted, so the next order
+ * reuses it. Earlier gaps stay: renumbering other invoices would change records
+ * customers already hold. The guard on `current` skips the rollback if another
+ * order took a number in the meantime.
+ */
+async function releaseOrderRef(ref: string): Promise<void> {
+  const match = /^GH-(\d+)$/.exec(ref);
+  if (!match) return;
+  const released = Number(match[1]);
+  const db = await getDb();
+  const remaining = await db
+    .collection<OrderDoc>("orders")
+    .find({ ref: { $regex: "^GH-\\d+$" } }, { projection: { ref: 1 } })
+    .toArray();
+  const highest = highestRefNumber(remaining.map((doc) => doc.ref));
+  if (highest >= released) return;
+  await db
+    .collection<SequenceDoc>("invoice_sequences")
+    .updateOne({ _id: "orders", current: released }, { $set: { current: highest, updatedAt: nowIso() } });
+}
+
 const DELIVERY_METHODS: DeliveryMethod[] = ["HOME_COLLECTION", "PORTER", "COURIER", "OTHER"];
 const PAYMENT_METHODS: PaymentMethod[] = ["CASH", "UPI", "BANK_TRANSFER", "OTHER"];
 const WEIGHT_BASES: WeightBasis[] = ["PER_UNIT", "TOTAL"];
@@ -234,6 +264,13 @@ async function resolveItems(input: OrderItemInput[]): Promise<ResolvedItem[]> {
     if (hasBasisPrice && (!Number.isFinite(basisPricePaise) || (basisPricePaise as number) < 0)) {
       throw new OrderError(`${label}: enter a valid price for this weight.`, "items");
     }
+    const pricePerKgPaise =
+      raw.pricePerKgPaise === undefined || raw.pricePerKgPaise === null
+        ? undefined
+        : Math.round(Number(raw.pricePerKgPaise));
+    if (pricePerKgPaise !== undefined && (!Number.isFinite(pricePerKgPaise) || pricePerKgPaise < 0)) {
+      throw new OrderError(`${label}: enter a valid price per kg.`, "items");
+    }
 
     let amounts;
     try {
@@ -262,6 +299,7 @@ async function resolveItems(input: OrderItemInput[]): Promise<ResolvedItem[]> {
       quantity,
       ratePerGramPaise,
       ...(hasBasisPrice ? { basisPricePaise } : {}),
+      ...(pricePerKgPaise !== undefined ? { pricePerKgPaise } : {}),
       standardAmountPaise: amounts.standardAmountPaise,
       adjustmentPaise,
       lineTotalPaise: amounts.lineTotalPaise,
@@ -282,6 +320,7 @@ function buildOrderItems(items: ResolvedItem[]): OrderItem[] {
     quantity: item.quantity,
     ratePerGramPaise: item.ratePerGramPaise,
     ...(item.basisPricePaise !== undefined ? { basisPricePaise: item.basisPricePaise } : {}),
+    ...(item.pricePerKgPaise !== undefined ? { pricePerKgPaise: item.pricePerKgPaise } : {}),
     standardAmountPaise: item.standardAmountPaise,
     adjustmentPaise: item.adjustmentPaise ?? 0,
     lineTotalPaise: item.lineTotalPaise,
@@ -1437,6 +1476,7 @@ export async function deleteOrder(orderId: string, actor: OrderActor): Promise<v
       : Promise.resolve(),
   ]);
   await db.collection<OrderDoc>("orders").deleteOne({ _id: orderId });
+  await releaseOrderRef(order.ref);
 
   try {
     await flagOrderJobsForReview(orderId, "Order was deleted.");

@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { OrderForm, type OrderProductOption } from "@/components/admin/order-form";
 import { requirePermission } from "@/lib/auth/session";
+import { seasonPricePerKg } from "@/lib/money";
 import { businessToday } from "@/lib/dates";
 import { getCustomer } from "@/lib/customers";
 import { getOrder } from "@/lib/orders";
@@ -36,6 +37,7 @@ export default async function EditOrderPage({
     slug: product.slug,
     active: product.active,
     image: product.media[0]?.url ?? null,
+    pricePerKgPaise: seasonPricePerKg(product),
     packaging: product.packaging.map((option) => ({
       id: option.id,
       label: option.label,

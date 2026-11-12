@@ -115,6 +115,16 @@ const ART: Record<string, IngredientArt> = {
     src: "/ingredients/plastic-bag-big.jpg?v=owner-20261111",
     alt: "Large clear plastic carry bag",
   },
+  sticker: {
+    key: "sticker",
+    src: "/ingredients/sticker.jpg?v=owner-20261111",
+    alt: "GH Chikki's logo sticker",
+  },
+  salary: {
+    key: "salary",
+    src: "/ingredients/salary.jpg?v=owner-20261111",
+    alt: "Banknotes with wings",
+  },
 };
 
 // Read top to bottom: the specific cut wins over the whole nut, organic jaggery
@@ -143,6 +153,8 @@ const MATCHERS: [RegExp, string][] = [
   [/box.*250/, "box-250gm"],
   [/box.*500/, "box-500gm"],
   [/box|carton/, "box-250gm"],
+  [/sticker/, "sticker"],
+  [/\bsalary\b/, "salary"],
 ];
 
 /** The photograph for whatever was bought, or null when nothing fits. */

@@ -140,6 +140,37 @@ export async function updateProduct(
   return mapProduct({ ...existing, ...update });
 }
 
+/** Keeps a variety's price per kg so later orders start from it. Returns what changed. */
+export async function saveSeasonPrices(
+  prices: { productId: string; pricePerKgPaise: number }[],
+): Promise<{ productId: string; name: string; from: number | null; to: number }[]> {
+  const latest = new Map(prices.map((entry) => [entry.productId, entry.pricePerKgPaise]));
+  if (latest.size === 0) return [];
+  const db = await getDb();
+  const collection = db.collection<ProductDoc>("products");
+  const docs = await collection.find({ _id: { $in: [...latest.keys()] } }).toArray();
+  const changes = docs
+    .filter((doc) => doc.pricePerKgPaise !== latest.get(doc._id))
+    .map((doc) => ({
+      productId: doc._id,
+      name: doc.name,
+      from: doc.pricePerKgPaise ?? null,
+      to: latest.get(doc._id) as number,
+    }));
+  if (changes.length === 0) return [];
+  const now = nowIso();
+  await collection.bulkWrite(
+    changes.map((change) => ({
+      updateOne: {
+        filter: { _id: change.productId },
+        update: { $set: { pricePerKgPaise: change.to, updatedAt: now } },
+      },
+    })),
+  );
+  invalidateReads("product");
+  return changes;
+}
+
 export function nextDisplayOrder(products: Product[]): number {
   const highest = products.reduce(
     (max, product) => Math.max(max, product.displayOrder),

@@ -7,6 +7,7 @@ import { AdminPageHeader } from "@/components/admin/page-header";
 import { CustomerPicker } from "@/components/admin/customer-picker";
 import { OrderForm, type OrderProductOption } from "@/components/admin/order-form";
 import { requirePermission } from "@/lib/auth/session";
+import { seasonPricePerKg } from "@/lib/money";
 import { businessToday, formatDateDDMMYYYY } from "@/lib/dates";
 import { findCustomerByPhone, getCustomer } from "@/lib/customers";
 import { getEnquiry } from "@/lib/enquiries";
@@ -22,6 +23,7 @@ function productOptions(products: Awaited<ReturnType<typeof listProducts>>): Ord
     slug: product.slug,
     active: product.active,
     image: product.media[0]?.url ?? null,
+    pricePerKgPaise: seasonPricePerKg(product),
     packaging: product.packaging.map((option) => ({
       id: option.id,
       label: option.label,

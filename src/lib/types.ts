@@ -160,6 +160,8 @@ export interface Product {
   media: MediaAsset[];
   displayOrder: number;
   packaging: PackagingOption[];
+  /** The season's price per kg, remembered from the order desk. */
+  pricePerKgPaise?: number;
   createdAt: ISODate;
   updatedAt: ISODate;
 }
@@ -253,6 +255,7 @@ export interface OrderItem {
   ratePerGramPaise: number;
   /** Exact price for the basis weight, when entered as a piece price. */
   basisPricePaise?: number;
+  pricePerKgPaise?: number;
   standardAmountPaise: number;
   adjustmentPaise: number;
   lineTotalPaise: number;

@@ -26,9 +26,8 @@ describe("ingredientArt", () => {
     expect(key("Silica", "Packaging")).toBe("silica-bag");
     expect(key("Plastic bag – small", "Packaging")).toBe("plastic-bag-small");
     expect(key("Plastic bag – big", "Packaging")).toBe("plastic-bag-big");
-    // Sticker and Salary have no photograph yet; the desk shows an icon.
-    expect(key("Sticker", "Packaging")).toBeNull();
-    expect(key("Salary", "Labour")).toBeNull();
+    expect(key("Sticker", "Packaging")).toBe("sticker");
+    expect(key("Salary", "Labour")).toBe("salary");
   });
 
   it("uses fresh image URLs for the supplied photographs", () => {
@@ -37,7 +36,7 @@ describe("ingredientArt", () => {
       "Cashew", "Cashew – grated", "Almond", "Almond – grated",
       "Pista", "Pista – grated", "Ghee", "Jaggery", "Jaggery – organic",
       "Mamra", "Box – 250 gm", "Box – 500 gm", "Butter paper", "Silica",
-      "Plastic bag – small", "Plastic bag – big",
+      "Plastic bag – small", "Plastic bag – big", "Sticker", "Salary",
     ];
     for (const name of names) {
       expect(ingredientArt(name)?.src).toMatch(/\.jpg\?v=owner-20261111$/);

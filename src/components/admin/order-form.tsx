@@ -7,7 +7,7 @@ import { ChevronDown, LoaderCircle, Minus, Plus, Save, X } from "lucide-react";
 import { saveOrderAction, type OrderFormState } from "@/app/admin/orders/actions";
 import { ProductPhoto } from "@/components/site/product-art";
 import { cn } from "@/lib/cn";
-import { formatINR, paiseToInput, parseRupeesToPaise } from "@/lib/money";
+import { formatINR, paiseToInput, parseRupeesToPaise, piecePriceFromKg } from "@/lib/money";
 import {
   PAYMENT_METHODS,
   type Order,
@@ -30,6 +30,8 @@ export interface OrderProductOption {
   slug: string;
   active: boolean;
   image: string | null;
+  /** The season's price per kg, or null until one is typed. */
+  pricePerKgPaise: number | null;
   packaging: {
     id: string;
     label: string;
@@ -52,8 +54,14 @@ interface LineState {
   weight: string;
   basis: WeightBasis;
   quantity: string;
-  /** The exact price for one piece at this weight, in rupees as typed. */
-  price: string;
+  /** Price per kg in rupees, as typed or remembered. */
+  kgPrice: string;
+  /** A remembered price stays put until the owner deliberately unlocks it. */
+  locked: boolean;
+  /** Typed on this form, so it becomes the variety's price when the order saves. */
+  edited: boolean;
+  /** An older line priced per piece keeps its exact amount until it is changed. */
+  fixedPiecePaise?: number;
   adjustment: string;
   notes: string;
 }
@@ -91,7 +99,9 @@ function blankLine(key: string): LineState {
     weight: "",
     basis: "PER_UNIT",
     quantity: "1",
-    price: "",
+    kgPrice: "",
+    locked: false,
+    edited: false,
     adjustment: "",
     notes: "",
   };
@@ -107,6 +117,9 @@ function initialLines(order?: Order): LineState[] {
       (item.weightBasis === "PER_UNIT"
         ? Math.round(item.ratePerGramPaise * item.actualWeightGrams)
         : item.standardAmountPaise);
+    const kgPaise =
+      item.pricePerKgPaise ??
+      Math.round((piecePaise * 1000) / Math.max(item.actualWeightGrams, 1));
     return {
       key: `line-${index + 1}`,
       productId: item.productId ?? "",
@@ -114,18 +127,28 @@ function initialLines(order?: Order): LineState[] {
       weight: String(item.actualWeightGrams),
       basis: item.weightBasis,
       quantity: String(item.quantity),
-      price: toRupees(piecePaise),
+      kgPrice: toRupees(kgPaise),
+      locked: true,
+      edited: false,
+      ...(item.pricePerKgPaise === undefined ? { fixedPiecePaise: piecePaise } : {}),
       adjustment: item.adjustmentPaise ? toRupees(item.adjustmentPaise) : "",
       notes: item.notes ?? "",
     };
   });
 }
 
-function linePaise(line: LineState): number {
-  const base = parseMoney(line.price);
+/** The price of one piece at the line's weight, or null until a price is set. */
+function piecePaise(line: LineState): number | null {
+  if (line.fixedPiecePaise !== undefined) return line.fixedPiecePaise;
   const grams = Number(line.weight);
+  const kg = parseRupeesToPaise(line.kgPrice);
+  if (kg === null || kg < 0 || !Number.isFinite(grams) || grams <= 0) return null;
+  return piecePriceFromKg(kg, grams);
+}
+
+function linePaise(line: LineState): number {
+  const base = piecePaise(line) ?? 0;
   const quantity = Number(line.quantity);
-  if (!Number.isFinite(grams) || grams <= 0) return 0;
   const multiplier = line.basis === "PER_UNIT" ? Math.max(quantity || 0, 0) : 1;
   return Math.max(0, Math.round(base * multiplier) + parseMoney(line.adjustment));
 }
@@ -133,25 +156,6 @@ function linePaise(line: LineState): number {
 function stepQuantity(value: string, delta: number): string {
   const current = Math.round(Number(value) || 0);
   return String(Math.min(999, Math.max(1, current + delta)));
-}
-
-/** The catalogue price scaled to whatever weight the line currently holds. */
-function cataloguePriceForWeight(
-  option: { grams: number; standardPricePaise: number | null },
-  grams: number,
-): number | null {
-  if (option.standardPricePaise === null) return null;
-  if (!Number.isFinite(grams) || grams <= 0) return option.standardPricePaise;
-  return Math.round((option.standardPricePaise * grams) / option.grams);
-}
-
-function differsFromCatalogue(
-  line: LineState,
-  option: { grams: number; standardPricePaise: number | null },
-): boolean {
-  const target = cataloguePriceForWeight(option, Number(line.weight));
-  if (target === null) return false;
-  return parseMoney(line.price) !== target;
 }
 
 function LineThumb({ product }: { product?: OrderProductOption }) {
@@ -190,6 +194,9 @@ export function OrderForm({
   const [state, formAction, pending] = useActionState(saveOrderAction, EMPTY_STATE);
   const nextLineKey = useRef((order?.items.length ?? 0) + 2);
   const weightRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const priceRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  // Prices typed on this form apply to further lines of the same variety.
+  const [typedPrices, setTypedPrices] = useState<Record<string, number>>({});
   const [type, setType] = useState<OrderType>(order?.type ?? "SALES");
   const [lines, setLines] = useState<LineState[]>(() => initialLines(order));
   const [open, setOpen] = useState<Record<string, boolean>>({});
@@ -216,19 +223,35 @@ export function OrderForm({
 
   const payload = lines.map((line) => {
     const grams = Number(line.weight);
-    const base = parseMoney(line.price);
+    const piece = piecePaise(line);
+    const kg = parseRupeesToPaise(line.kgPrice);
     return {
       productId: line.productId,
       packagingId: line.packagingId || null,
       actualWeightGrams: grams,
       weightBasis: line.basis,
       quantity: Number(line.quantity),
-      ratePerGramPaise: grams > 0 ? Math.round(base / grams) : 0,
-      basisPricePaise: parseRupeesToPaise(line.price),
+      ratePerGramPaise: grams > 0 && piece !== null ? Math.round(piece / grams) : 0,
+      basisPricePaise: piece,
+      pricePerKgPaise: kg,
+      rememberPrice: line.edited && kg !== null && kg > 0,
       adjustmentPaise: parseMoney(line.adjustment),
       notes: line.notes,
     };
   });
+
+  const savedKgPaise = (product: OrderProductOption): number | null =>
+    typedPrices[product.id] ?? product.pricePerKgPaise;
+
+  const priceFields = (product: OrderProductOption): Partial<LineState> => {
+    const saved = savedKgPaise(product);
+    return {
+      kgPrice: saved !== null ? toRupees(saved) : "",
+      locked: saved !== null,
+      edited: false,
+      fixedPiecePaise: undefined,
+    };
+  };
 
   const updateLine = (key: string, patch: Partial<LineState>) => {
     setLines((current) =>
@@ -237,17 +260,12 @@ export function OrderForm({
   };
 
   const applyPackaging = (
-    line: LineState,
     product: OrderProductOption,
     packagingId: string,
   ): Partial<LineState> => {
     const option = product.packaging.find((entry) => entry.id === packagingId);
-    if (!option) return { packagingId: "", price: "" };
-    return {
-      packagingId,
-      weight: String(option.grams),
-      price: option.standardPricePaise !== null ? toRupees(option.standardPricePaise) : "",
-    };
+    if (!option) return { packagingId: "" };
+    return { packagingId, weight: String(option.grams), fixedPiecePaise: undefined };
   };
 
   const chooseProduct = (line: LineState, productId: string) => {
@@ -256,9 +274,12 @@ export function OrderForm({
       updateLine(line.key, { productId });
       return;
     }
+    const fields = priceFields(product);
+    if (!fields.locked) setOpen((current) => ({ ...current, [line.key]: true }));
     updateLine(line.key, {
       productId,
-      ...applyPackaging(line, product, product.packaging[0]?.id ?? ""),
+      ...applyPackaging(product, product.packaging[0]?.id ?? ""),
+      ...fields,
     });
   };
 
@@ -268,42 +289,33 @@ export function OrderForm({
       updateLine(line.key, { packagingId: "" });
       return;
     }
-    updateLine(line.key, applyPackaging(line, product, packagingId));
+    updateLine(line.key, applyPackaging(product, packagingId));
   };
 
-  /** Borrows the catalogue price, scaled to the weight the owner typed. */
-  const applyCataloguePrice = (
-    line: LineState,
-    option: { grams: number; standardPricePaise: number | null },
-  ) => {
-    const target = cataloguePriceForWeight(option, Number(line.weight));
-    if (target === null) return;
-    updateLine(line.key, { price: toRupees(target) });
-  };
-
-  /**
-   * Changing the weight rescales a catalogue-derived price to the new weight,
-   * but leaves a price the owner typed by hand alone. A weight that matches a
-   * packaged option re-attaches it; anything else becomes a custom weight.
-   */
+  /** A weight that matches a packaged option re-attaches it; anything else is custom. */
   const applyWeight = (line: LineState, value: string) => {
     const product = products.find((entry) => entry.id === line.productId);
-    const newGrams = Number(value);
-    const oldGrams = Number(line.weight);
-    const match = product?.packaging.find((entry) => entry.grams === newGrams);
-    const oldOption = product?.packaging.find((entry) => entry.id === line.packagingId);
-    const reference = match ?? oldOption;
-    let price = line.price;
-    if (reference && reference.standardPricePaise !== null && newGrams > 0) {
-      const atOldWeight =
-        oldGrams > 0
-          ? Math.round((reference.standardPricePaise * oldGrams) / reference.grams)
-          : reference.standardPricePaise;
-      if (!line.price || parseMoney(line.price) === atOldWeight) {
-        price = toRupees(Math.round((reference.standardPricePaise * newGrams) / reference.grams));
-      }
+    const match = product?.packaging.find((entry) => entry.grams === Number(value));
+    updateLine(line.key, {
+      weight: value,
+      packagingId: match ? match.id : "",
+      fixedPiecePaise: undefined,
+    });
+  };
+
+  const typeKgPrice = (line: LineState, value: string) => {
+    updateLine(line.key, { kgPrice: value, edited: true, fixedPiecePaise: undefined });
+    const paise = parseRupeesToPaise(value);
+    if (line.productId && paise !== null && paise > 0) {
+      setTypedPrices((current) => ({ ...current, [line.productId]: paise }));
     }
-    updateLine(line.key, { weight: value, price, packagingId: match ? match.id : "" });
+  };
+
+  const unlockPrice = (line: LineState) => {
+    updateLine(line.key, { locked: false });
+    const input = priceRefs.current[line.key];
+    input?.focus();
+    input?.select();
   };
 
   const chooseCustomWeight = (line: LineState) => {
@@ -338,13 +350,9 @@ export function OrderForm({
     fresh.productId = product.id;
     fresh.packagingId = packagingId;
     const option = product.packaging.find((entry) => entry.id === packagingId);
-    if (option) {
-      fresh.weight = String(option.grams);
-      if (option.standardPricePaise !== null) {
-        fresh.price = toRupees(option.standardPricePaise);
-      }
-    }
-    if (!product.packaging.some((entry) => entry.standardPricePaise !== null)) {
+    if (option) fresh.weight = String(option.grams);
+    Object.assign(fresh, priceFields(product));
+    if (!fresh.locked) {
       // Nothing to prefill, so put the price box in front of the owner instead
       // of leaving the line at ₹0 with the field hidden under Details.
       setOpen((current) => ({ ...current, [freshKey]: true }));
@@ -470,15 +478,10 @@ export function OrderForm({
               Tap a variety to add it. Tap it again for another one.
             </p>
             {products.length > 0 &&
-            products.every((product) =>
-              product.packaging.every((option) => option.standardPricePaise === null),
-            ) ? (
+            products.every((product) => savedKgPaise(product) === null) ? (
               <p className="mt-2 text-[0.8125rem] text-terracotta">
-                No variety has a standard price yet.{" "}
-                <Link href="/admin/products" className="link-underline">
-                  Set prices in Products
-                </Link>{" "}
-                to prefill new orders, or type the price on each line below.
+                No variety has a price per kg yet. Type it once on a line — it is kept for
+                later orders.
               </p>
             ) : null}
           </div>
@@ -516,13 +519,11 @@ export function OrderForm({
                   </span>
                   <span className="block truncate text-[0.6875rem] text-ink-muted">
                     {product.active
-                      ? product.packaging[0]
-                        ? `${product.packaging[0].grams} g${
-                            product.packaging[0].standardPricePaise !== null
-                              ? ` · ${formatINR(product.packaging[0].standardPricePaise)}`
-                              : ""
-                          }`
-                        : "add"
+                      ? savedKgPaise(product) !== null
+                        ? `${formatINR(savedKgPaise(product) as number)}/kg`
+                        : product.packaging[0]
+                          ? `${product.packaging[0].grams} g`
+                          : "add"
                       : "paused"}
                   </span>
                 </button>
@@ -536,6 +537,8 @@ export function OrderForm({
             const product = products.find((entry) => entry.id === line.productId);
             const option = product?.packaging.find((entry) => entry.id === line.packagingId);
             const detailsOpen = Boolean(open[line.key]);
+            const piece = piecePaise(line);
+            const kgPaise = parseRupeesToPaise(line.kgPrice);
             return (
               <li key={line.key}>
                 <div className="flex flex-wrap items-center gap-3 px-4 py-3">
@@ -576,6 +579,7 @@ export function OrderForm({
                     ) : (
                       <p className="mt-0.5 text-[0.8125rem] text-ink-muted">
                         {option ? packagingText(option, line.weight) : line.weight ? `${line.weight} g` : "Set a weight"}
+                        {kgPaise !== null && kgPaise > 0 ? ` · ${formatINR(kgPaise)}/kg` : ""}
                       </p>
                     )}
                   </div>
@@ -685,32 +689,46 @@ export function OrderForm({
                       </div>
                     </div>
                     <div>
-                      <label htmlFor={`piece-${line.key}`} className="label">
-                        {line.basis === "PER_UNIT" ? "Price per piece (₹)" : "Price for this weight (₹)"}
+                      <label htmlFor={`kg-price-${line.key}`} className="label">
+                        Price per kg (₹)
                       </label>
                       <input
-                        id={`piece-${line.key}`}
-                        value={line.price}
-                        onChange={(event) => updateLine(line.key, { price: event.target.value })}
+                        id={`kg-price-${line.key}`}
+                        ref={(element) => {
+                          priceRefs.current[line.key] = element;
+                        }}
+                        value={line.kgPrice}
+                        readOnly={line.locked}
+                        onChange={(event) => typeKgPrice(line, event.target.value)}
+                        onDoubleClick={() => (line.locked ? unlockPrice(line) : undefined)}
                         inputMode="decimal"
-                        className="field"
-                        placeholder="Enter price"
+                        className={cn("field", line.locked && "cursor-pointer bg-paper-deep/60")}
+                        title={line.locked ? "Double-click to change this price" : undefined}
+                        placeholder="Price for 1 kg"
                         disabled={!line.weight}
                       />
-                      {option?.standardPricePaise != null &&
-                      differsFromCatalogue(line, option) ? (
-                        <button
-                          type="button"
-                          onClick={() => applyCataloguePrice(line, option)}
-                          className="mt-2 text-[0.75rem] font-medium text-olive underline decoration-olive/40 underline-offset-2"
-                        >
-                          Use catalogue{" "}
-                          {formatINR(
-                            cataloguePriceForWeight(option, Number(line.weight)) ??
-                              option.standardPricePaise,
-                          )}
-                        </button>
-                      ) : null}
+                      <p className="mt-2 text-[0.75rem] leading-snug text-ink-muted">
+                        {line.locked ? (
+                          <>
+                            Saved price.{" "}
+                            <button
+                              type="button"
+                              onClick={() => unlockPrice(line)}
+                              className="font-medium text-olive underline decoration-olive/40 underline-offset-2"
+                            >
+                              Change price
+                            </button>
+                          </>
+                        ) : line.edited ? (
+                          "Kept for this variety's later orders once you save."
+                        ) : null}
+                        {piece !== null && Number(line.weight) > 0 ? (
+                          <span className="block">
+                            {line.weight} g {line.basis === "PER_UNIT" ? "piece" : "total"} ={" "}
+                            {formatINR(piece)}
+                          </span>
+                        ) : null}
+                      </p>
                     </div>
                     <div>
                       <label htmlFor={`adjustment-${line.key}`} className="label">
@@ -729,9 +747,9 @@ export function OrderForm({
                       </p>
                     </div>
                     <p className="help sm:col-span-2 lg:col-span-3">
-                      Type the price for one piece at this weight — it is kept exactly as you
-                      enter it. Pick a quick weight, or tap Custom for anything else. Prices stay
-                      internal.
+                      Prices are per kg; each piece is worked out from its weight. A price you
+                      type is remembered for that variety, so later orders fill it in — double-click
+                      it or tap Change price when the rate changes. Prices stay internal.
                     </p>
                   </div>
                 ) : null}

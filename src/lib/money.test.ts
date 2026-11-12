@@ -3,6 +3,8 @@ import {
   balanceFor,
   calculateLineAmount,
   formatINR,
+  piecePriceFromKg,
+  seasonPricePerKg,
   parseRupeesToPaise,
   paymentStatusFor,
   percent,
@@ -158,5 +160,20 @@ describe("payment status", () => {
   it("guards against a divide by zero in percentages", () => {
     expect(percent(25000, 100000)).toBe(25);
     expect(percent(25000, 0)).toBe(0);
+  });
+});
+
+describe("price per kg", () => {
+  it("prices a piece from its weight", () => {
+    expect(piecePriceFromKg(80000, 250)).toBe(20000);
+    expect(piecePriceFromKg(80000, 500)).toBe(40000);
+    expect(piecePriceFromKg(99900, 333)).toBe(33267);
+  });
+
+  it("prefers the remembered season price over the catalogue", () => {
+    const packaging = [{ grams: 250, standardPricePaise: 20000 }];
+    expect(seasonPricePerKg({ pricePerKgPaise: 90000, packaging })).toBe(90000);
+    expect(seasonPricePerKg({ packaging })).toBe(80000);
+    expect(seasonPricePerKg({ packaging: [{ grams: 250, standardPricePaise: null }] })).toBeNull();
   });
 });

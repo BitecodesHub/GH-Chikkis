@@ -429,6 +429,11 @@ export default async function OrderDetailPage({
                                   ? Math.round(item.ratePerGramPaise * item.actualWeightGrams)
                                   : item.standardAmountPaise),
                             )}
+                        {!item.imported && item.pricePerKgPaise !== undefined ? (
+                          <p className="text-[0.75rem] text-ink-muted">
+                            {formatINR(item.pricePerKgPaise)}/kg
+                          </p>
+                        ) : null}
                       </td>
                       <td className="px-5 py-3 text-right whitespace-nowrap">
                         {formatINR(item.lineTotalPaise)}
