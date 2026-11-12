@@ -5,9 +5,7 @@ import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   Download,
-  FileText,
   Gift,
-  History,
   Mail,
   MessageCircle,
   Pencil,
@@ -25,12 +23,7 @@ import { formatDateDDMMYYYY, formatDateTime, businessToday } from "@/lib/dates";
 import { getCustomer } from "@/lib/customers";
 import { getEnquiry } from "@/lib/enquiries";
 import { formatINR, paiseToInput } from "@/lib/money";
-import {
-  getOrder,
-  listInvoiceVersions,
-  listPayments,
-  listRefunds,
-} from "@/lib/orders";
+import { getOrder, listPayments, listRefunds } from "@/lib/orders";
 import {
   NOTIFICATION_STATUS_LABELS,
   NOTIFICATION_TYPE_LABELS,
@@ -40,25 +33,16 @@ import {
   messagingModeInfo,
 } from "@/lib/messaging";
 import { buildInvoiceEmailDraft, emailModeInfo, listOrderEmails } from "@/lib/email";
-import { expenseCategories } from "@/lib/expenses";
 import { hasPermission } from "@/lib/permissions";
 import {
   DELIVERY_METHOD_LABELS,
-  ORDER_STATUSES,
-  ORDER_STATUS_LABELS,
-  ORDER_STATUS_HISTORY_LABELS,
   PAYMENT_METHODS,
   PAYMENT_METHOD_LABELS,
   PAYMENT_STATUS_LABELS,
   type EmailMessage,
   type NotificationStatus,
 } from "@/lib/types";
-import {
-  addOrderExpenseAction,
-  addPaymentAction,
-  addRefundAction,
-  changeOrderStatusAction,
-} from "../actions";
+import { addPaymentAction } from "../actions";
 import {
   approveOrderMessageAction,
   discardOrderMessageAction,
@@ -118,15 +102,13 @@ export default async function OrderDetailPage({
     Boolean(order.delivery.notes);
   const canManage = hasPermission(user, "orders.manage");
   const canPayments = hasPermission(user, "payments.manage");
-  const canRecordCost = hasPermission(user, "expenses.manage");
   const canMessage = hasPermission(user, "messaging.manage");
-  const [customer, enquiry, payments, refunds, versions, notifications, emails, consent, emailDraft, handoff] =
+  const [customer, enquiry, payments, refunds, notifications, emails, consent, emailDraft, handoff] =
     await Promise.all([
       order.customerId ? getCustomer(order.customerId) : Promise.resolve(null),
       order.enquiryId ? getEnquiry(order.enquiryId) : Promise.resolve(null),
       isSales ? listPayments(order.id) : Promise.resolve([]),
       isSales ? listRefunds(order.id) : Promise.resolve([]),
-      isSales ? listInvoiceVersions(order.id) : Promise.resolve([]),
       isSales ? listOrderNotifications(order.id) : Promise.resolve([]),
       isSales ? listOrderEmails(order.id) : Promise.resolve([]),
       isSales ? getWhatsAppConsent(order.customerSnapshot.phone) : Promise.resolve(null),
@@ -136,12 +118,6 @@ export default async function OrderDetailPage({
       isSales && canMessage ? invoiceHandoff(order) : Promise.resolve(null),
     ]);
 
-  const costCategories = canRecordCost ? await expenseCategories() : [];
-  // A cost against an order is almost always the porter or a courier slip.
-  const costDefaultCategory =
-    costCategories.find((category) => /transport/i.test(category)) ??
-    costCategories.find((category) => /misc/i.test(category)) ??
-    "";
   const canReviewMessages = hasPermission(user, "messaging.review");
   const messageMode = messagingModeInfo();
   const mailMode = emailModeInfo();
@@ -154,10 +130,7 @@ export default async function OrderDetailPage({
       return handoff
         ? "Order created. Use “Open in WhatsApp” above to send the invoice."
         : "Order created.";
-    if (notices.saved === "1")
-      return isSales
-        ? "Order saved. A new invoice version was issued only if the content changed."
-        : "Gift record saved.";
+    if (notices.saved === "1") return "Order saved.";
     if (notices.paid === "1") return "Payment recorded.";
     if (notices.refunded === "1") return "Refund recorded.";
     if (notices.expense === "1") return "Cost recorded and visible in Expenses.";
@@ -196,39 +169,18 @@ export default async function OrderDetailPage({
     ...payments.map((payment) => ({
       id: `payment-${payment.id}`,
       kind: "Payment" as const,
-      date: payment.date,
       createdAt: payment.createdAt,
       method: payment.method,
-      detail: [payment.reference, payment.notes].filter(Boolean).join(" · "),
-      amountPaise: payment.amountPaise,
-      by: payment.createdByName,
+      reference: payment.reference,
     })),
     ...refunds.map((refund) => ({
       id: `refund-${refund.id}`,
       kind: "Refund" as const,
-      date: refund.date,
       createdAt: refund.refundedAt,
       method: refund.method,
-      detail: refund.reason,
-      amountPaise: -refund.amountPaise,
-      by: refund.createdByName,
+      reference: undefined,
     })),
   ].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-
-  const versionRows = versions.length
-    ? versions
-    : order.invoice
-      ? [
-          {
-            id: `embedded-${order.id}`,
-            version: order.invoice.version,
-            createdAt: order.invoice.issuedAt,
-            createdByName: order.createdByName,
-            supersededAt: undefined as string | undefined,
-            snapshot: order.invoice.snapshot,
-          },
-        ]
-      : [];
 
   return (
     <div className="space-y-8">
@@ -302,7 +254,7 @@ export default async function OrderDetailPage({
           <p className="font-medium text-terracotta">This order is cancelled.</p>
           <p className="mt-1 text-[0.875rem] text-ink-soft">
             {isSales && netReceived > 0
-              ? "Payments are still on record. Record a refund if money is being returned. The invoice number stays issued."
+              ? "Payments are still on record. The invoice number stays issued."
               : "The record and its history stay available. Cancelled orders cannot be edited or take payments."}
           </p>
         </div>
@@ -398,7 +350,7 @@ export default async function OrderDetailPage({
       </dl>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           {order.comments ? (
             <section
               className="surface border-l-4 border-l-brass p-5"
@@ -531,51 +483,30 @@ export default async function OrderDetailPage({
                 </p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[36rem] text-left text-[0.9375rem]">
+                  <table className="w-full text-left text-[0.9375rem]">
                     <thead>
                       <tr className="border-b border-line text-[0.6875rem] uppercase tracking-[0.14em] text-ink-muted">
                         <th scope="col" className="px-5 py-3 font-semibold">
-                          Entry
+                          Payment method
                         </th>
                         <th scope="col" className="px-5 py-3 font-semibold">
-                          Date
-                        </th>
-                        <th scope="col" className="px-5 py-3 font-semibold">
-                          Method
-                        </th>
-                        <th scope="col" className="px-5 py-3 text-right font-semibold">
-                          Amount
+                          Reference
                         </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-line">
                       {entries.map((entry) => (
                         <tr key={entry.id}>
-                          <td className="px-5 py-3">
-                            <p
-                              className={
-                                entry.kind === "Refund" ? "text-terracotta" : "font-medium"
-                              }
-                            >
-                              {entry.kind}
-                            </p>
-                            <p className="text-[0.8125rem] text-ink-muted">
-                              {entry.detail || "—"}
-                              {entry.by ? ` · ${entry.by}` : ""}
-                            </p>
-                          </td>
-                          <td className="px-5 py-3 whitespace-nowrap">
-                            {formatDateDDMMYYYY(entry.date)}
-                          </td>
-                          <td className="px-5 py-3">{PAYMENT_METHOD_LABELS[entry.method]}</td>
                           <td
                             className={cn(
-                              "px-5 py-3 text-right whitespace-nowrap",
-                              entry.amountPaise < 0 && "text-terracotta",
+                              "px-5 py-3",
+                              entry.kind === "Refund" && "text-terracotta",
                             )}
                           >
-                            {formatINR(entry.amountPaise)}
+                            {entry.kind === "Refund" ? "Refund · " : ""}
+                            {PAYMENT_METHOD_LABELS[entry.method]}
                           </td>
+                          <td className="px-5 py-3 break-all">{entry.reference || "—"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -583,362 +514,57 @@ export default async function OrderDetailPage({
                 </div>
               )}
 
-              {canPayments || canRecordCost ? (
-                <div className="grid gap-6 border-t border-line px-5 py-5 md:grid-cols-2">
-                  {order.status !== "CANCELLED" && outstanding > 0 ? (
-                    <form action={addPaymentAction} className="space-y-4">
-                    <input type="hidden" name="orderId" value={order.id} />
-                    <input type="hidden" name="idempotencyKey" value={randomUUID()} />
-                    <h3 className="font-medium">Record a payment</h3>
-                    <p className="text-[0.8125rem] text-ink-muted">
-                      Outstanding: {formatINR(outstanding)}
-                    </p>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="sm:col-span-2">
-                        <label htmlFor="payment-amount" className="label">
-                          Amount (₹)
-                        </label>
-                        <input
-                          id="payment-amount"
-                          name="amount"
-                          inputMode="decimal"
-                          required
-                          max={outstanding / 100}
-                          className="field"
-                          placeholder={paiseToInput(outstanding)}
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="payment-method" className="label">
-                          Method
-                        </label>
-                        <select id="payment-method" name="method" className="field">
-                          {PAYMENT_METHODS.map((method) => (
-                            <option key={method.value} value={method.value}>
-                              {method.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label htmlFor="payment-date" className="label">
-                          Received on
-                        </label>
-                        <input
-                          id="payment-date"
-                          name="date"
-                          type="date"
-                          defaultValue={businessToday()}
-                          max={businessToday()}
-                          className="field"
-                        />
-                      </div>
-                      <div className="sm:col-span-2">
-                        <label htmlFor="payment-reference" className="label">
-                          Reference (optional)
-                        </label>
-                        <input
-                          id="payment-reference"
-                          name="reference"
-                          maxLength={120}
-                          className="field"
-                          placeholder="UPI reference"
-                        />
-                      </div>
+              {canPayments && order.status !== "CANCELLED" && outstanding > 0 ? (
+                <form action={addPaymentAction} className="space-y-4 border-t border-line px-5 py-5">
+                  <input type="hidden" name="orderId" value={order.id} />
+                  <input type="hidden" name="idempotencyKey" value={randomUUID()} />
+                  <input type="hidden" name="amount" value={paiseToInput(outstanding)} />
+                  <input type="hidden" name="date" value={businessToday()} />
+                  <h3 className="font-medium">Record a payment</h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="payment-method" className="label">
+                        Payment method
+                      </label>
+                      <select id="payment-method" name="method" className="field">
+                        {PAYMENT_METHODS.map((method) => (
+                          <option key={method.value} value={method.value}>
+                            {method.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                    <button type="submit" className="btn btn-solid btn-sm">
-                      <ReceiptText aria-hidden="true" className="size-4" />
-                      Record payment
-                    </button>
-                    </form>
-                  ) : (
-                    <p className="text-[0.8125rem] text-ink-muted">
-                      {order.status === "CANCELLED"
-                        ? "Cancelled orders take refunds only."
-                        : "No outstanding balance — payments are complete."}
-                    </p>
-                  )}
-
-                  {netReceived > 0 ? (
-                    <form action={addRefundAction} className="space-y-4">
-                      <input type="hidden" name="orderId" value={order.id} />
-                      <input type="hidden" name="idempotencyKey" value={randomUUID()} />
-                      <h3 className="font-medium">Record a refund</h3>
-                      <p className="text-[0.8125rem] text-ink-muted">
-                        Refundable: {formatINR(netReceived)}
-                      </p>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="sm:col-span-2">
-                          <label htmlFor="refund-amount" className="label">
-                            Amount (₹)
-                          </label>
-                          <input
-                            id="refund-amount"
-                            name="amount"
-                            inputMode="decimal"
-                            required
-                            max={netReceived / 100}
-                            className="field"
-                            placeholder={paiseToInput(netReceived)}
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="refund-method" className="label">
-                            Method
-                          </label>
-                          <select id="refund-method" name="method" className="field">
-                            {PAYMENT_METHODS.map((method) => (
-                              <option key={method.value} value={method.value}>
-                                {method.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label htmlFor="refund-date" className="label">
-                            Refunded on
-                          </label>
-                          <input
-                            id="refund-date"
-                            name="date"
-                            type="date"
-                            defaultValue={businessToday()}
-                            max={businessToday()}
-                            className="field"
-                          />
-                        </div>
-                        <div className="sm:col-span-2">
-                          <label htmlFor="refund-reason" className="label">
-                            Reason
-                          </label>
-                          <input
-                            id="refund-reason"
-                            name="reason"
-                            required
-                            minLength={3}
-                            maxLength={500}
-                            className="field"
-                            placeholder="Order cancelled by customer"
-                          />
-                        </div>
-                      </div>
-                      <button type="submit" className="btn btn-outline btn-sm">
-                        Record refund
-                      </button>
-                    </form>
-                  ) : null}
-
-                  {canRecordCost ? (
-                    <form action={addOrderExpenseAction} className="space-y-4">
-                      <input type="hidden" name="orderId" value={order.id} />
-                      <h3 className="font-medium">Add a cost for this order</h3>
-                      <p className="text-[0.8125rem] text-ink-muted">
-                        Something you paid out for this order — a courier slip, extra boxes. It
-                        lands in Expenses tagged {order.ref}.
-                      </p>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div>
-                          <label htmlFor="order-cost-amount" className="label">
-                            Amount (₹)
-                          </label>
-                          <input
-                            id="order-cost-amount"
-                            name="amount"
-                            inputMode="decimal"
-                            required
-                            className="field"
-                            placeholder="0.00"
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="order-cost-date" className="label">
-                            Paid on
-                          </label>
-                          <input
-                            id="order-cost-date"
-                            name="date"
-                            type="date"
-                            defaultValue={businessToday()}
-                            max={businessToday()}
-                            className="field"
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="order-cost-category" className="label">
-                            Category
-                          </label>
-                          <select id="order-cost-category" name="category" defaultValue={costDefaultCategory} className="field">
-                            {costCategories.map((category) => (
-                              <option key={category} value={category}>
-                                {category}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label htmlFor="order-cost-method" className="label">
-                            Paid by (optional)
-                          </label>
-                          <select id="order-cost-method" name="method" defaultValue="" className="field">
-                            <option value="">Not recorded</option>
-                            {PAYMENT_METHODS.map((method) => (
-                              <option key={method.value} value={method.value}>
-                                {method.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="sm:col-span-2">
-                          <label htmlFor="order-cost-description" className="label">
-                            What was it?
-                          </label>
-                          <input
-                            id="order-cost-description"
-                            name="description"
-                            maxLength={300}
-                            className="field"
-                            placeholder="Courier to Andheri, gift ribbon…"
-                          />
-                        </div>
-                        <div className="sm:col-span-2">
-                          <label htmlFor="order-cost-supplier" className="label">
-                            Supplier or payee (optional)
-                          </label>
-                          <input id="order-cost-supplier" name="supplier" maxLength={120} className="field" />
-                        </div>
-                      </div>
-                      <button type="submit" className="btn btn-outline btn-sm">
-                        <ReceiptText aria-hidden="true" className="size-4" />
-                        Record cost
-                      </button>
-                    </form>
-                  ) : null}
-                </div>
+                    <div>
+                      <label htmlFor="payment-reference" className="label">
+                        Reference (optional)
+                      </label>
+                      <input
+                        id="payment-reference"
+                        name="reference"
+                        maxLength={120}
+                        className="field"
+                        placeholder="UPI reference"
+                      />
+                    </div>
+                  </div>
+                  <button type="submit" className="btn btn-solid btn-sm">
+                    <ReceiptText aria-hidden="true" className="size-4" />
+                    Record full payment
+                  </button>
+                </form>
               ) : null}
 
               {!canPayments ? (
                 <p className="border-t border-line px-5 py-4 text-[0.8125rem] text-ink-muted">
-                  Payment and refund entry needs the payments permission.
+                  Payment entry needs the payments permission.
                 </p>
               ) : null}
             </section>
           ) : null}
 
-          {isSales && order.invoice ? (
-            <section className="surface" aria-labelledby="invoice-versions">
-              <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-line px-5 py-4">
-                <h2
-                  id="invoice-versions"
-                  className="font-[family-name:var(--font-display)] text-xl"
-                >
-                  Invoice versions
-                </h2>
-                <span className="meta">Dashboard downloads only</span>
-              </div>
-              <ul className="divide-y divide-line">
-                {versionRows.map((row) => (
-                  <li key={row.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
-                    <FileText aria-hidden="true" className="size-4 text-brass" />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium">
-                        Version {row.version}
-                        {row.supersededAt ? (
-                          <span className="pill ml-2 border-line text-ink-muted">Superseded</span>
-                        ) : (
-                          <span className="pill ml-2 border-olive-soft text-olive">Latest</span>
-                        )}
-                      </p>
-                      <p className="text-[0.8125rem] text-ink-muted">
-                        Issued {formatDateTime(row.createdAt)}
-                        {row.createdByName ? ` · ${row.createdByName}` : ""} · Invoice date{" "}
-                        {formatDateDDMMYYYY(row.snapshot.invoiceDate)}
-                      </p>
-                    </div>
-                    <a
-                      href={`/admin/orders/${order.id}/invoice/${row.version}`}
-                      className="btn btn-outline btn-sm"
-                    >
-                      <Download aria-hidden="true" className="size-4" />
-                      PDF
-                    </a>
-                  </li>
-                ))}
-              </ul>
-              <p className="border-t border-line px-5 py-3 text-[0.75rem] text-ink-muted">
-                Invoices show order content only. Payments, balances and GST are not printed.
-              </p>
-            </section>
-          ) : null}
-
-          <section className="surface p-5 sm:p-6" aria-labelledby="status-history">
-            <div className="flex items-center gap-2">
-              <History aria-hidden="true" className="size-4 text-brass" />
-              <h2
-                id="status-history"
-                className="font-[family-name:var(--font-display)] text-xl"
-              >
-                Status history
-              </h2>
-            </div>
-            <ol className="mt-4 space-y-4">
-              {order.statusHistory.map((entry, index) => (
-                <li key={`${entry.at}-${index}`} className="flex gap-3">
-                  <span className="mt-1.5 size-2 shrink-0 rounded-full bg-brass" />
-                  <div>
-                    <p className="font-medium">{ORDER_STATUS_HISTORY_LABELS[entry.status]}</p>
-                    <p className="text-[0.8125rem] text-ink-muted">
-                      {formatDateTime(entry.at)}
-                      {entry.byName ? ` · ${entry.byName}` : ""}
-                    </p>
-                    {entry.note ? (
-                      <p className="mt-1 text-[0.875rem] text-ink-soft">{entry.note}</p>
-                    ) : null}
-                  </div>
-                </li>
-              ))}
-            </ol>
-
-            {canManage ? (
-              <form
-                action={changeOrderStatusAction}
-                className="mt-5 space-y-3 border-t border-line pt-5"
-              >
-                <input type="hidden" name="orderId" value={order.id} />
-                <div className="grid gap-3 sm:grid-cols-[10rem_minmax(0,1fr)_auto] sm:items-end">
-                  <div>
-                    <label htmlFor="status" className="label">
-                      New status
-                    </label>
-                    <select id="status" name="status" defaultValue={order.status} className="field">
-                      {ORDER_STATUSES.map((status) => (
-                        <option key={status} value={status}>
-                          {ORDER_STATUS_LABELS[status]}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label htmlFor="status-note" className="label">
-                      Note (optional)
-                    </label>
-                    <input
-                      id="status-note"
-                      name="note"
-                      maxLength={500}
-                      className="field"
-                      placeholder="Completed and handed over"
-                    />
-                  </div>
-                  <button type="submit" className="btn btn-outline btn-sm">
-                    Update status
-                  </button>
-                </div>
-              </form>
-            ) : null}
-          </section>
         </div>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <section className="surface p-5" aria-labelledby="order-customer">
             <h2
               id="order-customer"

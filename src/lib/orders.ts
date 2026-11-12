@@ -493,24 +493,26 @@ async function paymentTotals(
   session?: ClientSession,
 ): Promise<{ paidPaise: number; refundedPaise: number }> {
   const db = await getDb();
-  const [payments, refunds] = await Promise.all([
-    db
-      .collection("payments")
-      .aggregate(
-        [
-          { $match: { orderId, voidedAt: { $exists: false } } },
-          { $group: { _id: null, total: { $sum: "$amountPaise" } } },
-        ],
-        { session },
-      )
-      .toArray(),
-    db
-      .collection("refunds")
-      .aggregate([{ $match: { orderId } }, { $group: { _id: null, total: { $sum: "$amountPaise" } } }], {
-        session,
-      })
-      .toArray(),
-  ]);
+  const paymentsQuery = () => db
+    .collection("payments")
+    .aggregate(
+      [
+        { $match: { orderId, voidedAt: { $exists: false } } },
+        { $group: { _id: null, total: { $sum: "$amountPaise" } } },
+      ],
+      { session },
+    )
+    .toArray();
+  const refundsQuery = () => db
+    .collection("refunds")
+    .aggregate([{ $match: { orderId } }, { $group: { _id: null, total: { $sum: "$amountPaise" } } }], {
+      session,
+    })
+    .toArray();
+  // MongoDB transactions cannot run concurrent operations on one session.
+  const [payments, refunds] = session
+    ? [await paymentsQuery(), await refundsQuery()]
+    : await Promise.all([paymentsQuery(), refundsQuery()]);
   return {
     paidPaise: Number(payments[0]?.total ?? 0),
     refundedPaise: Number(refunds[0]?.total ?? 0),

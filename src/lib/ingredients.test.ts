@@ -31,6 +31,19 @@ describe("ingredientArt", () => {
     expect(key("Salary", "Labour")).toBeNull();
   });
 
+  it("uses fresh image URLs for the supplied photographs", () => {
+    const names = [
+      "Black tal", "White tal", "Shing", "Daliya", "Kopra nu chhin",
+      "Cashew", "Cashew – grated", "Almond", "Almond – grated",
+      "Pista", "Pista – grated", "Ghee", "Jaggery", "Jaggery – organic",
+      "Mamra", "Box – 250 gm", "Box – 500 gm", "Butter paper", "Silica",
+      "Plastic bag – small", "Plastic bag – big",
+    ];
+    for (const name of names) {
+      expect(ingredientArt(name)?.src).toMatch(/\.jpg\?v=owner-20261111$/);
+    }
+  });
+
   it("matches the names the kitchen actually buys", () => {
     expect(key("Cashews", "Ingredients/raw materials")).toBe("cashews");
     expect(key("Cashews - crushed", "Ingredients/raw materials")).toBe("cashews-crushed");

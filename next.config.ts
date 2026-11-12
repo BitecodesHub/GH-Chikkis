@@ -5,6 +5,10 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   poweredByHeader: false,
   images: {
+    localPatterns: [
+      { pathname: "/**", search: "" },
+      { pathname: "/ingredients/**", search: "?v=owner-20261111" },
+    ],
     remotePatterns: [
       {
         protocol: "https",
