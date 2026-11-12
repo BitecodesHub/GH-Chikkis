@@ -117,6 +117,18 @@ export async function countAudit(options: AuditQuery): Promise<number> {
   return db.collection("audit_logs").countDocuments(auditFilter(options));
 }
 
+export async function deleteAuditEntries(ids: string[]): Promise<{ deleted: number; onlyDeletionRecords: boolean }> {
+  const db = await getDb();
+  const audit = db.collection<AuditDoc>("audit_logs");
+  const targets = await audit.find({ _id: { $in: ids } }, { projection: { action: 1 } }).toArray();
+  if (targets.length === 0) return { deleted: 0, onlyDeletionRecords: false };
+  const result = await audit.deleteMany({ _id: { $in: targets.map((doc) => doc._id) } });
+  return {
+    deleted: result.deletedCount,
+    onlyDeletionRecords: targets.every((doc) => doc.action === "audit.delete"),
+  };
+}
+
 export async function listAuditForEntity(
   entityType: string,
   entityId: string,

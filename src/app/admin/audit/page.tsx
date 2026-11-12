@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, ScrollText } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { FilterNav } from "@/components/admin/filter-nav";
 import { requirePermission } from "@/lib/auth/session";
 import { countAudit, listAudit } from "@/lib/audit";
+import { hasPermission } from "@/lib/permissions";
+import { AuditSelection } from "./audit-selection";
 import {
   businessDateEndUtc,
   businessDateStartUtc,
@@ -42,7 +45,8 @@ export default async function AdminAuditPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requirePermission("audit.view");
+  const { user } = await requirePermission("audit.view");
+  const canDelete = hasPermission(user, "settings.manage");
   const params = await searchParams;
   const query = typeof params.q === "string" ? params.q.trim() : "";
   const action = typeof params.action === "string" ? params.action.trim() : "";
@@ -88,7 +92,11 @@ export default async function AdminAuditPage({
       <AdminPageHeader
         eyebrow="Admin"
         title="Audit log"
-        description="Who changed what, and when. Entries are append-only and remain after orders or customers are archived or cancelled."
+        description={
+          canDelete
+            ? "Who changed what, and when. Tick entries to delete them, or tick the box at the top to select the whole page."
+            : "Who changed what, and when. Entries remain after orders or customers are archived or cancelled."
+        }
       />
 
       <section className="surface" aria-labelledby="audit-filters">
@@ -218,46 +226,61 @@ export default async function AdminAuditPage({
             ) : null}
           </div>
         ) : (
-          <ul className="divide-y divide-line border-t border-line">
-            {entries.map((entry) => {
-              return (
-                <li key={entry.id} className="px-5 py-4">
-                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                    <span className="pill border-line font-mono text-[0.6875rem] text-ink-muted">
-                      {entry.action}
-                    </span>
-                    <p className="min-w-0 flex-1 text-[0.875rem]">{entry.summary}</p>
-                    <p className="text-[0.75rem] text-ink-muted">{formatDateTime(entry.at)}</p>
-                  </div>
-                  <p className="mt-1 text-[0.75rem] text-ink-muted">
-                    {entry.actorEmail}
-                    {" · "}
-                    {ENTITY_LABELS.get(entry.entityType) ?? "Workspace"}
-                    {entry.requestId ? ` · request ${entry.requestId}` : ""}
-                  </p>
-                  {entry.diff && entry.diff.length > 0 ? (
-                    <details className="mt-2">
-                      <summary className="cursor-pointer text-[0.75rem] text-olive-deep">
-                        View changes ({entry.diff.length})
-                      </summary>
-                      <dl className="mt-2 grid gap-1 border border-line bg-paper-raised px-3 py-2 text-[0.75rem]">
-                        {entry.diff.map((change) => (
-                          <div key={change.field} className="grid gap-1 sm:grid-cols-[8rem_1fr]">
-                            <dt className="font-mono text-ink-muted">{change.field}</dt>
-                            <dd>
-                              <span className="text-terracotta line-through">{change.from || "—"}</span>
-                              {" → "}
-                              <span>{change.to || "—"}</span>
-                            </dd>
-                          </div>
-                        ))}
-                      </dl>
-                    </details>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
+          <AuditList canDelete={canDelete} total={entries.length}>
+            <ul className="divide-y divide-line border-t border-line">
+              {entries.map((entry) => {
+                return (
+                  <li key={entry.id} className="flex gap-3 px-5 py-4">
+                    {canDelete ? (
+                      <input
+                        type="checkbox"
+                        name="ids"
+                        value={entry.id}
+                        aria-label={`Select: ${entry.summary}`}
+                        className="mt-1 size-4 shrink-0 cursor-pointer accent-olive"
+                      />
+                    ) : null}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                        <span className="pill border-line font-mono text-[0.6875rem] text-ink-muted">
+                          {entry.action}
+                        </span>
+                        <p className="order-last min-w-0 basis-full text-[0.875rem] sm:order-none sm:basis-0 sm:flex-1">
+                          {entry.summary}
+                        </p>
+                        <p className="ml-auto text-[0.75rem] text-ink-muted sm:ml-0">{formatDateTime(entry.at)}</p>
+                      </div>
+                      <p className="mt-1 text-[0.75rem] text-ink-muted">
+                        {entry.actorEmail}
+                        {" · "}
+                        {ENTITY_LABELS.get(entry.entityType) ?? "Workspace"}
+                        {entry.requestId ? ` · request ${entry.requestId}` : ""}
+                      </p>
+                      {entry.diff && entry.diff.length > 0 ? (
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-[0.75rem] text-olive-deep">
+                            View changes ({entry.diff.length})
+                          </summary>
+                          <dl className="mt-2 grid gap-1 border border-line bg-paper-raised px-3 py-2 text-[0.75rem]">
+                            {entry.diff.map((change) => (
+                              <div key={change.field} className="grid gap-1 sm:grid-cols-[8rem_1fr]">
+                                <dt className="font-mono text-ink-muted">{change.field}</dt>
+                                <dd>
+                                  <span className="text-terracotta line-through">{change.from || "—"}</span>
+                                  {" → "}
+                                  <span>{change.to || "—"}</span>
+                                </dd>
+                              </div>
+                            ))}
+                          </dl>
+                        </details>
+                      ) : null}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </AuditList>
         )}
 
         {pages > 1 ? (
@@ -286,4 +309,16 @@ export default async function AdminAuditPage({
       </section>
     </div>
   );
+}
+
+function AuditList({
+  canDelete,
+  total,
+  children,
+}: {
+  canDelete: boolean;
+  total: number;
+  children: ReactNode;
+}) {
+  return canDelete ? <AuditSelection total={total}>{children}</AuditSelection> : <>{children}</>;
 }
