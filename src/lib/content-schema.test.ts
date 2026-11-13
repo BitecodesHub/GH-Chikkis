@@ -57,10 +57,12 @@ describe("the owner's copy rules", () => {
     expect(pageStrings("home")).toContain("Himani");
   });
 
-  it("opens the hero by naming the sweet, with the couplet above it", () => {
+  it("opens the hero with the family-recipe line, with the couplet above it", () => {
     const home = DEFAULT_CONTENT.home;
     expect(home.heroEyebrow).toBe(BRAND_COUPLET);
-    expect(`${home.heroTitle} ${home.heroTitleAccent}`).toMatch(/Chikki.*hand/);
+    expect(`${home.heroTitle} ${home.heroTitleAccent}`).toBe(
+      "A family recipe, rolled incredibly crunchy thin.",
+    );
   });
 
   it("lists the whole current collection in the varieties answer", () => {

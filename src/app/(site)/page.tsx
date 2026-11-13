@@ -154,7 +154,7 @@ export default async function HomePage() {
           <div className="max-w-2xl">
             <p className="eyebrow">The collection</p>
             <h2 className="display-l mt-4">{contentText(content, "collectionHeading")}</h2>
-            <p className="lede mt-5">{contentText(content, "collectionIntro")}</p>
+            <p className="lede mt-5 whitespace-pre-line">{contentText(content, "collectionIntro")}</p>
           </div>
           <Link href="/collection" className="btn btn-outline hidden md:inline-flex">
             All varieties
@@ -244,7 +244,7 @@ export default async function HomePage() {
             <p className="lede mt-4">{contentText(content, "giftingIntro")}</p>
           </div>
           <Link href="/gifting" className="btn btn-solid md:mb-1">
-            Plan a gift
+            Plan your gift
           </Link>
         </div>
       </section>

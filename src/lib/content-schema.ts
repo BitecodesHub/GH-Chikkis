@@ -157,30 +157,30 @@ export function pageDef(page: ContentPageKey) {
 export const DEFAULT_CONTENT: Record<ContentPageKey, PageContent> = {
   home: {
     heroEyebrow: "Gud ki mithaas, Ghee ki richness.",
-    heroTitle: "Chikki,",
-    heroTitleAccent: "cut by hand.",
+    heroTitle: "A family recipe,",
+    heroTitleAccent: "rolled incredibly crunchy thin.",
     heroIntro:
-      "Seven varieties made by sisters Gopi and Himani in a family kitchen in Ahmedabad — pure jaggery and cow ghee, without added refined sugar or glucose.",
+      "Seven handcrafted varieties made by sisters Gopi and Himani in their Ahmedabad kitchen — using pure jaggery and cow ghee, with no added refined sugar or glucose.",
     heroNote:
       "Prices are shared directly. Ask us about the collection, packaging or a bulk order.",
     collectionHeading: "The collection",
     collectionIntro:
-      "Seven varieties, each with its own character — some nuttier, some softer, all made by hand.",
-    storyHeading: "Two sisters, one kitchen",
+      "Seven varieties. One signature crunch.\nFrom classic groundnut and sesame to rich dry fruit and coconut, every variety is hand-crafted with the same attention to thinness, texture and balance.",
+    storyHeading: "Two sisters. One family recipe.",
     storyBody: [
-      "GH Chikkis began with a simple family habit: making chikki for the people around us. What started in a home kitchen became a collection of varieties, shared with families, shops and businesses in and around Ahmedabad.",
+      "What began as a family tradition in our home kitchen became GH Chikkis — handcrafted chikki made by sisters Gopi and Himani, and shared with families, businesses and customers far beyond Ahmedabad.",
       "Gopi Shah and Himani Shah are the people behind the recipes, the wrapping and the decisions.",
       "We are a homemade brand, not a factory. Every order is made with hands, time and attention — and the details are best confirmed with us directly.",
     ],
     processHeading: "From the pour to the cut",
     processIntro:
-      "Chikki is a study in timing. These are the stages of our kitchen: heat, patience, pressure and a clean cut.",
-    giftingHeading: "Made to be given",
+      "Making thin, brittle chikki leaves very little room for error. Every batch depends on the right heat, timing, pressure and experience.",
+    giftingHeading: "Made for gifting. Made to be remembered.",
     giftingIntro:
-      "From a box for a festival to a considered corporate gift, we work directly with you on varieties, packaging and quantities.",
-    finalCtaHeading: "Tell us what you need",
+      "From festive gifting to corporate occasions, we create customised combinations of varieties, quantities and packaging for your occasion.",
+    finalCtaHeading: "Planning an order? Tell us what you need.",
     finalCtaBody:
-      "Share the variety, quantity and date you have in mind. We will confirm availability, packaging and price with you directly.",
+      "Share your preferred varieties, quantity, packaging and delivery date. We'll get back to you with availability and pricing.",
     finalCtaLabel: "Start an enquiry",
   },
   collection: {
@@ -254,24 +254,24 @@ export const DEFAULT_CONTENT: Record<ContentPageKey, PageContent> = {
       "Every variety passes through the same rhythm. The details change; the attention does not.",
     steps: [
       {
-        title: "The cook",
-        body: "The base is brought to the right point over heat. The window is narrow; this stage is judged by eye, by aroma and by experience.",
+        title: "Cook",
+        body: "The jaggery and ghee are cooked to the precise stage needed for the right texture.",
       },
       {
-        title: "The pour",
-        body: "The hot base is poured over the nuts or other ingredients and spread quickly, before it begins to set.",
+        title: "Pour",
+        body: "The hot mixture is poured over the ingredients and spread quickly before it begins to set.",
       },
       {
-        title: "The press",
-        body: "The mixture is pressed and rolled to an even thickness. An uneven press shows up later, in the bite.",
+        title: "Roll",
+        body: "It is rolled and pressed by hand to achieve our signature thinness.",
       },
       {
-        title: "The cut",
-        body: "While the set is still warm, it is marked and cut. The clean edge is the part we check first.",
+        title: "Cut",
+        body: "While still warm, each sheet is marked and cut into individual pieces.",
       },
       {
-        title: "The wrap",
-        body: "Once cool, the pieces are broken along the cuts, sorted and packed. Every box is checked by hand.",
+        title: "Pack",
+        body: "Once cooled, every piece is checked, sorted and carefully packed by hand.",
       },
     ],
     closing:
