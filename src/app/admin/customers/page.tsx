@@ -4,10 +4,12 @@ import { ChevronLeft, ChevronRight, Plus, Search, Users } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { FilterNav } from "@/components/admin/filter-nav";
 import { requirePermission } from "@/lib/auth/session";
+import { hasPermission } from "@/lib/permissions";
 import { listCustomers } from "@/lib/customers";
 import { formatDateDDMMYYYY } from "@/lib/dates";
 import { formatINR } from "@/lib/money";
 import { customerOrderStats } from "@/lib/orders";
+import { DeleteCustomer } from "./delete-customer";
 
 export const metadata: Metadata = { title: "Customers" };
 
@@ -18,7 +20,8 @@ export default async function AdminCustomersPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requirePermission("customers.view");
+  const { user } = await requirePermission("customers.view");
+  const canManage = hasPermission(user, "customers.manage");
   const params = await searchParams;
   const query = typeof params.q === "string" ? params.q : "";
   const includeArchived = params.archived === "1";
@@ -149,9 +152,9 @@ export default async function AdminCustomersPage({
                   </th>
                   <th
                     scope="col"
-                    className="hidden px-5 py-3 text-right font-semibold md:table-cell"
+                    className="px-5 py-3 text-right font-semibold"
                   >
-                    <span className="sr-only">Open</span>
+                    <span className="sr-only">Actions</span>
                   </th>
                 </tr>
               </thead>
@@ -194,13 +197,22 @@ export default async function AdminCustomersPage({
                       <td className="hidden px-5 py-3 whitespace-nowrap md:table-cell">
                         {stat?.lastOrderDate ? formatDateDDMMYYYY(stat.lastOrderDate) : "—"}
                       </td>
-                      <td className="hidden px-5 py-3 text-right md:table-cell">
-                        <Link
-                          href={`/admin/customers/${customer.id}`}
-                          className="text-[0.8125rem] text-brass-ink hover:underline"
-                        >
-                          Open
-                        </Link>
+                      <td className="px-5 py-3 text-right align-top">
+                        <div className="flex flex-col items-end gap-1">
+                          <Link
+                            href={`/admin/customers/${customer.id}`}
+                            className="text-[0.8125rem] text-brass-ink hover:underline"
+                          >
+                            Open
+                          </Link>
+                          {canManage ? (
+                            <DeleteCustomer
+                              id={customer.id}
+                              name={customer.name}
+                              orderCount={stat?.count ?? 0}
+                            />
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   );

@@ -6,6 +6,7 @@ import { requirePermission } from "@/lib/auth/session";
 import {
   CustomerError,
   createCustomer,
+  deleteCustomer,
   setCustomerArchived,
   updateCustomer,
 } from "@/lib/customers";
@@ -91,6 +92,24 @@ export async function setCustomerArchivedAction(formData: FormData): Promise<voi
   revalidatePath("/admin/customers");
   revalidatePath(`/admin/customers/${customerId}`);
   redirect(`/admin/customers/${customerId}?${archived ? "archived=1" : "restored=1"}`);
+}
+
+export async function deleteCustomerAction(
+  id: string,
+): Promise<{ ok: boolean; message: string }> {
+  const { user } = await requirePermission("customers.manage");
+  if (!id || id.length > 100) return { ok: false, message: "Choose a valid customer." };
+  try {
+    await deleteCustomer(id, { id: user.id, name: user.name, email: user.email });
+  } catch (error) {
+    if (error instanceof CustomerError) return { ok: false, message: error.message };
+    console.error("Customer deletion failed", error);
+    return { ok: false, message: "Could not delete the customer. Please retry." };
+  }
+  revalidatePath("/admin/customers");
+  revalidatePath("/admin");
+  revalidatePath("/admin/audit");
+  return { ok: true, message: "Customer deleted." };
 }
 
 export async function setConsentAction(formData: FormData): Promise<void> {

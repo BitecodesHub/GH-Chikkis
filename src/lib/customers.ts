@@ -327,6 +327,30 @@ export async function updateCustomer(
   return mapCustomer(next);
 }
 
+export async function deleteCustomer(id: string, actor: CustomerActor): Promise<void> {
+  const db = await getDb();
+  const collection = db.collection<CustomerDoc>("customers");
+  const existing = await collection.findOne({ _id: id });
+  if (!existing) throw new CustomerError("That customer could not be found.");
+
+  const orderCount = await db.collection("orders").countDocuments({ customerId: id });
+  if (orderCount > 0) {
+    throw new CustomerError(
+      `${existing.name} has ${orderCount} ${orderCount === 1 ? "order" : "orders"}, so the profile cannot be deleted. Archive it instead — the order history stays linked.`,
+    );
+  }
+
+  await db.collection("consents").deleteMany({ customerId: id });
+  await collection.deleteOne({ _id: id });
+  await recordAudit({
+    actor: { id: actor.id, email: actor.email },
+    action: "customer.delete",
+    entityType: "customer",
+    entityId: id,
+    summary: `Deleted customer ${existing.name}`,
+  });
+}
+
 export async function setCustomerArchived(
   id: string,
   archived: boolean,

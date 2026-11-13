@@ -24,6 +24,7 @@ import { getWhatsAppConsent } from "@/lib/messaging";
 import { hasPermission } from "@/lib/permissions";
 import { ORDER_STATUS_LABELS } from "@/lib/types";
 import { setConsentAction, setCustomerArchivedAction } from "../actions";
+import { DeleteCustomer } from "../delete-customer";
 
 export const metadata: Metadata = { title: "Customer" };
 
@@ -99,6 +100,14 @@ export default async function CustomerDetailPage({
                 <Pencil aria-hidden="true" className="size-4" />
                 Edit
               </Link>
+            ) : null}
+            {canManage ? (
+              <DeleteCustomer
+                id={customer.id}
+                name={customer.name}
+                orderCount={stats?.count ?? 0}
+                redirectTo="/admin/customers"
+              />
             ) : null}
             {canOrder && !customer.archived ? (
               <Link
