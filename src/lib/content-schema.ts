@@ -194,7 +194,7 @@ export const DEFAULT_CONTENT: Record<ContentPageKey, PageContent> = {
     eyebrow: "Our story",
     title: "A home kitchen, kept at the centre.",
     intro:
-      "GH Chikkis is a family-run, homemade chikki brand in Ahmedabad. These are the facts of our story — the rest is best told directly.",
+      "GH Chikkis is a family-run, homemade chikki brand in Ahmedabad.",
     storyBody: [
       "GH Chikkis is run by sisters Gopi Shah and Himani Shah, from the same kitchen where the first batch was made.",
       "The work began at home, and home is still the centre of it. The kitchen is where the recipes are made, the orders are packed and the standards are set.",
@@ -205,8 +205,8 @@ export const DEFAULT_CONTENT: Record<ContentPageKey, PageContent> = {
       "Gopi Shah and Himani Shah are sisters who share the work of running GH Chikkis, from the kitchen to the people who order from us.",
       "If you have a question about a variety, packaging or a bulk order, you are speaking to the family.",
     ],
-    timelineHeading: "Our Journey",
-    timelineIntro: "A journey of tradition, trust and growth.",
+    timelineHeading: "The story so far",
+    timelineIntro: "From one home kitchen to homes across the world.",
     timeline: [
       {
         note: "2018",
@@ -221,7 +221,7 @@ export const DEFAULT_CONTENT: Record<ContentPageKey, PageContent> = {
       {
         note: "2021",
         title: "Growing Through Challenges",
-        body: "Continued serving our customers through challenging times, reaching approximately 1.5 tonnes in production.",
+        body: "We continued serving our customers through challenging times, producing approximately 1.5 tonnes that year.",
       },
       {
         note: "2022–2023",
@@ -231,17 +231,17 @@ export const DEFAULT_CONTENT: Record<ContentPageKey, PageContent> = {
       {
         note: "2024",
         title: "A New Milestone",
-        body: "Achieved approximately 5–6 tonnes in production, marking a significant step in our growth journey.",
+        body: "We reached approximately 5–6 tonnes of production, marking an important milestone in our journey.",
       },
       {
         note: "2025",
         title: "Across Borders",
-        body: "Took the taste of GH Chikkis international, fulfilling orders and reaching customers in Canada, the United Kingdom, the United States and New Zealand.",
+        body: "GH Chikkis crossed borders for the first time, reaching customers in Canada, the United Kingdom, the United States and New Zealand.",
       },
       {
         note: "Today",
         title: "Growing With Tradition",
-        body: "Continuing our journey with the same homemade recipes, carefully selected ingredients and commitment to quality, one order at a time.",
+        body: "Continuing with the same homemade recipes, carefully selected ingredients and the care that has shaped every batch from the beginning.",
       },
     ],
     closing:
