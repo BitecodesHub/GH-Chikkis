@@ -580,7 +580,7 @@ export function ContentEditor({
         <div className="divide-y divide-line">{page.fields.map(renderField)}</div>
       </div>
 
-      <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t border-line bg-paper/95 py-3 backdrop-blur">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
         <p aria-live="polite" className="text-[0.8125rem] text-ink-muted">
           {pending
             ? "Saving…"

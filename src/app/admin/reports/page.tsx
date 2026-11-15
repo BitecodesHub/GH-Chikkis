@@ -355,13 +355,13 @@ export default async function AdminReportsPage({
 
       <section className="emboss px-5 py-4" aria-labelledby="report-range">
         <div className="flex flex-wrap items-center gap-2">
-          <nav aria-label="Quick ranges" className="nav-segment flex flex-wrap">
+          <nav aria-label="Quick ranges" className="nav-segment grid grid-cols-4 sm:flex sm:flex-nowrap w-full sm:w-auto">
             {PRESETS.map((preset) => (
               <Link
                 key={preset.value}
                 href={`/admin/reports?preset=${preset.value}`}
                 data-active={range.preset === preset.value}
-                className="nav-segment-item"
+                className="nav-segment-item text-center px-2 py-1.5 text-[0.8125rem] sm:text-[0.875rem]"
               >
                 {preset.label}
               </Link>
@@ -553,17 +553,25 @@ export default async function AdminReportsPage({
               Sales by product
             </h2>
           </div>
-          <div className="px-3 pt-4 sm:px-5">
-            <ProductMixChart data={data.salesByProduct} />
-          </div>
-          <BreakdownTable
-            rows={data.salesByProduct}
-            empty="No sales in this period."
-            amountHeader="Revenue"
-            countHeader="Product"
-            countLabel="Lines"
-            totalPaise={metrics.grossRevenuePaise}
-          />
+          {data.salesByProduct.length > 0 ? (
+            <>
+              <div className="px-3 pt-4 sm:px-5">
+                <ProductMixChart data={data.salesByProduct} />
+              </div>
+              <BreakdownTable
+                rows={data.salesByProduct}
+                empty="No sales in this period."
+                amountHeader="Revenue"
+                countHeader="Product"
+                countLabel="Lines"
+                totalPaise={metrics.grossRevenuePaise}
+              />
+            </>
+          ) : (
+            <p className="py-12 text-center text-[0.875rem] text-ink-muted">
+              No sales in this period.
+            </p>
+          )}
         </section>
 
         <section id="expenses" className="emboss" aria-labelledby="expenses-by-category">
@@ -572,17 +580,25 @@ export default async function AdminReportsPage({
               Expenses by category
             </h2>
           </div>
-          <div className="px-3 pt-4 sm:px-5">
-            <ExpenseDonut data={data.expensesByCategory} />
-          </div>
-          <BreakdownTable
-            rows={data.expensesByCategory}
-            empty="No expenses in this period."
-            amountHeader="Amount"
-            countHeader="Category"
-            countLabel="Entries"
-            totalPaise={metrics.expensesPaise}
-          />
+          {data.expensesByCategory.length > 0 ? (
+            <>
+              <div className="px-3 pt-4 sm:px-5">
+                <ExpenseDonut data={data.expensesByCategory} />
+              </div>
+              <BreakdownTable
+                rows={data.expensesByCategory}
+                empty="No expenses in this period."
+                amountHeader="Amount"
+                countHeader="Category"
+                countLabel="Entries"
+                totalPaise={metrics.expensesPaise}
+              />
+            </>
+          ) : (
+            <p className="py-12 text-center text-[0.875rem] text-ink-muted">
+              No expenses were recorded in this period.
+            </p>
+          )}
         </section>
       </div>
 

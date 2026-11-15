@@ -69,7 +69,7 @@ export function TrendChart({ series }: { series: ReportSeriesPoint[] }) {
           <Bar dataKey="revenuePaise" name="Sales revenue" fill="#46512f" radius={[2, 2, 0, 0]} />
           <Bar dataKey="expensesPaise" name="Expenses" fill="#b85c34" radius={[2, 2, 0, 0]} />
           <Line
-            type="monotone"
+            type="linear"
             dataKey="profitPaise"
             name="Estimated profit"
             stroke="#8a6a2f"
@@ -226,7 +226,7 @@ export function MonthlyTrendChart({ series }: { series: ReportSeriesPoint[] }) {
           <Legend iconType="square" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
           <Bar dataKey="revenuePaise" name="Sales revenue" fill="#46512f" radius={[2, 2, 0, 0]} />
           <Line
-            type="monotone"
+            type="linear"
             dataKey="profitPaise"
             name="Estimated profit"
             stroke="#8a6a2f"
@@ -271,7 +271,7 @@ export function DashboardTrend({ series }: { series: ReportSeriesPoint[] }) {
           />
           <Bar dataKey="revenuePaise" name="Sales revenue" fill="#46512f" radius={[3, 3, 0, 0]} />
           <Line
-            type="monotone"
+            type="linear"
             dataKey="profitPaise"
             name="Estimated profit"
             stroke="#8a6a2f"

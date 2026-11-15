@@ -187,7 +187,7 @@ export default async function AdminDashboardPage({
     <div className="space-y-6">
       {/* Espresso top pill: greeting + date on the left, quick actions in the
           centre well, and a circular jump to the public site on the right. */}
-      <header className="espresso flex flex-wrap items-center gap-3 rounded-full px-3 py-2.5 sm:px-4">
+      <header className="espresso flex flex-wrap items-center gap-3 rounded-2xl p-3 sm:rounded-full sm:px-4 sm:py-2.5">
         <div className="flex min-w-0 items-center gap-3">
           <span className="grid size-10 shrink-0 place-items-center rounded-full border border-paper/25 bg-paper/10 text-[0.8125rem] font-semibold text-paper shadow-[inset_0_1px_0_0_rgba(246,241,230,0.2)]">
             {initials(user.name)}

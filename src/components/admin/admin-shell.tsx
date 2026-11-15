@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   BarChart3,
   ExternalLink,
@@ -174,33 +174,47 @@ function NavContent({
   onSignOut?: () => void;
 }) {
   const router = useRouter();
+  const navRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!navRef.current) return;
+    const activeEl = navRef.current.querySelector<HTMLElement>('[aria-current="page"]');
+    if (activeEl) {
+      activeEl.scrollIntoView({ block: "nearest" });
+    }
+  }, [pathname]);
+
   return (
     <div className="flex h-full flex-col">
-      <div className="px-5 pt-6 pb-5">
+      <div className="px-5 pt-5 pb-3">
         <Wordmark
           tone="paper"
           href="/admin"
           label="GH Chikkis workspace"
           logoSrc={logoSrc}
         />
-        <p className="mt-4 flex items-center gap-2 text-[0.6875rem] font-medium uppercase tracking-[0.16em] text-paper/40">
+        <p className="mt-2.5 flex items-center gap-2 text-[0.6875rem] font-medium uppercase tracking-[0.16em] text-paper/40">
           <Diamond size="sm" className="border-brass" />
           Workspace
         </p>
       </div>
 
-      <nav aria-label="Workspace" className="no-scrollbar flex-1 overflow-y-auto px-3 pb-6">
+      <nav
+        ref={navRef}
+        aria-label="Workspace"
+        className="flex-1 overflow-y-auto px-3 pb-3 [scrollbar-width:thin] [scrollbar-color:rgba(246,241,230,0.18)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-paper/20 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-paper/30"
+      >
         {NAV_GROUPS.map((group) => {
           const items = group.items.filter(
             (item) => !item.permission || hasPermission(user, item.permission),
           );
           if (items.length === 0) return null;
           return (
-            <div key={group.label} className="mt-5 first:mt-0">
+            <div key={group.label} className="mt-3.5 first:mt-0">
               <p className="px-3 text-[0.625rem] font-semibold uppercase tracking-[0.2em] text-paper/35">
                 {group.label}
               </p>
-              <ul className="mt-2 space-y-0.5">
+              <ul className="mt-1 space-y-0.5">
                 {items.map((item) => {
                   const active = item.exact
                     ? pathname === item.href
@@ -218,7 +232,7 @@ function NavContent({
                         onClick={onNavigate}
                         aria-current={active ? "page" : undefined}
                         className={cn(
-                          "flex items-center gap-3 rounded-xl px-3 py-2 text-[0.875rem] transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                          "flex items-center gap-2.5 rounded-xl px-3 py-1.5 text-[0.8125rem] font-medium transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
                           active
                             ? "bg-paper/14 text-paper shadow-[inset_0_1px_0_0_rgba(246,241,230,0.14)]"
                             : "text-paper/65 hover:translate-x-0.5 hover:bg-paper/8 hover:text-paper",
@@ -236,34 +250,35 @@ function NavContent({
         })}
       </nav>
 
-      <div className="border-t border-paper/10 p-4">
-        <div className="flex items-center gap-3 rounded-2xl bg-black/20 p-3 shadow-[inset_0_2px_6px_-2px_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(0,0,0,0.35)]">
-          <span className="grid size-9 shrink-0 place-items-center rounded-full border border-paper/20 text-[0.75rem] font-semibold text-paper/80">
+      <div className="border-t border-paper/10 p-3">
+        <div className="flex items-center gap-2.5 rounded-xl bg-black/20 p-2.5 shadow-[inset_0_2px_6px_-2px_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(0,0,0,0.35)]">
+          <span className="grid size-8 shrink-0 place-items-center rounded-full border border-paper/20 text-[0.6875rem] font-semibold text-paper/80">
             {initials(user.name)}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[0.875rem] font-medium text-paper">{user.name}</p>
-            <p className="truncate text-[0.75rem] text-paper/45">{user.email}</p>
+            <p className="truncate text-[0.8125rem] font-medium leading-tight text-paper">{user.name}</p>
+            <p className="truncate text-[0.6875rem] leading-tight text-paper/45">{user.email}</p>
           </div>
+          <form action="/api/auth/logout" method="post" onSubmit={onSignOut} className="shrink-0">
+            <button
+              type="submit"
+              title="Sign out"
+              aria-label="Sign out"
+              className="grid size-7 place-items-center rounded-lg text-paper/50 transition-colors hover:bg-paper/10 hover:text-paper"
+            >
+              <LogOut aria-hidden="true" className="size-3.5" />
+            </button>
+          </form>
         </div>
         <Link
           href="/"
           target="_blank"
           rel="noreferrer"
-          className="mt-3 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[0.8125rem] text-paper/55 transition-colors hover:bg-paper/8 hover:text-paper"
+          className="mt-1.5 flex items-center justify-center gap-1.5 rounded-lg px-2 py-1 text-center text-[0.75rem] text-paper/50 transition-colors hover:bg-paper/8 hover:text-paper"
         >
-          <ExternalLink aria-hidden="true" className="size-4" />
-          View the website
+          <ExternalLink aria-hidden="true" className="size-3" />
+          View website
         </Link>
-        <form action="/api/auth/logout" method="post" onSubmit={onSignOut}>
-          <button
-            type="submit"
-            className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[0.8125rem] text-paper/55 transition-colors hover:bg-paper/8 hover:text-paper"
-          >
-            <LogOut aria-hidden="true" className="size-4" />
-            Sign out
-          </button>
-        </form>
       </div>
     </div>
   );

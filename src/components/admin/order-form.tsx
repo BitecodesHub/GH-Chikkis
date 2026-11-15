@@ -957,7 +957,7 @@ export function OrderForm({
         </div>
       </section>
 
-      <div className="sticky bottom-0 z-10 border-t border-line bg-paper/95 py-3 backdrop-blur">
+      <div className="border-t border-line pt-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
             <div>

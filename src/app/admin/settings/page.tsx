@@ -417,7 +417,7 @@ export default async function AdminSettingsPage({
           </div>
         </section>
 
-        <div className="sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-paper/95 px-4 py-3 shadow-[0_18px_40px_-18px_rgba(20,16,10,0.45)] backdrop-blur">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-paper-raised px-5 py-4">
           <p className="text-[0.75rem] text-ink-muted">
             Edits apply only after you save. Each save is recorded in the audit log.
           </p>
