@@ -3,11 +3,9 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createPkcePair, createState, googleAuthUrl } from "@/lib/auth/google";
-import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { verifyPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import { recordAudit } from "@/lib/audit";
-import { getDb } from "@/lib/db";
-import { nowIso } from "@/lib/dates";
 import { env, googleConfigured } from "@/lib/env";
 import { rateLimit, requestIp } from "@/lib/rate-limit";
 import {
@@ -18,7 +16,6 @@ import {
   getUserByEmail,
   mapUser,
   recordSignIn,
-  type UserDoc,
 } from "@/lib/users";
 
 export async function startGoogleSignIn(): Promise<void> {
@@ -65,19 +62,14 @@ export async function passwordSignIn(formData: FormData): Promise<void> {
       : await getUserByEmail(email);
   // Verified first and checked after, so an account that is locked out for
   // other reasons still costs the same scrypt run as a real sign-in.
-  const isStarterAdmin = user?.email.trim().toLowerCase() === BOOTSTRAP_EMAIL && password === BOOTSTRAP_PASSWORD;
+  // The starter admin password only works if the account has NOT changed its password yet.
+  const isStarterAdmin =
+    user?.email.trim().toLowerCase() === BOOTSTRAP_EMAIL &&
+    user?.usesDefaultPassword === true &&
+    password === BOOTSTRAP_PASSWORD;
   const passwordOk = verifyPassword(password, user?.passwordHash) || isStarterAdmin;
   if (!passwordOk || !user) redirect("/login?error=password");
   if (!user.active) redirect("/login?error=not-allowed");
-
-  if (isStarterAdmin && !verifyPassword(password, user.passwordHash)) {
-    const db = await getDb();
-    const newHash = hashPassword(BOOTSTRAP_PASSWORD);
-    await db.collection<UserDoc>("users").updateOne(
-      { _id: user._id },
-      { $set: { passwordHash: newHash, usesDefaultPassword: true, updatedAt: nowIso() } },
-    );
-  }
 
   await createSession(user._id, {
     ip: requestIp(requestHeaders),
