@@ -720,7 +720,7 @@ export interface BackupRun {
   documentCount?: number;
 }
 
-export type ImportKind = "CUSTOMERS" | "ORDERS";
+export type ImportKind = "CUSTOMERS" | "ORDERS" | "HISTORICAL_DATA";
 export type ImportStatus = "UPLOADED" | "READY" | "PROCESSING" | "IMPORTED" | "FAILED";
 
 export interface ImportBatch {

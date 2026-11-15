@@ -6,7 +6,6 @@ import {
   History,
   ShoppingBag,
   Upload,
-  Users,
 } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { requirePermission } from "@/lib/auth/session";
@@ -43,7 +42,7 @@ export default async function AdminImportsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { user } = await requirePermission("customers.manage");
+  const { user } = await requirePermission("orders.manage");
   const canImportOrders = hasPermission(user, "orders.manage");
   const params = await searchParams;
   const error = first(params.error);
@@ -54,7 +53,7 @@ export default async function AdminImportsPage({
       <AdminPageHeader
         eyebrow="Data"
         title="Imports"
-        description="Bring existing customer records or historical orders into GH Chikkis. Every row is checked before anything is saved, and imported records never trigger WhatsApp messages or emails."
+        description="Bring historical sales and expense data into GH Chikkis. Every row is checked before anything is saved, and imported records never trigger WhatsApp messages or emails."
         actions={
           <Link href="/admin/audit?entityType=import" className="btn btn-quiet btn-sm">
             <History aria-hidden="true" className="size-4" />
@@ -72,52 +71,7 @@ export default async function AdminImportsPage({
         </p>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="surface p-5" aria-labelledby="customer-import">
-          <div className="flex items-start gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-full border border-line bg-paper-raised">
-              <Users aria-hidden="true" className="size-4 text-brass" />
-            </span>
-            <div>
-              <h2 id="customer-import" className="font-[family-name:var(--font-display)] text-xl">
-                Customers
-              </h2>
-              <p className="mt-1 text-[0.875rem] text-ink-soft">
-                Name and phone are required. Duplicate phone numbers are skipped, never created
-                twice.
-              </p>
-            </div>
-          </div>
-          <form action={uploadImportAction} className="mt-5 space-y-3">
-            <input type="hidden" name="kind" value="CUSTOMERS" />
-            <label className="block text-[0.8125rem] font-medium" htmlFor="customer-file">
-              CSV or Excel file
-            </label>
-            <input
-              id="customer-file"
-              name="file"
-              type="file"
-              accept=".csv,.xlsx"
-              required
-              className="block w-full border border-line bg-paper-raised px-3 py-2 text-[0.875rem] file:mr-3 file:border-0 file:bg-transparent file:text-[0.8125rem] file:font-medium file:text-olive-deep"
-            />
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <a
-                href="/templates/import-customers.csv"
-                download
-                className="inline-flex items-center gap-1.5 text-[0.8125rem] text-olive-deep hover:underline"
-              >
-                <Download aria-hidden="true" className="size-3.5" />
-                Customer template
-              </a>
-              <button type="submit" className="btn btn-solid btn-sm">
-                <Upload aria-hidden="true" className="size-3.5" />
-                Upload customers
-              </button>
-            </div>
-          </form>
-        </section>
-
+      <div className="grid gap-4 lg:grid-cols-1">
         <section className="surface p-5" aria-labelledby="order-import">
           <div className="flex items-start gap-3">
             <span className="grid size-10 shrink-0 place-items-center rounded-full border border-line bg-paper-raised">
@@ -125,18 +79,18 @@ export default async function AdminImportsPage({
             </span>
             <div>
               <h2 id="order-import" className="font-[family-name:var(--font-display)] text-xl">
-                Historical orders
+                Historical data
               </h2>
               <p className="mt-1 text-[0.875rem] text-ink-soft">
-                Saved as historical sales with their original invoice date, so a report for
-                any past period includes them. Existing customers are matched by phone and no
-                messages are sent.
+                Annual sales revenue, purchase expenses and flavour distribution by financial year.
+                Each row creates a completed historical order and an expense record so reports
+                reflect the full picture.
               </p>
             </div>
           </div>
           {canImportOrders ? (
             <form action={uploadImportAction} className="mt-5 space-y-3">
-              <input type="hidden" name="kind" value="ORDERS" />
+              <input type="hidden" name="kind" value="HISTORICAL_DATA" />
               <label className="block text-[0.8125rem] font-medium" htmlFor="order-file">
                 CSV or Excel file
               </label>
@@ -150,22 +104,22 @@ export default async function AdminImportsPage({
               />
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <a
-                  href="/templates/import-orders.csv"
+                  href="/templates/import-historical-data.csv"
                   download
                   className="inline-flex items-center gap-1.5 text-[0.8125rem] text-olive-deep hover:underline"
                 >
                   <Download aria-hidden="true" className="size-3.5" />
-                  Order template
+                  Historical data template
                 </a>
                 <button type="submit" className="btn btn-solid btn-sm">
                   <Upload aria-hidden="true" className="size-3.5" />
-                  Upload orders
+                  Upload historical data
                 </button>
               </div>
             </form>
           ) : (
             <p className="mt-5 border border-line bg-paper-raised px-3 py-3 text-[0.8125rem] text-ink-muted">
-              Order imports need the “Create and edit orders” permission.
+              Historical data imports need the “Create and edit orders” permission.
             </p>
           )}
         </section>
@@ -208,7 +162,7 @@ export default async function AdminImportsPage({
                     {batch.filename}
                   </Link>
                   <p className="mt-0.5 text-[0.8125rem] text-ink-muted">
-                    {batch.kind === "CUSTOMERS" ? "Customers" : "Historical orders"} ·{" "}
+                    {batch.kind === "CUSTOMERS" ? "Customers" : batch.kind === "HISTORICAL_DATA" ? "Historical data" : "Historical orders"} ·{" "}
                     {summaryLine(batch)}
                   </p>
                   <p className="mt-0.5 text-[0.75rem] text-ink-muted">

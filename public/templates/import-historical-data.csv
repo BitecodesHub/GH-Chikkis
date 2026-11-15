@@ -1,0 +1,18 @@
+Financial Year,Total KGs Sold,Revenue (₹),Recorded Purchase Expense (₹),Profit* (₹),Profit Margin*,Black Til,White Til,Groundnut,Coconut,Dryfruit,Dalia,Mamra,Organic
+201920,100,100000,50000,50000,0.5,12.5,12.5,12.5,12.5,12.5,12.5,12.5,12.5
+202021,100,100000,50000,50000,0.5,12.5,12.5,12.5,12.5,12.5,12.5,12.5,12.5
+202122,100,100000,50000,50000,0.5,12.5,12.5,12.5,12.5,12.5,12.5,12.5,12.5
+202223,100,100000,50000,50000,0.5,12.5,12.5,12.5,12.5,12.5,12.5,12.5,12.5
+202324,100,100000,50000,50000,0.5,12.5,12.5,12.5,12.5,12.5,12.5,12.5,12.5
+202425,100,100000,50000,50000,0.5,12.5,12.5,12.5,12.5,12.5,12.5,12.5,12.5
+202526,100,100000,50000,50000,0.5,12.5,12.5,12.5,12.5,12.5,12.5,12.5,12.5
+TOTAL,700,700000,350000,350000,0.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5
+,,,,,,0,0,0,0,0,0,0,0
+REFERENCE / GENERALIZED VERSION,,,,,,,,,,,,,
+All annual figures are intentionally generalized for sharing and demonstration.,,,,,,,,,,,,,
+Total KGs Sold is set to 100 KG for each financial year.,,,,,,,,,,,,,
+The 8 flavour categories are equally distributed at 12.5 KG per year.,,,,,,,,,,,,,
+"Revenue, purchase expense, profit and profit margin are illustrative and identical across years.",,,,,,,,,,,,,
+"This workbook does not represent actual GH Chikkis production, sales, expenses or profitability.",,,,,,,,,,,,,
+Organic = combined KG from all historical organic-labelled flavour entries.,,,,,,,,,,,,,
+This is not net profit because other operating expenses are not separately available in the source ledgers.,,,,,,,,,,,,,

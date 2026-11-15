@@ -145,7 +145,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
         label: "Imports",
         href: "/admin/imports",
         icon: Upload,
-        permission: "customers.manage",
+        permission: "orders.manage",
       },
     ],
   },

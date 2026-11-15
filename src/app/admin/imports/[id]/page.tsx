@@ -69,12 +69,24 @@ function first(value: string | string[] | undefined): string {
 }
 
 function kindLabel(kind: ImportBatch["kind"]): string {
-  return kind === "CUSTOMERS" ? "Customer import" : "Historical order import";
+  if (kind === "CUSTOMERS") return "Customer import";
+  if (kind === "HISTORICAL_DATA") return "Historical data import";
+  return "Historical order import";
 }
 
 function rowSummary(batch: ImportBatch, values: Record<string, string>): string {
   if (batch.kind === "CUSTOMERS") {
     return [values.name, values.phone, values.email].filter(Boolean).join(" · ") || "No values";
+  }
+  if (batch.kind === "HISTORICAL_DATA") {
+    const revenuePaise = parseRupeesToPaise(values.revenue);
+    return [
+      values.financialYear,
+      revenuePaise !== null ? formatINR(revenuePaise) : values.revenue,
+      values.totalKg ? `${values.totalKg} kg` : "",
+    ]
+      .filter(Boolean)
+      .join(" · ");
   }
   const total = parseRupeesToPaise(values.total);
   return [
@@ -234,8 +246,7 @@ export default async function ImportBatchPage({
                   batch.kind === "CUSTOMERS"
                     ? (summary.customersCreated ?? summary.imported)
                     : (summary.ordersCreated ?? summary.imported),
-              },
-            ].map((item) => (
+              },            ].map((item) => (
               <div key={item.label}>
                 <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
                   {item.label}
@@ -259,7 +270,7 @@ export default async function ImportBatchPage({
               href={batch.kind === "CUSTOMERS" ? "/admin/customers" : "/admin/orders"}
               className="text-olive-deep hover:underline"
             >
-              Open {batch.kind === "CUSTOMERS" ? "customers" : "orders"}
+              Open {batch.kind === "CUSTOMERS" ? "customers" : batch.kind === "HISTORICAL_DATA" ? "orders" : "orders"}
             </Link>
             <Link
               href={`/admin/audit?entityType=import&entityId=${batch.id}`}

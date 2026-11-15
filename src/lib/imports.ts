@@ -64,7 +64,22 @@ export type ImportFieldKey =
   | "reference"
   | "status"
   | "deliveryMethod"
-  | "deliveryCharge";
+  | "deliveryCharge"
+  // Historical data fields
+  | "financialYear"
+  | "totalKg"
+  | "revenue"
+  | "purchaseExpense"
+  | "profit"
+  | "profitMargin"
+  | "blackTilKg"
+  | "whiteTilKg"
+  | "groundnutKg"
+  | "coconutKg"
+  | "dryfruitKg"
+  | "daliaKg"
+  | "mamraKg"
+  | "organicKg";
 
 export interface ImportField {
   key: ImportFieldKey;
@@ -75,6 +90,92 @@ export interface ImportField {
 }
 
 export const IMPORT_FIELDS: Record<ImportKind, ImportField[]> = {
+  HISTORICAL_DATA: [
+    {
+      key: "financialYear",
+      label: "Financial Year",
+      required: true,
+      aliases: ["financial year", "fy", "year", "financial_year"],
+      hint: "E.g. 201920 for FY 2019–20.",
+    },
+    {
+      key: "totalKg",
+      label: "Total KGs Sold",
+      aliases: ["total kgs sold", "total kg", "total kgs", "kg sold", "kgs sold"],
+      hint: "Total kilograms sold in the financial year.",
+    },
+    {
+      key: "revenue",
+      label: "Revenue (₹)",
+      required: true,
+      aliases: ["revenue", "revenue (₹)", "sales revenue", "total revenue"],
+      hint: "Total sales revenue in rupees.",
+    },
+    {
+      key: "purchaseExpense",
+      label: "Recorded Purchase Expense (₹)",
+      aliases: [
+        "recorded purchase expense (₹)",
+        "purchase expense",
+        "purchase expenses",
+        "recorded purchase expense",
+        "expenses",
+        "cost",
+      ],
+      hint: "Raw material / purchase expenses in rupees.",
+    },
+    {
+      key: "profit",
+      label: "Profit* (₹)",
+      aliases: ["profit* (₹)", "profit (₹)", "profit", "net profit"],
+    },
+    {
+      key: "profitMargin",
+      label: "Profit Margin*",
+      aliases: ["profit margin*", "profit margin", "margin"],
+    },
+    {
+      key: "blackTilKg",
+      label: "Black Til",
+      aliases: ["black til", "blacktil", "black sesame"],
+      hint: "KG for Black Til variety.",
+    },
+    {
+      key: "whiteTilKg",
+      label: "White Til",
+      aliases: ["white til", "whitetil", "white sesame"],
+    },
+    {
+      key: "groundnutKg",
+      label: "Groundnut",
+      aliases: ["groundnut", "peanut"],
+    },
+    {
+      key: "coconutKg",
+      label: "Coconut",
+      aliases: ["coconut"],
+    },
+    {
+      key: "dryfruitKg",
+      label: "Dryfruit",
+      aliases: ["dryfruit", "dry fruit", "dryfruits"],
+    },
+    {
+      key: "daliaKg",
+      label: "Dalia",
+      aliases: ["dalia", "daliya", "dalya"],
+    },
+    {
+      key: "mamraKg",
+      label: "Mamra",
+      aliases: ["mamra"],
+    },
+    {
+      key: "organicKg",
+      label: "Organic",
+      aliases: ["organic"],
+    },
+  ],
   CUSTOMERS: [
     {
       key: "name",
@@ -258,6 +359,19 @@ interface PaymentDoc extends Document {
   idempotencyKey: string;
 }
 
+interface ImportExpenseDoc {
+  _id: string;
+  date: string;
+  amountPaise: number;
+  category: string;
+  description?: string;
+  source: "MANUAL" | "PURCHASE" | "GIFT";
+  createdAt: string;
+  createdBy: string;
+  importBatchId?: string;
+  importRow?: number;
+}
+
 const ORDER_STATUS_ALIASES: Record<string, OrderStatus> = {
   NEW: "PENDING",
   OPEN: "PENDING",
@@ -307,6 +421,42 @@ function mapBatch(doc: ImportBatchDoc): ImportBatch {
 
 function normalizeHeader(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+/** Returns true when the uploaded file looks like a historical-data CSV. */
+export function isHistoricalDataHeaders(headers: string[]): boolean {
+  const normalized = headers.map(normalizeHeader);
+  return (
+    normalized.includes("financialyear") ||
+    (normalized.includes("totalkgssold") && normalized.includes("revenuers"))
+  );
+}
+
+/**
+ * Parse a financial-year token like "201920" → { label: "FY 2019–20", endDate: "2020-03-31" }
+ * Returns null for TOTAL rows, blank rows, or reference notes.
+ */
+function parseFinancialYear(raw: string): { label: string; endDate: string } | null {
+  const token = raw.trim();
+  if (!token) return null;
+  if (!/^\d{6}$/.test(token)) return null; // e.g. TOTAL, REFERENCE, blank
+  const startYear = Number(token.slice(0, 4));
+  const endYearShort = Number(token.slice(4, 6));
+  // Validate: end year must be start + 1 (last 2 digits)
+  if (endYearShort !== (startYear + 1) % 100) return null;
+  const endYear = startYear + 1;
+  return {
+    label: `FY ${startYear}–${String(endYearShort).padStart(2, "0")}`,
+    endDate: `${endYear}-03-31`,
+  };
+}
+
+/** Decide if a historical data row should be auto-skipped (TOTAL, blank, REFERENCE notes). */
+function isHistoricalSkipRow(row: string[], fyIndex: number): boolean {
+  const fyCell = (row[fyIndex] ?? "").trim();
+  if (!fyCell) return true; // blank fy cell
+  if (!/^\d{6}$/.test(fyCell)) return true; // TOTAL, REFERENCE, etc.
+  return false;
 }
 
 function normalizeToken(value: string): string {
@@ -560,10 +710,13 @@ export function autoMapColumns(
   kind: ImportKind,
   headers: string[],
 ): Record<string, string> {
+  // For ORDERS uploads that look like historical data, switch the kind automatically
+  const effectiveKind =
+    kind === "ORDERS" && isHistoricalDataHeaders(headers) ? "HISTORICAL_DATA" : kind;
   const normalizedHeaders = headers.map(normalizeHeader);
   const used = new Set<number>();
   const mapping: Record<string, string> = {};
-  for (const field of IMPORT_FIELDS[kind]) {
+  for (const field of IMPORT_FIELDS[effectiveKind]) {
     const aliases = new Set(
       [field.key, field.label, ...field.aliases].map((alias) => normalizeHeader(alias)),
     );
@@ -615,7 +768,7 @@ export async function createImportBatch(
     action: "import.upload",
     entityType: "import",
     entityId: doc._id,
-    summary: `Uploaded ${doc.filename} · ${doc.rows.length} ${input.kind === "CUSTOMERS" ? "customer" : "order"} rows`,
+    summary: `Uploaded ${doc.filename} · ${doc.rows.length} ${input.kind === "CUSTOMERS" ? "customer" : input.kind === "HISTORICAL_DATA" ? "historical data" : "order"} rows`,
   });
   return mapBatch(doc);
 }
@@ -749,6 +902,45 @@ export async function buildImportPreview(batch: ImportBatch): Promise<ImportPrev
   if (!batch.mapping) throw new ImportError("Map the columns before validating rows.");
   const fields = IMPORT_FIELDS[batch.kind];
   const db = await getDb();
+
+  // ── Historical data: skip non-FY rows, validate FY + revenue ──────────────
+  if (batch.kind === "HISTORICAL_DATA") {
+    const fyIndex = Number(batch.mapping["financialYear"] ?? -1);
+    const rows: ImportRowPreview[] = [];
+    batch.rows.forEach((row, rowIndex) => {
+      const values: Record<string, string> = {};
+      for (const field of fields) {
+        values[field.key] = readCell(row, batch.mapping!, field.key);
+      }
+      // Auto-skip TOTAL / blank / note rows
+      if (isHistoricalSkipRow(row, fyIndex)) {
+        rows.push({ rowIndex, rowNumber: rowIndex + 2, values, status: "SKIPPED", errors: [] });
+        return;
+      }
+      const errors: string[] = [];
+      const fy = parseFinancialYear(values.financialYear ?? "");
+      if (!fy) errors.push("Financial Year must be a 6-digit token like 201920.");
+      const revenuePaise = parseRupeesToPaise(values.revenue);
+      if (revenuePaise === null || revenuePaise <= 0)
+        errors.push("Revenue must be a positive number.");
+      rows.push({
+        rowIndex,
+        rowNumber: rowIndex + 2,
+        values,
+        status: errors.length === 0 ? "VALID" : "INVALID",
+        errors,
+      });
+    });
+    return {
+      rows,
+      counts: {
+        total: rows.length,
+        valid: rows.filter((r) => r.status === "VALID").length,
+        skipped: rows.filter((r) => r.status === "SKIPPED").length,
+        invalid: rows.filter((r) => r.status === "INVALID").length,
+      },
+    };
+  }
 
   const normalizedPhones = new Set<string>();
   const references = new Set<string>();
@@ -1116,6 +1308,226 @@ export async function executeImport(
           } else {
             throw error;
           }
+        }
+        continue;
+      }
+
+      // ── Historical data row ────────────────────────────────────────────────
+      if (batch.kind === "HISTORICAL_DATA") {
+        const rowKey = `import:${batch.id}:${row.rowIndex}`;
+        const existingOrder = await orders.findOne({ idempotencyKey: rowKey });
+        if (existingOrder) { skipped += 1; continue; }
+
+        const fy = parseFinancialYear(row.values.financialYear ?? "");
+        if (!fy) throw new ImportError("Financial Year is not valid.");
+
+        const revenuePaise = parseRupeesToPaise(row.values.revenue);
+        if (revenuePaise === null || revenuePaise <= 0)
+          throw new ImportError("Revenue must be a positive number.");
+
+        const purchaseExpensePaise = row.values.purchaseExpense
+          ? (parseRupeesToPaise(row.values.purchaseExpense) ?? 0)
+          : 0;
+
+        const totalKg = row.values.totalKg ? parseQuantityKg(row.values.totalKg) : null;
+
+        // Build per-flavour items from the 8 flavour columns
+        const FLAVOUR_KEYS: { key: ImportFieldKey; name: string }[] = [
+          { key: "blackTilKg", name: "Black Til Chikki" },
+          { key: "whiteTilKg", name: "White Til Chikki" },
+          { key: "groundnutKg", name: "Groundnut Chikki" },
+          { key: "coconutKg", name: "Coconut Chikki" },
+          { key: "dryfruitKg", name: "Dry Fruit Chikki" },
+          { key: "daliaKg", name: "Dalia Chikki" },
+          { key: "mamraKg", name: "Mamra Chikki" },
+          { key: "organicKg", name: "Organic Chikki" },
+        ];
+
+        const flavourItems: OrderItem[] = [];
+        let assignedPaise = 0;
+        const totalFlavourKg = FLAVOUR_KEYS.reduce((sum, f) => {
+          const kg = row.values[f.key] ? (parseQuantityKg(row.values[f.key]) ?? 0) : 0;
+          return sum + kg;
+        }, 0);
+
+        for (let fi = 0; fi < FLAVOUR_KEYS.length; fi++) {
+          const flavour = FLAVOUR_KEYS[fi];
+          const kg = row.values[flavour.key]
+            ? (parseQuantityKg(row.values[flavour.key]) ?? 0)
+            : 0;
+          if (kg <= 0) continue;
+          const isLast = fi === FLAVOUR_KEYS.length - 1;
+          const proportion = totalFlavourKg > 0 ? kg / totalFlavourKg : 1 / FLAVOUR_KEYS.length;
+          const linePaise = isLast
+            ? revenuePaise - assignedPaise
+            : Math.round(revenuePaise * proportion);
+          assignedPaise += linePaise;
+          flavourItems.push({
+            id: stableId(`${batch.id}:${row.rowIndex}:item:${fi}`),
+            productId: null,
+            packagingId: null,
+            productName: flavour.name,
+            packagingLabel: `Historical · ${formatQuantityKg(kg)} kg`,
+            actualWeightGrams: Math.round(kg * 1000),
+            weightBasis: "TOTAL",
+            quantity: 1,
+            ratePerGramPaise: 0,
+            standardAmountPaise: linePaise,
+            adjustmentPaise: 0,
+            lineTotalPaise: linePaise,
+            imported: true,
+            quantityLabel: `${formatQuantityKg(kg)} kg`,
+          });
+        }
+
+        // Fall back to a single line item when no flavour breakdown given
+        if (flavourItems.length === 0) {
+          flavourItems.push({
+            id: stableId(`${batch.id}:${row.rowIndex}:item:0`),
+            productId: null,
+            packagingId: null,
+            productName: `Historical Sales – ${fy.label}`,
+            packagingLabel: totalKg ? `${formatQuantityKg(totalKg)} kg` : "Imported historical record",
+            actualWeightGrams: totalKg ? Math.round(totalKg * 1000) : 0,
+            weightBasis: "TOTAL",
+            quantity: 1,
+            ratePerGramPaise: 0,
+            standardAmountPaise: revenuePaise,
+            adjustmentPaise: 0,
+            lineTotalPaise: revenuePaise,
+            imported: true,
+            quantityLabel: totalKg ? `${formatQuantityKg(totalKg)} kg` : "1",
+          });
+        }
+
+        const now = nowIso();
+        const orderId = stableId(`${batch.id}:${row.rowIndex}:order`);
+        const orderDate = fy.endDate as BusinessDate;
+        const ref = await allocateOrderRef();
+        const sequenceMatch = /^GH-(\d+)$/.exec(ref);
+        if (sequenceMatch) await ensureSequenceAtLeast(Number(sequenceMatch[1]));
+
+        const historicalCustomerName = `Historical Sales – ${fy.label}`;
+        const snapshot: InvoiceSnapshot = {
+          version: 1,
+          issuedAt: now,
+          ref,
+          invoiceDate: orderDate,
+          customer: { name: historicalCustomerName, phone: "" },
+          items: flavourItems,
+          deliveryMethod: "HOME_COLLECTION",
+          deliveryChargePaise: 0,
+          subtotalPaise: revenuePaise,
+          totalPaise: revenuePaise,
+          business: invoiceBusiness(settings),
+          thankYou: settings.invoice.thankYou,
+          footerNote: settings.invoice.footerNote,
+        };
+
+        await db.collection<Document>("invoice_versions").updateOne(
+          { orderId, version: 1 },
+          {
+            $setOnInsert: {
+              _id: randomUUID(),
+              orderId,
+              ref,
+              version: 1,
+              snapshot,
+              createdAt: now,
+              createdBy: actor.id,
+              createdByName: actor.name,
+            },
+          },
+          { upsert: true },
+        );
+
+        // Record payment for full revenue
+        try {
+          await payments.insertOne({
+            _id: randomUUID(),
+            orderId,
+            amountPaise: revenuePaise,
+            method: "OTHER" as PaymentMethod,
+            paidAt: now,
+            date: orderDate,
+            notes: `Imported historical revenue – ${fy.label}`,
+            createdBy: actor.id,
+            createdByName: actor.name,
+            createdAt: now,
+            idempotencyKey: `${rowKey}:payment`,
+          });
+        } catch (err) {
+          if (!(err instanceof MongoServerError && err.code === 11000)) throw err;
+        }
+
+        // Record purchase expense if present
+        if (purchaseExpensePaise > 0) {
+          try {
+            await db.collection<ImportExpenseDoc>("expenses").insertOne({
+              _id: randomUUID(),
+              date: orderDate,
+              amountPaise: purchaseExpensePaise,
+              category: "Raw materials",
+              description: `Historical purchase expense – ${fy.label}`,
+              source: "PURCHASE",
+              createdAt: now,
+              createdBy: actor.id,
+              importBatchId: batch.id,
+              importRow: row.rowNumber,
+            });
+          } catch (err) {
+            if (!(err instanceof MongoServerError && err.code === 11000)) throw err;
+          }
+        }
+
+        const histDoc: OrderDoc = {
+          _id: orderId,
+          ref,
+          type: "SALES",
+          status: "COMPLETED",
+          customerId: null,
+          customerSnapshot: { name: historicalCustomerName, phone: "" },
+          items: flavourItems,
+          delivery: { method: "HOME_COLLECTION", chargePaise: 0 },
+          comments: `Historical annual data – ${fy.label}`,
+          subtotalPaise: revenuePaise,
+          totalPaise: revenuePaise,
+          orderDate,
+          statusHistory: [
+            { status: "COMPLETED", at: now, by: actor.id, byName: actor.name, note: "Imported historical record" },
+          ],
+          invoice: { version: 1, issuedAt: now, snapshot },
+          source: "IMPORT",
+          historical: true,
+          createdAt: now,
+          updatedAt: now,
+          createdBy: actor.id,
+          createdByName: actor.name,
+          updatedBy: actor.id,
+          updatedByName: actor.name,
+          paymentStatus: "FULLY_PAID",
+          paidPaise: revenuePaise,
+          refundedPaise: 0,
+          balancePaise: 0,
+          idempotencyKey: rowKey,
+          importBatchId: batch.id,
+          importRow: row.rowNumber,
+        };
+
+        try {
+          await orders.insertOne(histDoc);
+          imported += 1;
+          ordersCreated += 1;
+        } catch (err) {
+          await Promise.all([
+            db.collection<Document>("invoice_versions").deleteMany({ orderId }).catch(() => undefined),
+            payments.deleteMany({ orderId }).catch(() => undefined),
+          ]);
+          if (err instanceof MongoServerError && err.code === 11000) {
+            const byKey = await orders.findOne({ idempotencyKey: rowKey });
+            if (byKey) { skipped += 1; continue; }
+          }
+          throw err;
         }
         continue;
       }

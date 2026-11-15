@@ -43,13 +43,13 @@ async function accessibleBatch(batchId: string, user: User): Promise<ImportBatch
 }
 
 export async function uploadImportAction(formData: FormData): Promise<void> {
-  const { user } = await requirePermission("customers.manage");
+  const { user } = await requirePermission("orders.manage");
   const kindValue = String(formData.get("kind") ?? "");
-  if (kindValue !== "CUSTOMERS" && kindValue !== "ORDERS") {
-    failImports("Choose whether you are importing customers or historical orders.");
+  if (kindValue !== "CUSTOMERS" && kindValue !== "ORDERS" && kindValue !== "HISTORICAL_DATA") {
+    failImports("Choose whether you are importing customers or historical data.");
   }
   const kind = kindValue as ImportKind;
-  if (kind === "ORDERS" && !hasPermission(user, "orders.manage")) {
+  if ((kind === "ORDERS" || kind === "HISTORICAL_DATA") && !hasPermission(user, "orders.manage")) {
     redirect("/admin?denied=orders.manage");
   }
   const file = formData.get("file");
@@ -87,7 +87,7 @@ export async function uploadImportAction(formData: FormData): Promise<void> {
 }
 
 export async function saveImportMappingAction(formData: FormData): Promise<void> {
-  const { user } = await requirePermission("customers.manage");
+  const { user } = await requirePermission("orders.manage");
   const batchId = String(formData.get("batchId") ?? "");
   if (!batchId) failImports("That import batch could not be found.");
   const batch = await accessibleBatch(batchId, user);
@@ -117,7 +117,7 @@ export async function saveImportMappingAction(formData: FormData): Promise<void>
 }
 
 export async function correctImportRowAction(formData: FormData): Promise<void> {
-  const { user } = await requirePermission("customers.manage");
+  const { user } = await requirePermission("orders.manage");
   const batchId = String(formData.get("batchId") ?? "");
   const rowIndex = Number(formData.get("rowIndex") ?? -1);
   if (!batchId) failImports("That import batch could not be found.");
@@ -151,7 +151,7 @@ export async function correctImportRowAction(formData: FormData): Promise<void> 
 }
 
 export async function confirmImportAction(formData: FormData): Promise<void> {
-  const { user } = await requirePermission("customers.manage");
+  const { user } = await requirePermission("orders.manage");
   const batchId = String(formData.get("batchId") ?? "");
   if (!batchId) failImports("That import batch could not be found.");
   const batch = await accessibleBatch(batchId, user);
