@@ -1,13 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
-  ComposedChart,
   Legend,
   Line,
+  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -15,6 +16,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { BarChart2, LineChart as LineChartIcon } from "lucide-react";
 import { formatINR } from "@/lib/money";
 import type { ReportBreakdown, ReportSeriesPoint } from "@/lib/types";
 
@@ -36,48 +38,200 @@ const tooltipStyle = {
   color: "#221d16",
 };
 
-export function TrendChart({ series }: { series: ReportSeriesPoint[] }) {
+function ChartToggle({
+  type,
+  onChange,
+  size = "md",
+}: {
+  type: "bar" | "line";
+  onChange: (t: "bar" | "line") => void;
+  size?: "sm" | "md";
+}) {
+  const isSm = size === "sm";
   return (
     <div
-      className="h-72 w-full"
+      className="inline-flex rounded-md border border-line bg-paper-sunken p-0.5"
+      role="group"
+      aria-label="Chart type toggle"
+    >
+      <button
+        type="button"
+        onClick={() => onChange("bar")}
+        className={`inline-flex items-center gap-1 rounded font-medium transition-colors ${
+          isSm ? "px-2 py-0.5 text-[0.6875rem]" : "px-2.5 py-1 text-[0.75rem]"
+        } ${
+          type === "bar"
+            ? "bg-paper-raised text-ink shadow-xs"
+            : "text-ink-muted hover:text-ink"
+        }`}
+        aria-pressed={type === "bar"}
+      >
+        <BarChart2 className={isSm ? "size-3" : "size-3.5"} />
+        Bars
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("line")}
+        className={`inline-flex items-center gap-1 rounded font-medium transition-colors ${
+          isSm ? "px-2 py-0.5 text-[0.6875rem]" : "px-2.5 py-1 text-[0.75rem]"
+        } ${
+          type === "line"
+            ? "bg-paper-raised text-ink shadow-xs"
+            : "text-ink-muted hover:text-ink"
+        }`}
+        aria-pressed={type === "line"}
+      >
+        <LineChartIcon className={isSm ? "size-3" : "size-3.5"} />
+        Line
+      </button>
+    </div>
+  );
+}
+
+export function TrendChart({ series }: { series: ReportSeriesPoint[] }) {
+  const [chartType, setChartType] = useState<"bar" | "line">("bar");
+  const [hidden, setHidden] = useState<Record<string, boolean>>({});
+
+  const toggleSeries = (dataKey?: string) => {
+    if (!dataKey) return;
+    setHidden((prev) => ({ ...prev, [dataKey]: !prev[dataKey] }));
+  };
+
+  return (
+    <div
+      className="w-full"
       role="img"
       aria-label="Chart of sales revenue, payments, expenses and estimated profit for the selected period"
     >
-      <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={series} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} accessibilityLayer>
-          <CartesianGrid vertical={false} stroke="#d9cdb4" strokeDasharray="3 3" />
-          <XAxis
-            dataKey="label"
-            tick={{ fontSize: 11, fill: "#6b6353" }}
-            axisLine={false}
-            tickLine={false}
-            minTickGap={24}
-          />
-          <YAxis
-            tickFormatter={compactINR}
-            tick={{ fontSize: 11, fill: "#6b6353" }}
-            axisLine={false}
-            tickLine={false}
-            width={56}
-          />
-          <Tooltip
-            formatter={(value) => formatINR(Number(value))}
-            contentStyle={tooltipStyle}
-            labelStyle={{ color: "#57503f" }}
-          />
-          <Legend iconType="square" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
-          <Bar dataKey="revenuePaise" name="Sales revenue" fill="#46512f" radius={[2, 2, 0, 0]} />
-          <Bar dataKey="expensesPaise" name="Expenses" fill="#b85c34" radius={[2, 2, 0, 0]} />
-          <Line
-            type="linear"
-            dataKey="profitPaise"
-            name="Estimated profit"
-            stroke="#8a6a2f"
-            strokeWidth={2}
-            dot={false}
-          />
-        </ComposedChart>
-      </ResponsiveContainer>
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-[0.75rem] text-ink-muted">
+          Click legend items to toggle series
+        </span>
+        <ChartToggle type={chartType} onChange={setChartType} />
+      </div>
+
+      <div className="h-72 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          {chartType === "bar" ? (
+            <BarChart
+              data={series}
+              margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+              accessibilityLayer
+            >
+              <CartesianGrid vertical={false} stroke="#d9cdb4" strokeDasharray="3 3" />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 11, fill: "#6b6353" }}
+                axisLine={false}
+                tickLine={false}
+                minTickGap={24}
+              />
+              <YAxis
+                tickFormatter={compactINR}
+                tick={{ fontSize: 11, fill: "#6b6353" }}
+                axisLine={false}
+                tickLine={false}
+                width={56}
+              />
+              <Tooltip
+                formatter={(value) => formatINR(Number(value))}
+                contentStyle={tooltipStyle}
+                labelStyle={{ color: "#57503f" }}
+              />
+              <Legend
+                iconType="square"
+                iconSize={8}
+                wrapperStyle={{ fontSize: 12, cursor: "pointer", userSelect: "none" }}
+                onClick={(e) => toggleSeries(e.dataKey as string)}
+              />
+              <Bar
+                dataKey="revenuePaise"
+                name="Sales revenue"
+                fill="#46512f"
+                radius={[2, 2, 0, 0]}
+                hide={Boolean(hidden["revenuePaise"])}
+              />
+              <Bar
+                dataKey="expensesPaise"
+                name="Expenses"
+                fill="#b85c34"
+                radius={[2, 2, 0, 0]}
+                hide={Boolean(hidden["expensesPaise"])}
+              />
+              <Bar
+                dataKey="profitPaise"
+                name="Estimated profit"
+                fill="#8a6a2f"
+                radius={[2, 2, 0, 0]}
+                hide={Boolean(hidden["profitPaise"])}
+              />
+            </BarChart>
+          ) : (
+            <LineChart
+              data={series}
+              margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+              accessibilityLayer
+            >
+              <CartesianGrid vertical={false} stroke="#d9cdb4" strokeDasharray="3 3" />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 11, fill: "#6b6353" }}
+                axisLine={false}
+                tickLine={false}
+                minTickGap={24}
+              />
+              <YAxis
+                tickFormatter={compactINR}
+                tick={{ fontSize: 11, fill: "#6b6353" }}
+                axisLine={false}
+                tickLine={false}
+                width={56}
+              />
+              <Tooltip
+                formatter={(value) => formatINR(Number(value))}
+                contentStyle={tooltipStyle}
+                labelStyle={{ color: "#57503f" }}
+              />
+              <Legend
+                iconType="square"
+                iconSize={8}
+                wrapperStyle={{ fontSize: 12, cursor: "pointer", userSelect: "none" }}
+                onClick={(e) => toggleSeries(e.dataKey as string)}
+              />
+              <Line
+                type="linear"
+                dataKey="revenuePaise"
+                name="Sales revenue"
+                stroke="#46512f"
+                strokeWidth={2}
+                dot={{ r: 2.5 }}
+                activeDot={{ r: 4.5 }}
+                hide={Boolean(hidden["revenuePaise"])}
+              />
+              <Line
+                type="linear"
+                dataKey="expensesPaise"
+                name="Expenses"
+                stroke="#b85c34"
+                strokeWidth={2}
+                dot={{ r: 2.5 }}
+                activeDot={{ r: 4.5 }}
+                hide={Boolean(hidden["expensesPaise"])}
+              />
+              <Line
+                type="linear"
+                dataKey="profitPaise"
+                name="Estimated profit"
+                stroke="#8a6a2f"
+                strokeWidth={2}
+                dot={{ r: 2.5 }}
+                activeDot={{ r: 4.5 }}
+                hide={Boolean(hidden["profitPaise"])}
+              />
+            </LineChart>
+          )}
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
@@ -195,91 +349,271 @@ export function ProductMixChart({ data }: { data: ReportBreakdown[] }) {
 
 /** Month-by-month revenue and profit for longer ranges. */
 export function MonthlyTrendChart({ series }: { series: ReportSeriesPoint[] }) {
+  const [chartType, setChartType] = useState<"bar" | "line">("bar");
+  const [hidden, setHidden] = useState<Record<string, boolean>>({});
+
+  const toggleSeries = (dataKey?: string) => {
+    if (!dataKey) return;
+    setHidden((prev) => ({ ...prev, [dataKey]: !prev[dataKey] }));
+  };
+
   return (
     <div
-      className="h-72 w-full"
+      className="w-full"
       role="img"
       aria-label="Chart of monthly sales revenue and estimated profit"
     >
-      <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={series} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} accessibilityLayer>
-          <CartesianGrid vertical={false} stroke="#d9cdb4" strokeDasharray="3 3" />
-          <XAxis
-            dataKey="label"
-            tick={{ fontSize: 11, fill: "#6b6353" }}
-            axisLine={false}
-            tickLine={false}
-            minTickGap={24}
-          />
-          <YAxis
-            tickFormatter={compactINR}
-            tick={{ fontSize: 11, fill: "#6b6353" }}
-            axisLine={false}
-            tickLine={false}
-            width={56}
-          />
-          <Tooltip
-            formatter={(value) => formatINR(Number(value))}
-            contentStyle={tooltipStyle}
-            labelStyle={{ color: "#57503f" }}
-          />
-          <Legend iconType="square" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
-          <Bar dataKey="revenuePaise" name="Sales revenue" fill="#46512f" radius={[2, 2, 0, 0]} />
-          <Line
-            type="linear"
-            dataKey="profitPaise"
-            name="Estimated profit"
-            stroke="#8a6a2f"
-            strokeWidth={2}
-            dot={false}
-          />
-        </ComposedChart>
-      </ResponsiveContainer>
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-[0.75rem] text-ink-muted">
+          Click legend items to toggle series
+        </span>
+        <ChartToggle type={chartType} onChange={setChartType} />
+      </div>
+
+      <div className="h-72 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          {chartType === "bar" ? (
+            <BarChart
+              data={series}
+              margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+              accessibilityLayer
+            >
+              <CartesianGrid vertical={false} stroke="#d9cdb4" strokeDasharray="3 3" />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 11, fill: "#6b6353" }}
+                axisLine={false}
+                tickLine={false}
+                minTickGap={24}
+              />
+              <YAxis
+                tickFormatter={compactINR}
+                tick={{ fontSize: 11, fill: "#6b6353" }}
+                axisLine={false}
+                tickLine={false}
+                width={56}
+              />
+              <Tooltip
+                formatter={(value) => formatINR(Number(value))}
+                contentStyle={tooltipStyle}
+                labelStyle={{ color: "#57503f" }}
+              />
+              <Legend
+                iconType="square"
+                iconSize={8}
+                wrapperStyle={{ fontSize: 12, cursor: "pointer", userSelect: "none" }}
+                onClick={(e) => toggleSeries(e.dataKey as string)}
+              />
+              <Bar
+                dataKey="revenuePaise"
+                name="Sales revenue"
+                fill="#46512f"
+                radius={[2, 2, 0, 0]}
+                hide={Boolean(hidden["revenuePaise"])}
+              />
+              <Bar
+                dataKey="profitPaise"
+                name="Estimated profit"
+                fill="#8a6a2f"
+                radius={[2, 2, 0, 0]}
+                hide={Boolean(hidden["profitPaise"])}
+              />
+            </BarChart>
+          ) : (
+            <LineChart
+              data={series}
+              margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+              accessibilityLayer
+            >
+              <CartesianGrid vertical={false} stroke="#d9cdb4" strokeDasharray="3 3" />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 11, fill: "#6b6353" }}
+                axisLine={false}
+                tickLine={false}
+                minTickGap={24}
+              />
+              <YAxis
+                tickFormatter={compactINR}
+                tick={{ fontSize: 11, fill: "#6b6353" }}
+                axisLine={false}
+                tickLine={false}
+                width={56}
+              />
+              <Tooltip
+                formatter={(value) => formatINR(Number(value))}
+                contentStyle={tooltipStyle}
+                labelStyle={{ color: "#57503f" }}
+              />
+              <Legend
+                iconType="square"
+                iconSize={8}
+                wrapperStyle={{ fontSize: 12, cursor: "pointer", userSelect: "none" }}
+                onClick={(e) => toggleSeries(e.dataKey as string)}
+              />
+              <Line
+                type="linear"
+                dataKey="revenuePaise"
+                name="Sales revenue"
+                stroke="#46512f"
+                strokeWidth={2}
+                dot={{ r: 2.5 }}
+                activeDot={{ r: 4.5 }}
+                hide={Boolean(hidden["revenuePaise"])}
+              />
+              <Line
+                type="linear"
+                dataKey="profitPaise"
+                name="Estimated profit"
+                stroke="#8a6a2f"
+                strokeWidth={2}
+                dot={{ r: 2.5 }}
+                activeDot={{ r: 4.5 }}
+                hide={Boolean(hidden["profitPaise"])}
+              />
+            </LineChart>
+          )}
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
 
 /** Compact daily revenue + profit strip for the dashboard. */
 export function DashboardTrend({ series }: { series: ReportSeriesPoint[] }) {
+  const [chartType, setChartType] = useState<"bar" | "line">("bar");
+  const [hidden, setHidden] = useState<Record<string, boolean>>({});
+
+  const toggleSeries = (key: string) => {
+    setHidden((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
   return (
     <div
-      className="h-44 w-full"
+      className="w-full"
       role="img"
       aria-label="Chart of daily sales revenue and estimated profit over the last two weeks"
     >
-      <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={series} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} accessibilityLayer>
-          <CartesianGrid vertical={false} stroke="#d9cdb4" strokeDasharray="3 3" />
-          <XAxis
-            dataKey="label"
-            tick={{ fontSize: 10, fill: "#6b6353" }}
-            axisLine={false}
-            tickLine={false}
-            minTickGap={28}
-          />
-          <YAxis
-            tickFormatter={compactINR}
-            tick={{ fontSize: 10, fill: "#6b6353" }}
-            axisLine={false}
-            tickLine={false}
-            width={48}
-          />
-          <Tooltip
-            formatter={(value) => formatINR(Number(value))}
-            contentStyle={tooltipStyle}
-            labelStyle={{ color: "#57503f" }}
-          />
-          <Bar dataKey="revenuePaise" name="Sales revenue" fill="#46512f" radius={[3, 3, 0, 0]} />
-          <Line
-            type="linear"
-            dataKey="profitPaise"
-            name="Estimated profit"
-            stroke="#8a6a2f"
-            strokeWidth={2}
-            dot={false}
-          />
-        </ComposedChart>
-      </ResponsiveContainer>
+      <div className="mb-2.5 flex items-center justify-between text-[0.75rem]">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => toggleSeries("revenuePaise")}
+            className={`inline-flex items-center gap-1.5 transition-opacity ${
+              hidden["revenuePaise"] ? "opacity-35 line-through" : "text-ink"
+            }`}
+          >
+            <span className="size-2.5 rounded-xs bg-[#46512f]" />
+            <span className="font-medium text-[0.75rem]">Revenue</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleSeries("profitPaise")}
+            className={`inline-flex items-center gap-1.5 transition-opacity ${
+              hidden["profitPaise"] ? "opacity-35 line-through" : "text-ink"
+            }`}
+          >
+            <span className="size-2.5 rounded-xs bg-[#8a6a2f]" />
+            <span className="font-medium text-[0.75rem]">Profit</span>
+          </button>
+        </div>
+
+        <ChartToggle type={chartType} onChange={setChartType} size="sm" />
+      </div>
+
+      <div className="h-44 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          {chartType === "bar" ? (
+            <BarChart
+              data={series}
+              margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+              accessibilityLayer
+            >
+              <CartesianGrid vertical={false} stroke="#d9cdb4" strokeDasharray="3 3" />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 10, fill: "#6b6353" }}
+                axisLine={false}
+                tickLine={false}
+                minTickGap={28}
+              />
+              <YAxis
+                tickFormatter={compactINR}
+                tick={{ fontSize: 10, fill: "#6b6353" }}
+                axisLine={false}
+                tickLine={false}
+                width={48}
+              />
+              <Tooltip
+                formatter={(value) => formatINR(Number(value))}
+                contentStyle={tooltipStyle}
+                labelStyle={{ color: "#57503f" }}
+              />
+              <Bar
+                dataKey="revenuePaise"
+                name="Sales revenue"
+                fill="#46512f"
+                radius={[3, 3, 0, 0]}
+                hide={Boolean(hidden["revenuePaise"])}
+              />
+              <Bar
+                dataKey="profitPaise"
+                name="Estimated profit"
+                fill="#8a6a2f"
+                radius={[3, 3, 0, 0]}
+                hide={Boolean(hidden["profitPaise"])}
+              />
+            </BarChart>
+          ) : (
+            <LineChart
+              data={series}
+              margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+              accessibilityLayer
+            >
+              <CartesianGrid vertical={false} stroke="#d9cdb4" strokeDasharray="3 3" />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 10, fill: "#6b6353" }}
+                axisLine={false}
+                tickLine={false}
+                minTickGap={28}
+              />
+              <YAxis
+                tickFormatter={compactINR}
+                tick={{ fontSize: 10, fill: "#6b6353" }}
+                axisLine={false}
+                tickLine={false}
+                width={48}
+              />
+              <Tooltip
+                formatter={(value) => formatINR(Number(value))}
+                contentStyle={tooltipStyle}
+                labelStyle={{ color: "#57503f" }}
+              />
+              <Line
+                type="linear"
+                dataKey="revenuePaise"
+                name="Sales revenue"
+                stroke="#46512f"
+                strokeWidth={2}
+                dot={{ r: 2.5 }}
+                activeDot={{ r: 4.5 }}
+                hide={Boolean(hidden["revenuePaise"])}
+              />
+              <Line
+                type="linear"
+                dataKey="profitPaise"
+                name="Estimated profit"
+                stroke="#8a6a2f"
+                strokeWidth={2}
+                dot={{ r: 2.5 }}
+                activeDot={{ r: 4.5 }}
+                hide={Boolean(hidden["profitPaise"])}
+              />
+            </LineChart>
+          )}
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
