@@ -35,6 +35,7 @@ import {
   rangeLabel,
 } from "@/lib/dates";
 import { formatINR } from "@/lib/money";
+import { cn } from "@/lib/cn";
 import type { ReportBreakdown } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Reports" };
@@ -199,6 +200,7 @@ export default async function AdminReportsPage({
       previous: previous.metrics.netRevenuePaise,
       detail: `Gross ${formatINR(metrics.grossRevenuePaise)} · Refunds ${formatINR(metrics.refundsPaise)}`,
       icon: BarChart3,
+      accent: "accent-olive",
     },
     {
       label: "Payments received",
@@ -206,7 +208,8 @@ export default async function AdminReportsPage({
       current: metrics.paymentsReceivedPaise,
       previous: previous.metrics.paymentsReceivedPaise,
       detail: `Outstanding in period ${formatINR(metrics.outstandingPaise)}`,
-      icon: ReceiptText,
+      icon: Wallet,
+      accent: "accent-brass",
     },
     {
       label: "Expenses",
@@ -216,6 +219,7 @@ export default async function AdminReportsPage({
       detail: `Includes ${formatINR(metrics.giftingCostPaise)} gifting costs`,
       icon: ReceiptText,
       invert: true,
+      accent: "accent-terracotta",
     },
     {
       label: "Estimated profit",
@@ -224,6 +228,7 @@ export default async function AdminReportsPage({
       previous: previous.metrics.estimatedProfitPaise,
       detail: "Net revenue minus recorded expenses",
       icon: TrendingUp,
+      accent: "accent-olive-deep",
     },
   ];
 
@@ -325,13 +330,14 @@ export default async function AdminReportsPage({
   }
 
   const kpis = [
-    { label: "Avg order value", value: formatINR(avgOrderValue), icon: ReceiptText },
-    { label: "Profit margin", value: margin === null ? "—" : `${margin}%`, icon: Percent },
-    { label: "Collection rate", value: collection === null ? "—" : `${collection}%`, icon: Wallet },
+    { label: "Avg order value", value: formatINR(avgOrderValue), icon: ReceiptText, accent: "accent-brass" },
+    { label: "Profit margin", value: margin === null ? "—" : `${margin}%`, icon: Percent, accent: "accent-olive" },
+    { label: "Collection rate", value: collection === null ? "—" : `${collection}%`, icon: Wallet, accent: "accent-brass" },
     {
       label: "Repeat customers",
       value: `${data.customerStats.repeat} / ${data.customerStats.total}`,
       icon: Repeat,
+      accent: "accent-olive-deep",
     },
   ];
 
@@ -445,12 +451,14 @@ export default async function AdminReportsPage({
         {cards.map((card) => {
           const Icon = card.icon;
           return (
-            <div key={card.label} className="emboss emboss-lift p-5">
+            <div key={card.label} className={cn("emboss emboss-lift stat-accent p-5", card.accent)}>
               <div className="flex items-start justify-between gap-3">
                 <p className="text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
                   {card.label}
                 </p>
-                <Icon aria-hidden="true" className="size-4 text-brass" />
+                <span className="stat-accent-icon">
+                  <Icon aria-hidden="true" className="size-3.5" />
+                </span>
               </div>
               <p className="stat-num mt-4 text-3xl leading-none">{formatINR(card.value)}</p>
               <p className="mt-3 text-[0.75rem]">
@@ -466,8 +474,8 @@ export default async function AdminReportsPage({
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
           return (
-            <div key={kpi.label} className="emboss flex items-center gap-3 px-5 py-4">
-              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-paper-deep text-brass shadow-[inset_0_1px_0_0_rgba(255,255,255,0.6)]">
+            <div key={kpi.label} className={cn("emboss flex items-center gap-3 px-5 py-4", kpi.accent)}>
+              <span className="stat-accent-icon !size-9 !rounded-full">
                 <Icon aria-hidden="true" className="size-4" />
               </span>
               <div className="min-w-0">

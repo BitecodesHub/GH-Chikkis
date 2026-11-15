@@ -200,7 +200,8 @@ export default async function AdminExpensesPage({
 
         <div className="grid gap-4 border-b border-line px-5 py-4 sm:grid-cols-3">
           <div>
-            <p className="text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
+            <p className="flex items-center gap-1.5 text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
+              <span className="stat-dot bg-terracotta" aria-hidden="true" />
               Filtered total
             </p>
             <p className="mt-2 font-[family-name:var(--font-display)] text-3xl leading-none">
@@ -208,7 +209,8 @@ export default async function AdminExpensesPage({
             </p>
           </div>
           <div>
-            <p className="text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
+            <p className="flex items-center gap-1.5 text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
+              <span className="stat-dot bg-brass" aria-hidden="true" />
               Entries
             </p>
             <p className="mt-2 font-[family-name:var(--font-display)] text-3xl leading-none">
@@ -216,7 +218,8 @@ export default async function AdminExpensesPage({
             </p>
           </div>
           <div>
-            <p className="text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
+            <p className="flex items-center gap-1.5 text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
+              <span className="stat-dot bg-olive" aria-hidden="true" />
               Period
             </p>
             <p className="mt-2 text-[0.9375rem]">{rangeLabel(range)}</p>

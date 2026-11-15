@@ -9,6 +9,9 @@ import {
   Plus,
   ReceiptText,
   ShoppingBag,
+  TrendingUp,
+  Wallet,
+  type LucideIcon,
 } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
 import { hasPermission, canSeeMoney } from "@/lib/permissions";
@@ -152,19 +155,31 @@ export default async function AdminDashboardPage({
 
   const firstName = user.name.split(/\s+/)[0] || user.name;
 
-  const todayCards = todayMetrics
+  const todayCards: {
+    label: string;
+    value: number;
+    previous: number;
+    invert?: boolean;
+    detail: string;
+    accent: string;
+    icon: LucideIcon;
+  }[] = todayMetrics
     ? [
         {
           label: "Sales revenue",
           value: todayMetrics.netRevenuePaise,
           previous: yesterdayMetrics?.netRevenuePaise ?? 0,
           detail: `Gross ${formatINR(todayMetrics.grossRevenuePaise)} · Refunds ${formatINR(todayMetrics.refundsPaise)}`,
+          accent: "accent-olive",
+          icon: BarChart3,
         },
         {
           label: "Payments received",
           value: todayMetrics.paymentsReceivedPaise,
           previous: yesterdayMetrics?.paymentsReceivedPaise ?? 0,
           detail: `${todayMetrics.salesOrders} sales orders dated today`,
+          accent: "accent-brass",
+          icon: Wallet,
         },
         {
           label: "Expenses",
@@ -172,12 +187,16 @@ export default async function AdminDashboardPage({
           previous: yesterdayMetrics?.expensesPaise ?? 0,
           invert: true,
           detail: `Includes ${formatINR(todayMetrics.giftingCostPaise)} gifting costs`,
+          accent: "accent-terracotta",
+          icon: ReceiptText,
         },
         {
           label: "Estimated profit",
           value: todayMetrics.estimatedProfitPaise,
           previous: yesterdayMetrics?.estimatedProfitPaise ?? 0,
           detail: "Net revenue minus recorded expenses",
+          accent: "accent-olive-deep",
+          icon: TrendingUp,
         },
       ]
     : [];
@@ -261,22 +280,30 @@ export default async function AdminDashboardPage({
             ) : null}
           </div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {todayCards.map((stat) => (
-              <div key={stat.label} className="emboss emboss-lift p-5">
-                <p className="text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
-                  {stat.label}
-                </p>
-                <p className="stat-num mt-3 text-3xl leading-none">{formatINR(stat.value)}</p>
-                <p className="mt-3">
-                  <ChangeChip
-                    current={stat.value}
-                    previous={stat.previous}
-                    invert={stat.invert}
-                  />
-                </p>
-                <p className="mt-2 text-[0.75rem] text-ink-muted">{stat.detail}</p>
-              </div>
-            ))}
+            {todayCards.map((stat) => {
+              const Icon = stat.icon;
+              return (
+                <div key={stat.label} className={cn("emboss emboss-lift stat-accent p-5", stat.accent)}>
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
+                      {stat.label}
+                    </p>
+                    <span className="stat-accent-icon">
+                      <Icon aria-hidden="true" className="size-3.5" />
+                    </span>
+                  </div>
+                  <p className="stat-num mt-3 text-3xl leading-none">{formatINR(stat.value)}</p>
+                  <p className="mt-3">
+                    <ChangeChip
+                      current={stat.value}
+                      previous={stat.previous}
+                      invert={stat.invert}
+                    />
+                  </p>
+                  <p className="mt-2 text-[0.75rem] text-ink-muted">{stat.detail}</p>
+                </div>
+              );
+            })}
           </div>
         </section>
       ) : null}
@@ -312,14 +339,15 @@ export default async function AdminDashboardPage({
           </div>
           <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-5 md:grid-cols-5">
             {[
-              { label: "Net revenue", value: formatINR(monthMetrics.netRevenuePaise) },
-              { label: "Payments received", value: formatINR(monthMetrics.paymentsReceivedPaise) },
-              { label: "Expenses", value: formatINR(monthMetrics.expensesPaise) },
-              { label: "Estimated profit", value: formatINR(monthMetrics.estimatedProfitPaise) },
-              { label: "Outstanding · all time", value: formatINR(outstandingTotal ?? 0) },
+              { label: "Net revenue", value: formatINR(monthMetrics.netRevenuePaise), dot: "bg-olive" },
+              { label: "Payments received", value: formatINR(monthMetrics.paymentsReceivedPaise), dot: "bg-brass" },
+              { label: "Expenses", value: formatINR(monthMetrics.expensesPaise), dot: "bg-terracotta" },
+              { label: "Estimated profit", value: formatINR(monthMetrics.estimatedProfitPaise), dot: "bg-olive-deep" },
+              { label: "Outstanding · all time", value: formatINR(outstandingTotal ?? 0), dot: "bg-brass" },
             ].map((stat) => (
               <div key={stat.label}>
-                <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
+                <p className="flex items-center gap-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
+                  <span className={cn("stat-dot", stat.dot)} aria-hidden="true" />
                   {stat.label}
                 </p>
                 <p className="stat-num mt-2 text-[1.125rem]">{stat.value}</p>
