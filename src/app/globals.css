@@ -532,12 +532,73 @@
     }
   }
 
-  /* Stat-card accent: a coloured left stripe and a tinted icon circle.
-     Combine with an accent-<colour> helper class to set the --accent variable. */
-  .stat-accent {
-    border-left: 3.5px solid var(--accent);
+  /* Stat-card full-card colour styles: each card is fully tinted in its theme colour
+     while inner capsules (e.g. "No activity yet") sit on high-contrast white. */
+  .stat-card-olive {
+    background-image: linear-gradient(168deg, #edf6e5 0%, #dceccf 100%) !important;
+    border: 1px solid #b8d8a2 !important;
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.85),
+      inset 0 -1px 0 0 rgb(70 81 47 / 0.15),
+      0 2px 4px 0 rgb(70 81 47 / 0.06),
+      0 14px 28px -20px rgb(70 81 47 / 0.35) !important;
+  }
+  .stat-card-olive:hover {
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.95),
+      0 4px 8px 0 rgb(70 81 47 / 0.08),
+      0 24px 40px -22px rgb(70 81 47 / 0.45) !important;
   }
 
+  .stat-card-brass {
+    background-image: linear-gradient(168deg, #fef6e4 0%, #fdeec4 100%) !important;
+    border: 1px solid #f6d68b !important;
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.85),
+      inset 0 -1px 0 0 rgb(138 106 47 / 0.15),
+      0 2px 4px 0 rgb(138 106 47 / 0.06),
+      0 14px 28px -20px rgb(138 106 47 / 0.35) !important;
+  }
+  .stat-card-brass:hover {
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.95),
+      0 4px 8px 0 rgb(138 106 47 / 0.08),
+      0 24px 40px -22px rgb(138 106 47 / 0.45) !important;
+  }
+
+  .stat-card-terracotta {
+    background-image: linear-gradient(168deg, #fdf0ea 0%, #fcdfd4 100%) !important;
+    border: 1px solid #f7bfae !important;
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.85),
+      inset 0 -1px 0 0 rgb(156 68 35 / 0.15),
+      0 2px 4px 0 rgb(156 68 35 / 0.06),
+      0 14px 28px -20px rgb(156 68 35 / 0.35) !important;
+  }
+  .stat-card-terracotta:hover {
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.95),
+      0 4px 8px 0 rgb(156 68 35 / 0.08),
+      0 24px 40px -22px rgb(156 68 35 / 0.45) !important;
+  }
+
+  .stat-card-profit {
+    background-image: linear-gradient(168deg, #e3ede3 0%, #cfdfcf 100%) !important;
+    border: 1px solid #a4c2a4 !important;
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.85),
+      inset 0 -1px 0 0 rgb(35 84 48 / 0.15),
+      0 2px 4px 0 rgb(35 84 48 / 0.06),
+      0 14px 28px -20px rgb(35 84 48 / 0.35) !important;
+  }
+  .stat-card-profit:hover {
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.95),
+      0 4px 8px 0 rgb(35 84 48 / 0.08),
+      0 24px 40px -22px rgb(35 84 48 / 0.45) !important;
+  }
+
+  /* Inner icon capsule: floating white capsule with crisp shadow */
   .stat-accent-icon {
     display: grid;
     place-items: center;
@@ -545,9 +606,12 @@
     height: 2rem;
     flex-shrink: 0;
     border-radius: 0.625rem;
-    background-color: color-mix(in oklab, var(--accent) 14%, var(--color-paper-raised));
+    background-color: #ffffff;
     color: var(--accent);
-    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.55);
+    border: 1px solid rgb(34 29 22 / 0.1);
+    box-shadow:
+      0 1px 3px 0 rgb(34 29 22 / 0.06),
+      inset 0 1px 0 0 rgb(255 255 255 / 0.9);
   }
 
   .accent-olive { --accent: var(--color-olive); }
@@ -590,32 +654,35 @@
   .delta-chip {
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
-    padding: 0.15rem 0.6rem;
+    gap: 0.35rem;
+    padding: 0.22rem 0.7rem;
     border-radius: var(--radius-pill);
     font-size: 0.75rem;
-    font-weight: 560;
+    font-weight: 600;
     line-height: 1.5;
     white-space: nowrap;
-    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.5);
+    box-shadow: 0 1px 2px 0 rgb(34 29 22 / 0.08);
   }
 
   .delta-up {
-    color: var(--color-olive-deep);
-    background-color: color-mix(in oklab, var(--color-olive) 16%, var(--color-paper-raised));
-    border: 1px solid color-mix(in oklab, var(--color-olive) 30%, transparent);
+    color: #065f46;
+    background-color: #ffffff;
+    border: 1px solid #86efac;
+    box-shadow: 0 1px 2px 0 rgb(6 95 70 / 0.1), inset 0 1px 0 0 rgb(255 255 255 / 0.95);
   }
 
   .delta-down {
-    color: var(--color-terracotta);
-    background-color: color-mix(in oklab, var(--color-terracotta) 12%, var(--color-paper-raised));
-    border: 1px solid color-mix(in oklab, var(--color-terracotta) 28%, transparent);
+    color: #991b1b;
+    background-color: #ffffff;
+    border: 1px solid #fca5a5;
+    box-shadow: 0 1px 2px 0 rgb(153 27 27 / 0.1), inset 0 1px 0 0 rgb(255 255 255 / 0.95);
   }
 
   .delta-flat {
-    color: var(--color-ink-muted);
-    background-color: var(--color-paper-deep);
-    border: 1px solid var(--color-line);
+    color: #221d16;
+    background-color: #ffffff;
+    border: 1px solid rgb(34 29 22 / 0.16);
+    box-shadow: 0 1px 2px 0 rgb(34 29 22 / 0.06), inset 0 1px 0 0 rgb(255 255 255 / 0.95);
   }
 
   /* The hero photograph sits on ink, not paper, so its edges never flash white. */

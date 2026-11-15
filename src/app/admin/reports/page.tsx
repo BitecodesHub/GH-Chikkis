@@ -68,20 +68,20 @@ function Delta({
 }) {
   if (current === 0 && previous === 0) {
     return (
-      <span className="inline-flex items-center gap-1 text-ink-muted">
-        <Minus aria-hidden="true" className="size-3.5" />
+      <span className="delta-chip delta-flat">
+        <Minus aria-hidden="true" className="size-3" />
         No activity in either period
       </span>
     );
   }
   if (previous === 0) {
-    return <span className="text-olive-deep">New activity this period</span>;
+    return <span className="delta-chip delta-up">New activity this period</span>;
   }
   const percent = Math.round(((current - previous) / Math.abs(previous)) * 100);
   if (percent === 0) {
     return (
-      <span className="inline-flex items-center gap-1 text-ink-muted">
-        <Minus aria-hidden="true" className="size-3.5" />
+      <span className="delta-chip delta-flat">
+        <Minus aria-hidden="true" className="size-3" />
         Same as previous period
       </span>
     );
@@ -90,8 +90,8 @@ function Delta({
   const good = invert ? !rising : rising;
   const Icon = rising ? ArrowUpRight : ArrowDownRight;
   return (
-    <span className={good ? "inline-flex items-center gap-1 text-olive-deep" : "inline-flex items-center gap-1 text-terracotta"}>
-      <Icon aria-hidden="true" className="size-3.5" />
+    <span className={cn("delta-chip", good ? "delta-up" : "delta-down")}>
+      <Icon aria-hidden="true" className="size-3" />
       {rising ? "Up" : "Down"} {Math.abs(percent)}% vs previous period
     </span>
   );
@@ -201,6 +201,10 @@ export default async function AdminReportsPage({
       detail: `Gross ${formatINR(metrics.grossRevenuePaise)} · Refunds ${formatINR(metrics.refundsPaise)}`,
       icon: BarChart3,
       accent: "accent-olive",
+      cardClass: "stat-card-olive",
+      labelClass: "text-[#2e3e1c]",
+      valueClass: "text-[#18260b]",
+      detailClass: "text-[#3d5027]",
     },
     {
       label: "Payments received",
@@ -210,6 +214,10 @@ export default async function AdminReportsPage({
       detail: `Outstanding in period ${formatINR(metrics.outstandingPaise)}`,
       icon: Wallet,
       accent: "accent-brass",
+      cardClass: "stat-card-brass",
+      labelClass: "text-[#543d12]",
+      valueClass: "text-[#382608]",
+      detailClass: "text-[#634b1a]",
     },
     {
       label: "Expenses",
@@ -220,6 +228,10 @@ export default async function AdminReportsPage({
       icon: ReceiptText,
       invert: true,
       accent: "accent-terracotta",
+      cardClass: "stat-card-terracotta",
+      labelClass: "text-[#5c2311]",
+      valueClass: "text-[#3d1306]",
+      detailClass: "text-[#6e2e1a]",
     },
     {
       label: "Estimated profit",
@@ -229,6 +241,10 @@ export default async function AdminReportsPage({
       detail: "Net revenue minus recorded expenses",
       icon: TrendingUp,
       accent: "accent-olive-deep",
+      cardClass: "stat-card-profit",
+      labelClass: "text-[#1c361e]",
+      valueClass: "text-[#0e2210]",
+      detailClass: "text-[#264b2a]",
     },
   ];
 
@@ -451,20 +467,41 @@ export default async function AdminReportsPage({
         {cards.map((card) => {
           const Icon = card.icon;
           return (
-            <div key={card.label} className={cn("emboss emboss-lift stat-accent p-5", card.accent)}>
+            <div
+              key={card.label}
+              className={cn(
+                "emboss emboss-lift p-5",
+                card.cardClass,
+                card.accent,
+              )}
+            >
               <div className="flex items-start justify-between gap-3">
-                <p className="text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
+                <p
+                  className={cn(
+                    "text-[0.75rem] font-bold uppercase tracking-[0.12em]",
+                    card.labelClass,
+                  )}
+                >
                   {card.label}
                 </p>
                 <span className="stat-accent-icon">
-                  <Icon aria-hidden="true" className="size-3.5" />
+                  <Icon aria-hidden="true" className="size-4" />
                 </span>
               </div>
-              <p className="stat-num mt-4 text-3xl leading-none">{formatINR(card.value)}</p>
+              <p
+                className={cn(
+                  "stat-num mt-4 text-3xl font-bold leading-none",
+                  card.valueClass,
+                )}
+              >
+                {formatINR(card.value)}
+              </p>
               <p className="mt-3 text-[0.75rem]">
                 <Delta current={card.current} previous={card.previous} invert={card.invert} />
               </p>
-              <p className="mt-1 text-[0.75rem] text-ink-muted">{card.detail}</p>
+              <p className={cn("mt-2 text-[0.75rem] font-medium", card.detailClass)}>
+                {card.detail}
+              </p>
             </div>
           );
         })}

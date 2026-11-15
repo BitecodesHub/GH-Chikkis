@@ -161,6 +161,10 @@ export default async function AdminDashboardPage({
     previous: number;
     invert?: boolean;
     detail: string;
+    cardClass: string;
+    labelClass: string;
+    valueClass: string;
+    detailClass: string;
     accent: string;
     icon: LucideIcon;
   }[] = todayMetrics
@@ -170,6 +174,10 @@ export default async function AdminDashboardPage({
           value: todayMetrics.netRevenuePaise,
           previous: yesterdayMetrics?.netRevenuePaise ?? 0,
           detail: `Gross ${formatINR(todayMetrics.grossRevenuePaise)} · Refunds ${formatINR(todayMetrics.refundsPaise)}`,
+          cardClass: "stat-card-olive",
+          labelClass: "text-[#2e3e1c]",
+          valueClass: "text-[#18260b]",
+          detailClass: "text-[#3d5027]",
           accent: "accent-olive",
           icon: BarChart3,
         },
@@ -178,6 +186,10 @@ export default async function AdminDashboardPage({
           value: todayMetrics.paymentsReceivedPaise,
           previous: yesterdayMetrics?.paymentsReceivedPaise ?? 0,
           detail: `${todayMetrics.salesOrders} sales orders dated today`,
+          cardClass: "stat-card-brass",
+          labelClass: "text-[#543d12]",
+          valueClass: "text-[#382608]",
+          detailClass: "text-[#634b1a]",
           accent: "accent-brass",
           icon: Wallet,
         },
@@ -187,6 +199,10 @@ export default async function AdminDashboardPage({
           previous: yesterdayMetrics?.expensesPaise ?? 0,
           invert: true,
           detail: `Includes ${formatINR(todayMetrics.giftingCostPaise)} gifting costs`,
+          cardClass: "stat-card-terracotta",
+          labelClass: "text-[#5c2311]",
+          valueClass: "text-[#3d1306]",
+          detailClass: "text-[#6e2e1a]",
           accent: "accent-terracotta",
           icon: ReceiptText,
         },
@@ -195,6 +211,10 @@ export default async function AdminDashboardPage({
           value: todayMetrics.estimatedProfitPaise,
           previous: yesterdayMetrics?.estimatedProfitPaise ?? 0,
           detail: "Net revenue minus recorded expenses",
+          cardClass: "stat-card-profit",
+          labelClass: "text-[#1c361e]",
+          valueClass: "text-[#0e2210]",
+          detailClass: "text-[#264b2a]",
           accent: "accent-olive-deep",
           icon: TrendingUp,
         },
@@ -283,16 +303,35 @@ export default async function AdminDashboardPage({
             {todayCards.map((stat) => {
               const Icon = stat.icon;
               return (
-                <div key={stat.label} className={cn("emboss emboss-lift stat-accent p-5", stat.accent)}>
+                <div
+                  key={stat.label}
+                  className={cn(
+                    "emboss emboss-lift p-5",
+                    stat.cardClass,
+                    stat.accent,
+                  )}
+                >
                   <div className="flex items-start justify-between gap-3">
-                    <p className="text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
+                    <p
+                      className={cn(
+                        "text-[0.75rem] font-bold uppercase tracking-[0.12em]",
+                        stat.labelClass,
+                      )}
+                    >
                       {stat.label}
                     </p>
                     <span className="stat-accent-icon">
-                      <Icon aria-hidden="true" className="size-3.5" />
+                      <Icon aria-hidden="true" className="size-4" />
                     </span>
                   </div>
-                  <p className="stat-num mt-3 text-3xl leading-none">{formatINR(stat.value)}</p>
+                  <p
+                    className={cn(
+                      "stat-num mt-3 text-3xl font-bold leading-none",
+                      stat.valueClass,
+                    )}
+                  >
+                    {formatINR(stat.value)}
+                  </p>
                   <p className="mt-3">
                     <ChangeChip
                       current={stat.value}
@@ -300,7 +339,9 @@ export default async function AdminDashboardPage({
                       invert={stat.invert}
                     />
                   </p>
-                  <p className="mt-2 text-[0.75rem] text-ink-muted">{stat.detail}</p>
+                  <p className={cn("mt-2 text-[0.75rem] font-medium", stat.detailClass)}>
+                    {stat.detail}
+                  </p>
                 </div>
               );
             })}
