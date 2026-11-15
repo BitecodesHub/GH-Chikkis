@@ -237,7 +237,7 @@ function NavContent({
       </nav>
 
       <div className="border-t border-paper/10 p-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 rounded-2xl bg-black/20 p-3 shadow-[inset_0_2px_6px_-2px_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(0,0,0,0.35)]">
           <span className="grid size-9 shrink-0 place-items-center rounded-full border border-paper/20 text-[0.75rem] font-semibold text-paper/80">
             {initials(user.name)}
           </span>
@@ -298,7 +298,7 @@ export function AdminShell({
   }, [menuOpen]);
 
   return (
-    <div className="flex min-h-dvh bg-paper">
+    <div className="admin-skeu flex min-h-dvh bg-paper">
       <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 p-3 lg:block">
         <div className="glass-deep flex h-full flex-col overflow-hidden rounded-[1.75rem]">
           <NavContent user={user} pathname={pathname} logoSrc={logoSrc} />

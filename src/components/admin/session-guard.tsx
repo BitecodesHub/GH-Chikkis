@@ -103,7 +103,7 @@ export function SessionGuard({ idleExpiresAt }: { idleExpiresAt: string }) {
   if (!warning) return null;
 
   return (
-    <div className="fixed inset-x-3 bottom-3 z-[60] mx-auto max-w-lg border border-line-strong bg-paper-raised p-4 shadow-[0_10px_40px_rgba(34,29,22,0.16)] sm:inset-x-auto sm:right-6 sm:bottom-6">
+    <div className="emboss fixed inset-x-3 bottom-3 z-[60] mx-auto max-w-lg p-4 sm:inset-x-auto sm:right-6 sm:bottom-6">
       <div role="alert" aria-live="assertive">
         <p className="text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-brass-ink">
           Still there?

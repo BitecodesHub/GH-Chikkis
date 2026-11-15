@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { deleteCustomerAction } from "./actions";
+import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 
 export function DeleteCustomer({
   id,
@@ -19,14 +20,9 @@ export function DeleteCustomer({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
+  const [open, setOpen] = useState(false);
 
   const remove = () => {
-    if (
-      !window.confirm(
-        `Delete ${name}? The profile and its consent record are removed for good. This cannot be undone.`,
-      )
-    )
-      return;
     setMessage("");
     startTransition(async () => {
       try {
@@ -45,7 +41,7 @@ export function DeleteCustomer({
     <span className="inline-flex flex-col items-end gap-1">
       <button
         type="button"
-        onClick={remove}
+        onClick={() => setOpen(true)}
         disabled={pending || orderCount > 0}
         title={
           orderCount > 0
@@ -62,6 +58,18 @@ export function DeleteCustomer({
           {message}
         </span>
       ) : null}
+      <ConfirmDialog
+        open={open}
+        title={`Delete ${name}?`}
+        body="The profile and its consent record are removed for good. This cannot be undone."
+        confirmLabel="Delete customer"
+        pending={pending}
+        onCancel={() => setOpen(false)}
+        onConfirm={() => {
+          setOpen(false);
+          remove();
+        }}
+      />
     </span>
   );
 }

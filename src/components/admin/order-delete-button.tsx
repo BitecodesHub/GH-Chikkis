@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Trash2 } from "lucide-react";
 import { deleteOrderAction } from "@/app/admin/orders/actions";
 
@@ -9,6 +9,15 @@ export function OrderDeleteButton({ orderId, orderRef }: { orderId: string; orde
   const [typed, setTyped] = useState("");
   const [pending, startTransition] = useTransition();
   const matches = typed.trim().toUpperCase() === orderRef.trim().toUpperCase();
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
   return (
     <>
@@ -32,7 +41,7 @@ export function OrderDeleteButton({ orderId, orderRef }: { orderId: string; orde
             role="dialog"
             aria-modal="true"
             aria-label={`Delete order ${orderRef}`}
-            className="relative w-full max-w-[24rem] rounded-2xl border border-line bg-paper p-5 shadow-[0_24px_60px_-24px_rgba(20,16,10,0.55)]"
+            className="emboss relative w-full max-w-[24rem] p-5"
           >
             <p className="text-[0.9375rem] font-medium">Delete order {orderRef}?</p>
             <p className="mt-1 text-[0.8125rem] text-ink-soft">
@@ -52,6 +61,7 @@ export function OrderDeleteButton({ orderId, orderRef }: { orderId: string; orde
                 value={typed}
                 onChange={(event) => setTyped(event.target.value)}
                 autoComplete="off"
+                autoFocus
                 placeholder={orderRef}
                 className="field mt-1"
               />

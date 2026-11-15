@@ -23,6 +23,10 @@ export function AdminPageHeader({
         ) : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
+      <div
+        aria-hidden="true"
+        className="h-px w-full bg-gradient-to-r from-line-strong/70 via-line/50 to-transparent sm:col-span-2"
+      />
     </header>
   );
 }
