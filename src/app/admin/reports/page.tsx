@@ -6,22 +6,55 @@ import {
   BarChart3,
   CalendarRange,
   Gift,
+  Lightbulb,
   Minus,
+  Percent,
   ReceiptText,
+  Repeat,
+  TrendingUp,
   Users,
+  Wallet,
 } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { ExportReport } from "@/components/admin/export-report";
 import { FilterNav } from "@/components/admin/filter-nav";
-import { PaymentsChart, TrendChart } from "@/components/admin/report-charts";
+import {
+  ExpenseDonut,
+  MonthlyTrendChart,
+  PaymentsChart,
+  ProductMixChart,
+  TrendChart,
+} from "@/components/admin/report-charts";
 import { requirePermission } from "@/lib/auth/session";
 import { hasPermission } from "@/lib/permissions";
-import { getReportData } from "@/lib/reports";
-import { dateRangeFromParams, formatDateDDMMYYYY, rangeLabel } from "@/lib/dates";
+import { getEnquiryConversion, getReportData } from "@/lib/reports";
+import {
+  businessToday,
+  dateRangeFromParams,
+  formatDateDDMMYYYY,
+  rangeLabel,
+} from "@/lib/dates";
 import { formatINR } from "@/lib/money";
 import type { ReportBreakdown } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Reports" };
+
+const PRESETS = [
+  { value: "today", label: "Today" },
+  { value: "7d", label: "7 days" },
+  { value: "month", label: "This month" },
+  { value: "year", label: "This year" },
+] as const;
+
+const SECTIONS = [
+  { href: "#overview", label: "Overview" },
+  { href: "#trends", label: "Trends" },
+  { href: "#products", label: "Products" },
+  { href: "#expenses", label: "Expenses" },
+  { href: "#customers", label: "Customers" },
+  { href: "#outstanding", label: "Outstanding" },
+  { href: "#gifts", label: "Gifts" },
+] as const;
 
 function Delta({
   current,
@@ -69,12 +102,14 @@ function BreakdownTable({
   amountHeader,
   countHeader,
   countLabel,
+  totalPaise,
 }: {
   rows: ReportBreakdown[];
   empty: string;
   amountHeader: string;
   countHeader?: string;
   countLabel?: string;
+  totalPaise?: number;
 }) {
   if (rows.length === 0) {
     return <p className="px-5 py-10 text-center text-[0.875rem] text-ink-muted">{empty}</p>;
@@ -98,21 +133,45 @@ function BreakdownTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-line">
-          {rows.map((row) => (
-            <tr key={row.key} className="hover:bg-paper-raised/60">
-              <td className="px-5 py-3">{row.label}</td>
-              {countLabel ? (
-                <td className="px-5 py-3 text-right text-ink-soft">{row.count ?? 0}</td>
-              ) : null}
-              <td className="px-5 py-3 text-right whitespace-nowrap">
-                {formatINR(row.amountPaise)}
-              </td>
-            </tr>
-          ))}
+          {rows.map((row) => {
+            const share =
+              totalPaise && totalPaise > 0
+                ? Math.min(100, Math.round((row.amountPaise / totalPaise) * 100))
+                : null;
+            return (
+              <tr key={row.key} className="hover:bg-paper-raised/60">
+                <td className="px-5 py-3">
+                  {row.label}
+                  {share !== null ? (
+                    <span className="mt-1.5 block h-1.5 w-full max-w-40 overflow-hidden rounded-full bg-paper-deep">
+                      <span
+                        className="block h-full rounded-full bg-olive"
+                        style={{ width: `${share}%` }}
+                      />
+                    </span>
+                  ) : null}
+                </td>
+                {countLabel ? (
+                  <td className="px-5 py-3 text-right text-ink-soft">{row.count ?? 0}</td>
+                ) : null}
+                <td className="px-5 py-3 text-right whitespace-nowrap">
+                  {formatINR(row.amountPaise)}
+                  {share !== null ? (
+                    <span className="block text-[0.75rem] text-ink-muted">{share}% of total</span>
+                  ) : null}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
   );
+}
+
+function percentChange(current: number, previous: number): number | null {
+  if (previous === 0) return null;
+  return Math.round(((current - previous) / Math.abs(previous)) * 100);
 }
 
 export default async function AdminReportsPage({
@@ -123,7 +182,10 @@ export default async function AdminReportsPage({
   const { user } = await requirePermission("reports.view");
   const params = await searchParams;
   const range = dateRangeFromParams(params);
-  const data = await getReportData(range);
+  const [data, conversion] = await Promise.all([
+    getReportData(range),
+    getEnquiryConversion(range),
+  ]);
   const canExport = hasPermission(user, "exports.run");
 
   const { metrics, previous } = data;
@@ -161,7 +223,115 @@ export default async function AdminReportsPage({
       current: metrics.estimatedProfitPaise,
       previous: previous.metrics.estimatedProfitPaise,
       detail: "Net revenue minus recorded expenses",
+      icon: TrendingUp,
+    },
+  ];
+
+  // Derived business ratios, all from the same fetched documents.
+  const avgOrderValue =
+    metrics.salesOrders > 0 ? Math.round(metrics.netRevenuePaise / metrics.salesOrders) : 0;
+  const margin =
+    metrics.netRevenuePaise > 0
+      ? Math.round((metrics.estimatedProfitPaise / metrics.netRevenuePaise) * 100)
+      : null;
+  const collection =
+    metrics.netRevenuePaise > 0
+      ? Math.round((metrics.paymentsReceivedPaise / metrics.netRevenuePaise) * 100)
+      : null;
+  const topProduct = data.salesByProduct[0];
+  const topProductShare =
+    topProduct && metrics.grossRevenuePaise > 0
+      ? Math.round((topProduct.amountPaise / metrics.grossRevenuePaise) * 100)
+      : null;
+  const topCustomer = data.topCustomers[0];
+  const topCustomerShare =
+    topCustomer && metrics.grossRevenuePaise > 0
+      ? Math.round((topCustomer.amountPaise / metrics.grossRevenuePaise) * 100)
+      : null;
+  const topExpense = data.expensesByCategory[0];
+  const topExpenseShare =
+    topExpense && metrics.expensesPaise > 0
+      ? Math.round((topExpense.amountPaise / metrics.expensesPaise) * 100)
+      : null;
+  const revenueChange = percentChange(metrics.netRevenuePaise, previous.metrics.netRevenuePaise);
+  const conversionPercent =
+    conversion.total > 0 ? Math.round((conversion.converted / conversion.total) * 100) : null;
+
+  // Outstanding ageing against today, bucketed by how old the order date is.
+  const today = businessToday();
+  const todayMs = Date.parse(`${today}T00:00:00Z`);
+  const ageing = [
+    { label: "0–7 days", min: 0, max: 7, count: 0, amountPaise: 0 },
+    { label: "8–30 days", min: 8, max: 30, count: 0, amountPaise: 0 },
+    { label: "31+ days", min: 31, max: Infinity, count: 0, amountPaise: 0 },
+  ];
+  for (const order of data.outstandingOrders) {
+    const age = Math.max(0, Math.round((todayMs - Date.parse(`${order.orderDate}T00:00:00Z`)) / 86_400_000));
+    const bucket = ageing.find((b) => age >= b.min && age <= b.max);
+    if (bucket) {
+      bucket.count += 1;
+      bucket.amountPaise += order.balancePaise;
+    }
+  }
+
+  const insights: { icon: typeof Lightbulb; text: string }[] = [];
+  if (revenueChange !== null) {
+    insights.push({
+      icon: TrendingUp,
+      text: `Net revenue is ${revenueChange >= 0 ? "up" : "down"} ${Math.abs(revenueChange)}% versus the previous period (${previousLabel}).`,
+    });
+  }
+  if (margin !== null) {
+    insights.push({
+      icon: Percent,
+      text: `You keep about ${margin}% of net revenue as estimated profit after recorded expenses.`,
+    });
+  }
+  if (collection !== null) {
+    insights.push({
+      icon: Wallet,
+      text: `Payments received cover ${collection}% of net revenue; ${formatINR(metrics.outstandingPaise)} is still outstanding on orders dated in this period.`,
+    });
+  }
+  if (topProduct && topProductShare !== null) {
+    insights.push({
       icon: BarChart3,
+      text: `${topProduct.label} leads sales at ${topProductShare}% of gross revenue (${formatINR(topProduct.amountPaise)}).`,
+    });
+  }
+  if (data.customerStats.total > 0) {
+    insights.push({
+      icon: Repeat,
+      text: `${data.customerStats.repeat} of ${data.customerStats.total} customers ordered more than once; ${data.customerStats.firstTime} are first-time buyers.`,
+    });
+  }
+  if (topCustomer && topCustomerShare !== null) {
+    insights.push({
+      icon: Users,
+      text: `${topCustomer.label} is your largest customer at ${topCustomerShare}% of gross revenue — worth keeping close.`,
+    });
+  }
+  if (topExpense && topExpenseShare !== null) {
+    insights.push({
+      icon: ReceiptText,
+      text: `${topExpense.label} is the biggest expense line at ${topExpenseShare}% of spend (${formatINR(topExpense.amountPaise)}).`,
+    });
+  }
+  if (conversionPercent !== null) {
+    insights.push({
+      icon: Lightbulb,
+      text: `${conversion.converted} of ${conversion.total} enquiries became orders (${conversionPercent}% conversion).`,
+    });
+  }
+
+  const kpis = [
+    { label: "Avg order value", value: formatINR(avgOrderValue), icon: ReceiptText },
+    { label: "Profit margin", value: margin === null ? "—" : `${margin}%`, icon: Percent },
+    { label: "Collection rate", value: collection === null ? "—" : `${collection}%`, icon: Wallet },
+    {
+      label: "Repeat customers",
+      value: `${data.customerStats.repeat} / ${data.customerStats.total}`,
+      icon: Repeat,
     },
   ];
 
@@ -183,77 +353,106 @@ export default async function AdminReportsPage({
         }
       />
 
-      <section className="surface px-5 py-4" aria-labelledby="report-range">
-        <form className="flex flex-wrap items-end gap-3" method="get">
-          <div>
-            <label htmlFor="report-preset" className="label">
-              Date range
-            </label>
-            <select
-              id="report-preset"
-              name="preset"
-              defaultValue={range.preset}
-              className="field min-w-36"
-            >
-              <option value="today">Today</option>
-              <option value="7d">Last 7 days</option>
-              <option value="month">This month</option>
-              <option value="year">This year</option>
-              <option value="custom">Custom range</option>
-            </select>
-          </div>
-          <div>
-            <label htmlFor="report-from" className="label">
-              From
-            </label>
-            <input
-              id="report-from"
-              name="from"
-              defaultValue={formatDateDDMMYYYY(range.from)}
-              placeholder="DD/MM/YYYY"
-              data-autosubmit="blur"
-              className="field w-32"
-            />
-          </div>
-          <div>
-            <label htmlFor="report-to" className="label">
-              To
-            </label>
-            <input
-              id="report-to"
-              name="to"
-              defaultValue={formatDateDDMMYYYY(range.to)}
-              placeholder="DD/MM/YYYY"
-              data-autosubmit="blur"
-              className="field w-32"
-            />
-          </div>
-          <FilterNav />
-          <button type="submit" className="sr-only">
-            Apply
-          </button>
-        </form>
+      <section className="emboss px-5 py-4" aria-labelledby="report-range">
+        <div className="flex flex-wrap items-center gap-2">
+          <nav aria-label="Quick ranges" className="nav-segment flex flex-wrap">
+            {PRESETS.map((preset) => (
+              <Link
+                key={preset.value}
+                href={`/admin/reports?preset=${preset.value}`}
+                data-active={range.preset === preset.value}
+                className="nav-segment-item"
+              >
+                {preset.label}
+              </Link>
+            ))}
+          </nav>
+          <form className="ml-auto flex flex-wrap items-end gap-3" method="get">
+            <input type="hidden" name="preset" value="custom" />
+            <div>
+              <label htmlFor="report-from" className="label">
+                From
+              </label>
+              <input
+                id="report-from"
+                name="from"
+                defaultValue={formatDateDDMMYYYY(range.from)}
+                placeholder="DD/MM/YYYY"
+                data-autosubmit="blur"
+                className="field w-32"
+              />
+            </div>
+            <div>
+              <label htmlFor="report-to" className="label">
+                To
+              </label>
+              <input
+                id="report-to"
+                name="to"
+                defaultValue={formatDateDDMMYYYY(range.to)}
+                placeholder="DD/MM/YYYY"
+                data-autosubmit="blur"
+                className="field w-32"
+              />
+            </div>
+            <FilterNav />
+            <button type="submit" className="sr-only">
+              Apply
+            </button>
+          </form>
+        </div>
         <p id="report-range" className="mt-3 text-[0.8125rem] text-ink-muted">
           Showing <strong className="font-medium text-ink">{rangeLabel(range)}</strong> ·{" "}
           {formatDateDDMMYYYY(range.from)} – {formatDateDDMMYYYY(range.to)}. Compared with{" "}
           {previousLabel}.
         </p>
+        <nav aria-label="Report sections" className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-line pt-3">
+          {SECTIONS.map((section) => (
+            <a
+              key={section.href}
+              href={section.href}
+              className="text-[0.8125rem] text-olive-deep hover:underline"
+            >
+              {section.label}
+            </a>
+          ))}
+        </nav>
       </section>
 
-      <section aria-label="Key numbers" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {insights.length > 0 ? (
+        <section className="emboss-inset px-5 py-5" aria-labelledby="insights">
+          <h2 id="insights" className="flex items-center gap-2 font-[family-name:var(--font-display)] text-xl">
+            <Lightbulb aria-hidden="true" className="size-4 text-brass" />
+            What the numbers say
+          </h2>
+          <ul className="mt-4 grid gap-3 md:grid-cols-2">
+            {insights.map((insight) => {
+              const Icon = insight.icon;
+              return (
+                <li key={insight.text} className="flex items-start gap-3 text-[0.875rem] leading-snug">
+                  <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-paper-raised text-brass shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7)]">
+                    <Icon aria-hidden="true" className="size-3.5" />
+                  </span>
+                  <span className="text-ink-soft">{insight.text}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
+
+      <section id="overview" aria-label="Key numbers" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => {
           const Icon = card.icon;
           return (
-            <div key={card.label} className="surface p-5">
+            <div key={card.label} className="emboss emboss-lift p-5">
               <div className="flex items-start justify-between gap-3">
                 <p className="text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
                   {card.label}
                 </p>
                 <Icon aria-hidden="true" className="size-4 text-brass" />
               </div>
-              <p className="mt-4 font-[family-name:var(--font-display)] text-3xl leading-none">
-                {formatINR(card.value)}
-              </p>
+              <p className="stat-num mt-4 text-3xl leading-none">{formatINR(card.value)}</p>
               <p className="mt-3 text-[0.75rem]">
                 <Delta current={card.current} previous={card.previous} invert={card.invert} />
               </p>
@@ -263,7 +462,26 @@ export default async function AdminReportsPage({
         })}
       </section>
 
-      <section className="surface flex flex-wrap items-baseline gap-x-6 gap-y-2 px-5 py-4" aria-label="Order counts">
+      <section aria-label="Business ratios" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {kpis.map((kpi) => {
+          const Icon = kpi.icon;
+          return (
+            <div key={kpi.label} className="emboss flex items-center gap-3 px-5 py-4">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-paper-deep text-brass shadow-[inset_0_1px_0_0_rgba(255,255,255,0.6)]">
+                <Icon aria-hidden="true" className="size-4" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
+                  {kpi.label}
+                </p>
+                <p className="stat-num text-[1.25rem] leading-tight">{kpi.value}</p>
+              </div>
+            </div>
+          );
+        })}
+      </section>
+
+      <section className="emboss flex flex-wrap items-baseline gap-x-6 gap-y-2 px-5 py-4" aria-label="Order counts">
         <p className="text-[0.875rem]">
           <strong className="font-medium">{metrics.salesOrders}</strong> sales orders
           <span className="text-ink-muted"> ({metrics.completedSalesOrders} completed)</span>
@@ -282,8 +500,8 @@ export default async function AdminReportsPage({
         </p>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <section className="surface lg:col-span-2" aria-labelledby="period-trend">
+      <div id="trends" className="grid gap-6 lg:grid-cols-3">
+        <section className="emboss lg:col-span-2" aria-labelledby="period-trend">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-4">
             <h2 id="period-trend" className="font-[family-name:var(--font-display)] text-xl">
               Period trend
@@ -301,7 +519,7 @@ export default async function AdminReportsPage({
           </div>
         </section>
 
-        <section className="surface" aria-labelledby="payments-method">
+        <section className="emboss" aria-labelledby="payments-method">
           <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-5 py-4">
             <h2 id="payments-method" className="font-[family-name:var(--font-display)] text-xl">
               Payments by method
@@ -314,12 +532,29 @@ export default async function AdminReportsPage({
         </section>
       </div>
 
+      {data.monthly.length > 1 ? (
+        <section className="emboss" aria-labelledby="monthly-trend">
+          <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-5 py-4">
+            <h2 id="monthly-trend" className="font-[family-name:var(--font-display)] text-xl">
+              Month by month
+            </h2>
+            <span className="meta">Revenue and estimated profit per month in range</span>
+          </div>
+          <div className="px-3 py-5 sm:px-5">
+            <MonthlyTrendChart series={data.monthly} />
+          </div>
+        </section>
+      ) : null}
+
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="surface" aria-labelledby="sales-by-product">
+        <section id="products" className="emboss" aria-labelledby="sales-by-product">
           <div className="border-b border-line px-5 py-4">
             <h2 id="sales-by-product" className="font-[family-name:var(--font-display)] text-xl">
               Sales by product
             </h2>
+          </div>
+          <div className="px-3 pt-4 sm:px-5">
+            <ProductMixChart data={data.salesByProduct} />
           </div>
           <BreakdownTable
             rows={data.salesByProduct}
@@ -327,14 +562,18 @@ export default async function AdminReportsPage({
             amountHeader="Revenue"
             countHeader="Product"
             countLabel="Lines"
+            totalPaise={metrics.grossRevenuePaise}
           />
         </section>
 
-        <section className="surface" aria-labelledby="expenses-by-category">
+        <section id="expenses" className="emboss" aria-labelledby="expenses-by-category">
           <div className="border-b border-line px-5 py-4">
             <h2 id="expenses-by-category" className="font-[family-name:var(--font-display)] text-xl">
               Expenses by category
             </h2>
+          </div>
+          <div className="px-3 pt-4 sm:px-5">
+            <ExpenseDonut data={data.expensesByCategory} />
           </div>
           <BreakdownTable
             rows={data.expensesByCategory}
@@ -342,12 +581,13 @@ export default async function AdminReportsPage({
             amountHeader="Amount"
             countHeader="Category"
             countLabel="Entries"
+            totalPaise={metrics.expensesPaise}
           />
         </section>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="surface" aria-labelledby="top-customers">
+        <section id="customers" className="emboss" aria-labelledby="top-customers">
           <div className="border-b border-line px-5 py-4">
             <h2 id="top-customers" className="flex items-center gap-2 font-[family-name:var(--font-display)] text-xl">
               <Users aria-hidden="true" className="size-4 text-brass" />
@@ -360,16 +600,26 @@ export default async function AdminReportsPage({
             amountHeader="Sales"
             countHeader="Customer"
             countLabel="Orders"
+            totalPaise={metrics.grossRevenuePaise}
           />
         </section>
 
-        <section className="surface" aria-labelledby="outstanding">
+        <section id="outstanding" className="emboss" aria-labelledby="outstanding">
           <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-5 py-4">
             <h2 id="outstanding" className="font-[family-name:var(--font-display)] text-xl">
               Outstanding balances
             </h2>
             <span className="meta">{formatINR(metrics.outstandingPaise)} in period</span>
           </div>
+          {data.outstandingOrders.length > 0 ? (
+            <div className="flex flex-wrap gap-2 border-b border-line px-5 py-3">
+              {ageing.map((bucket) => (
+                <span key={bucket.label} className="pill">
+                  {bucket.label}: {bucket.count} · {formatINR(bucket.amountPaise)}
+                </span>
+              ))}
+            </div>
+          ) : null}
           {data.outstandingOrders.length === 0 ? (
             <p className="px-5 py-10 text-center text-[0.875rem] text-ink-muted">
               Nothing outstanding for orders dated in this period.
@@ -418,7 +668,7 @@ export default async function AdminReportsPage({
         </section>
       </div>
 
-      <section className="surface" aria-labelledby="gift-records">
+      <section id="gifts" className="emboss" aria-labelledby="gift-records">
         <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-5 py-4">
           <h2 id="gift-records" className="flex items-center gap-2 font-[family-name:var(--font-display)] text-xl">
             <Gift aria-hidden="true" className="size-4 text-brass" />

@@ -1,18 +1,27 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
+  ArrowDownRight,
   ArrowUpRight,
+  BarChart3,
+  ExternalLink,
   Inbox,
+  Minus,
   Plus,
   ReceiptText,
   ShoppingBag,
 } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
 import { hasPermission, canSeeMoney } from "@/lib/permissions";
-import { getOutstandingTotalPaise, getReportMetricsForWindows } from "@/lib/reports";
+import {
+  getDashboardTrend,
+  getOutstandingTotalPaise,
+  getReportMetricsForWindows,
+} from "@/lib/reports";
 import { listRecentOrders } from "@/lib/orders";
 import { listRecentEnquiries } from "@/lib/enquiries";
 import {
+  addDays,
   dateRangeForPreset,
   formatDateDDMMYYYY,
   relativeTime,
@@ -24,7 +33,7 @@ import {
   type OrderStatus,
   type Permission,
 } from "@/lib/types";
-import { AdminPageHeader } from "@/components/admin/page-header";
+import { DashboardTrend } from "@/components/admin/report-charts";
 import { cn } from "@/lib/cn";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -59,6 +68,55 @@ function longDate(): string {
   }).format(new Date());
 }
 
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+function ChangeChip({
+  current,
+  previous,
+  invert = false,
+}: {
+  current: number;
+  previous: number;
+  invert?: boolean;
+}) {
+  if (current === 0 && previous === 0) {
+    return (
+      <span className="delta-chip delta-flat">
+        <Minus aria-hidden="true" className="size-3" />
+        No activity yet
+      </span>
+    );
+  }
+  if (previous === 0) {
+    return <span className="delta-chip delta-up">New today</span>;
+  }
+  const percent = Math.round(((current - previous) / Math.abs(previous)) * 100);
+  if (percent === 0) {
+    return (
+      <span className="delta-chip delta-flat">
+        <Minus aria-hidden="true" className="size-3" />
+        Same as yesterday
+      </span>
+    );
+  }
+  const rising = percent > 0;
+  const good = invert ? !rising : rising;
+  const Icon = rising ? ArrowUpRight : ArrowDownRight;
+  return (
+    <span className={cn("delta-chip", good ? "delta-up" : "delta-down")}>
+      <Icon aria-hidden="true" className="size-3" />
+      {Math.abs(percent)}% vs yesterday
+    </span>
+  );
+}
+
 export default async function AdminDashboardPage({
   searchParams,
 }: {
@@ -72,60 +130,124 @@ export default async function AdminDashboardPage({
   const canViewOrders = hasPermission(user, "orders.view");
   const canManageOrders = hasPermission(user, "orders.manage");
   const canManageEnquiries = hasPermission(user, "enquiries.manage");
+  const canViewReports = hasPermission(user, "reports.view");
 
   const now = new Date();
   const today = dateRangeForPreset("today", now);
   const month = dateRangeForPreset("month", now);
+  const yesterdayDate = addDays(today.from, -1);
+  const yesterday = { preset: "custom" as const, from: yesterdayDate, to: yesterdayDate };
 
-  const [reportMetrics, outstandingTotal, recentOrders, recentEnquiries] =
+  const [reportMetrics, outstandingTotal, recentOrders, recentEnquiries, trend] =
     await Promise.all([
-      canMoney ? getReportMetricsForWindows([today, month]) : null,
+      canMoney ? getReportMetricsForWindows([today, month, yesterday]) : null,
       canMoney ? getOutstandingTotalPaise() : null,
       canViewOrders ? listRecentOrders(6) : Promise.resolve([]),
       canManageEnquiries ? listRecentEnquiries(5) : Promise.resolve([]),
+      canMoney ? getDashboardTrend(14) : Promise.resolve([]),
     ]);
 
   const todayMetrics = reportMetrics?.[0] ?? null;
   const monthMetrics = reportMetrics?.[1] ?? null;
+  const yesterdayMetrics = reportMetrics?.[2] ?? null;
 
   const firstName = user.name.split(/\s+/)[0] || user.name;
 
-  const headerActions =
-    canManageOrders || canMoney ? (
-      <div className="flex flex-wrap gap-2">
-        {canManageOrders ? (
-          <Link href="/admin/orders/new" className="btn btn-solid btn-sm">
-            <Plus aria-hidden="true" className="size-4" />
-            New order
-          </Link>
-        ) : null}
-        {hasPermission(user, "expenses.manage") ? (
-          <Link href="/admin/expenses/new" className="btn btn-outline btn-sm">
-            <ReceiptText aria-hidden="true" className="size-4" />
-            Record expense
-          </Link>
-        ) : null}
-      </div>
-    ) : (
-      <Link href="/" target="_blank" className="btn btn-outline btn-sm">
-        View website
-        <ArrowUpRight aria-hidden="true" className="size-3.5" />
-      </Link>
-    );
+  const todayCards = todayMetrics
+    ? [
+        {
+          label: "Sales revenue",
+          value: todayMetrics.netRevenuePaise,
+          previous: yesterdayMetrics?.netRevenuePaise ?? 0,
+          detail: `Gross ${formatINR(todayMetrics.grossRevenuePaise)} · Refunds ${formatINR(todayMetrics.refundsPaise)}`,
+        },
+        {
+          label: "Payments received",
+          value: todayMetrics.paymentsReceivedPaise,
+          previous: yesterdayMetrics?.paymentsReceivedPaise ?? 0,
+          detail: `${todayMetrics.salesOrders} sales orders dated today`,
+        },
+        {
+          label: "Expenses",
+          value: todayMetrics.expensesPaise,
+          previous: yesterdayMetrics?.expensesPaise ?? 0,
+          invert: true,
+          detail: `Includes ${formatINR(todayMetrics.giftingCostPaise)} gifting costs`,
+        },
+        {
+          label: "Estimated profit",
+          value: todayMetrics.estimatedProfitPaise,
+          previous: yesterdayMetrics?.estimatedProfitPaise ?? 0,
+          detail: "Net revenue minus recorded expenses",
+        },
+      ]
+    : [];
 
   return (
-    <div className="space-y-8">
-      <AdminPageHeader
-        eyebrow="Dashboard"
-        title={`${greeting()}, ${firstName}.`}
-        description={longDate()}
-        actions={headerActions}
-      />
+    <div className="space-y-6">
+      {/* Espresso top pill: greeting + date on the left, quick actions in the
+          centre well, and a circular jump to the public site on the right. */}
+      <header className="espresso flex flex-wrap items-center gap-3 rounded-full px-3 py-2.5 sm:px-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-full border border-paper/25 bg-paper/10 text-[0.8125rem] font-semibold text-paper shadow-[inset_0_1px_0_0_rgba(246,241,230,0.2)]">
+            {initials(user.name)}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate font-[family-name:var(--font-display)] text-[1.0625rem] leading-tight text-paper">
+              {greeting()}, {firstName}.
+            </p>
+            <p className="truncate text-[0.75rem] text-paper/55">{longDate()}</p>
+          </div>
+        </div>
+
+        <nav
+          aria-label="Quick actions"
+          className="espresso-inset order-last flex w-full items-center gap-1 rounded-full px-1.5 py-1.5 sm:order-none sm:mx-auto sm:w-auto"
+        >
+          {canManageOrders ? (
+            <Link
+              href="/admin/orders/new"
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.8125rem] text-paper/80 transition-colors hover:bg-paper/10 hover:text-paper"
+            >
+              <Plus aria-hidden="true" className="size-3.5" />
+              New order
+            </Link>
+          ) : null}
+          {hasPermission(user, "expenses.manage") ? (
+            <Link
+              href="/admin/expenses/new"
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.8125rem] text-paper/80 transition-colors hover:bg-paper/10 hover:text-paper"
+            >
+              <ReceiptText aria-hidden="true" className="size-3.5" />
+              Expense
+            </Link>
+          ) : null}
+          {canViewReports ? (
+            <Link
+              href="/admin/reports"
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.8125rem] text-paper/80 transition-colors hover:bg-paper/10 hover:text-paper"
+            >
+              <BarChart3 aria-hidden="true" className="size-3.5" />
+              Reports
+            </Link>
+          ) : null}
+        </nav>
+
+        <Link
+          href="/"
+          target="_blank"
+          rel="noreferrer"
+          aria-label="View the public website"
+          className="ml-auto grid size-10 shrink-0 place-items-center rounded-full border border-paper/25 bg-paper/10 text-paper transition-colors hover:bg-paper/20 sm:ml-0"
+        >
+          <ExternalLink aria-hidden="true" className="size-4" />
+        </Link>
+      </header>
 
       {denied ? (
         <p
           role="alert"
-          className="border border-terracotta bg-paper-raised px-4 py-3 text-[0.875rem] text-ink"
+          className="emboss border-terracotta px-4 py-3 text-[0.875rem] text-ink"
         >
           You do not have access to{" "}
           {PERMISSION_LABELS[denied as Permission]
@@ -136,39 +258,33 @@ export default async function AdminDashboardPage({
       ) : null}
 
       {canMoney && todayMetrics ? (
-        <section aria-labelledby="today-numbers" className="space-y-4">
-          <h2 id="today-numbers" className="font-[family-name:var(--font-display)] text-xl">
-            Today
-          </h2>
+        <section aria-labelledby="today-numbers" className="space-y-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 id="today-numbers" className="font-[family-name:var(--font-display)] text-xl">
+              Today
+            </h2>
+            {canViewReports ? (
+              <Link
+                href="/admin/reports?preset=today"
+                className="text-[0.8125rem] text-olive-deep hover:underline"
+              >
+                Open today in reports
+              </Link>
+            ) : null}
+          </div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {[
-              {
-                label: "Sales revenue",
-                value: todayMetrics.netRevenuePaise,
-                detail: `Gross ${formatINR(todayMetrics.grossRevenuePaise)} · Refunds ${formatINR(todayMetrics.refundsPaise)}`,
-              },
-              {
-                label: "Payments received",
-                value: todayMetrics.paymentsReceivedPaise,
-                detail: `${todayMetrics.salesOrders} sales orders dated today`,
-              },
-              {
-                label: "Expenses",
-                value: todayMetrics.expensesPaise,
-                detail: `Includes ${formatINR(todayMetrics.giftingCostPaise)} gifting costs`,
-              },
-              {
-                label: "Estimated profit",
-                value: todayMetrics.estimatedProfitPaise,
-                detail: "Net revenue minus recorded expenses",
-              },
-            ].map((stat) => (
-              <div key={stat.label} className="surface p-5">
+            {todayCards.map((stat) => (
+              <div key={stat.label} className="emboss emboss-lift p-5">
                 <p className="text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
                   {stat.label}
                 </p>
-                <p className="mt-4 font-[family-name:var(--font-display)] text-3xl leading-none">
-                  {formatINR(stat.value)}
+                <p className="stat-num mt-3 text-3xl leading-none">{formatINR(stat.value)}</p>
+                <p className="mt-3">
+                  <ChangeChip
+                    current={stat.value}
+                    previous={stat.previous}
+                    invert={stat.invert}
+                  />
                 </p>
                 <p className="mt-2 text-[0.75rem] text-ink-muted">{stat.detail}</p>
               </div>
@@ -177,17 +293,36 @@ export default async function AdminDashboardPage({
         </section>
       ) : null}
 
+      {canMoney && trend.length > 0 ? (
+        <section className="emboss p-5" aria-labelledby="dashboard-trend">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="dashboard-trend" className="font-[family-name:var(--font-display)] text-xl">
+              Last 14 days
+            </h2>
+            <span className="meta">Daily sales revenue and estimated profit</span>
+          </div>
+          <div className="mt-3">
+            <DashboardTrend series={trend} />
+          </div>
+        </section>
+      ) : null}
+
       {canMoney && monthMetrics ? (
-        <section className="surface" aria-labelledby="month-numbers">
-          <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-5 py-4">
+        <section className="emboss-inset px-5 py-5" aria-labelledby="month-numbers">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id="month-numbers" className="font-[family-name:var(--font-display)] text-xl">
               This month so far
             </h2>
-            <Link href="/admin/reports?preset=month" className="text-[0.8125rem] text-olive-deep hover:underline">
-              Open full reports
-            </Link>
+            {canViewReports ? (
+              <Link
+                href="/admin/reports?preset=month"
+                className="text-[0.8125rem] text-olive-deep hover:underline"
+              >
+                Open full reports
+              </Link>
+            ) : null}
           </div>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-5 px-5 py-5 md:grid-cols-5">
+          <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-5 md:grid-cols-5">
             {[
               { label: "Net revenue", value: formatINR(monthMetrics.netRevenuePaise) },
               { label: "Payments received", value: formatINR(monthMetrics.paymentsReceivedPaise) },
@@ -199,7 +334,7 @@ export default async function AdminDashboardPage({
                 <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
                   {stat.label}
                 </p>
-                <p className="mt-2 text-[1.125rem]">{stat.value}</p>
+                <p className="stat-num mt-2 text-[1.125rem]">{stat.value}</p>
               </div>
             ))}
           </div>
@@ -208,7 +343,7 @@ export default async function AdminDashboardPage({
 
       <div className="grid items-start gap-6">
         {canViewOrders ? (
-          <section className="surface" aria-labelledby="recent-orders">
+          <section className="emboss" aria-labelledby="recent-orders">
             <div className="flex items-baseline justify-between gap-4 border-b border-line px-5 py-4">
               <h2
                 id="recent-orders"
@@ -271,12 +406,11 @@ export default async function AdminDashboardPage({
             )}
           </section>
         ) : null}
-
       </div>
 
       <div className="grid items-start gap-6">
         {canManageEnquiries ? (
-          <section className="surface" aria-labelledby="recent-enquiries">
+          <section className="emboss" aria-labelledby="recent-enquiries">
             <div className="flex items-baseline justify-between gap-4 border-b border-line px-5 py-4">
               <h2
                 id="recent-enquiries"
@@ -296,47 +430,55 @@ export default async function AdminDashboardPage({
             ) : (
               <ul className="divide-y divide-line">
                 {recentEnquiries.map((enquiry) => {
-                  const contact = [
-                    enquiry.phoneOriginal || enquiry.phone,
-                    enquiry.email,
-                  ]
+                  const contact = [enquiry.phoneOriginal || enquiry.phone, enquiry.email]
                     .filter(Boolean)
                     .join(" · ");
                   return (
-                  <li key={enquiry.id} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-4">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[0.9375rem] font-medium">{enquiry.name}</p>
-                      <p className="mt-0.5 text-[0.8125rem] text-ink-muted">
-                        {contact || "No contact left on the form"}
+                    <li key={enquiry.id} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-4">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[0.9375rem] font-medium">{enquiry.name}</p>
+                        <p className="mt-0.5 text-[0.8125rem] text-ink-muted">
+                          {contact || "No contact left on the form"}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[0.875rem]">{enquiry.quantityKg} kg</p>
+                        <p className="text-[0.75rem] text-ink-muted">
+                          {enquiry.notSure
+                            ? "Date not decided"
+                            : enquiry.expectedDate
+                              ? `Expected ${formatDateDDMMYYYY(enquiry.expectedDate)}`
+                              : ""}
+                        </p>
+                      </div>
+                      <p className="w-full text-[0.75rem] text-ink-muted sm:w-auto">
+                        {relativeTime(enquiry.submittedAt)}
                       </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[0.875rem]">{enquiry.quantityKg} kg</p>
-                      <p className="text-[0.75rem] text-ink-muted">
-                        {enquiry.notSure
-                          ? "Date not decided"
-                          : enquiry.expectedDate
-                            ? `Expected ${formatDateDDMMYYYY(enquiry.expectedDate)}`
-                            : ""}
-                      </p>
-                    </div>
-                    <p className="w-full text-[0.75rem] text-ink-muted sm:w-auto">
-                      {relativeTime(enquiry.submittedAt)}
-                    </p>
-                  </li>
+                    </li>
                   );
                 })}
               </ul>
             )}
           </section>
         ) : null}
-
       </div>
 
-      <p className="text-[0.75rem] text-ink-muted">
-        All times are shown in Asia/Kolkata. Dates are shown as DD/MM/YYYY. Estimated profit is net
-        revenue minus recorded expenses; it is not accounting profit.
-      </p>
+      {/* Bottom espresso rail, echoing the top pill. */}
+      <footer className="espresso flex flex-wrap items-center gap-x-4 gap-y-2 rounded-full px-5 py-3">
+        <p className="text-[0.75rem] text-paper/60">
+          All times in Asia/Kolkata · dates DD/MM/YYYY. Estimated profit is net revenue minus
+          recorded expenses, not accounting profit.
+        </p>
+        {canViewReports ? (
+          <Link
+            href="/admin/reports"
+            className="ml-auto flex items-center gap-1.5 text-[0.8125rem] text-paper/80 transition-colors hover:text-paper"
+          >
+            Reports
+            <ArrowUpRight aria-hidden="true" className="size-3.5" />
+          </Link>
+        ) : null}
+      </footer>
     </div>
   );
 }

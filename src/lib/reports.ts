@@ -4,6 +4,7 @@ import {
   addDays,
   businessDateEndUtc,
   businessDateStartUtc,
+  businessToday,
   dayLabel,
   eachDay,
   monthLabel,
@@ -314,6 +315,11 @@ export async function getReportData(
       costPaise: order.gift?.costPaise ?? 0,
     }));
 
+  let repeatCustomers = 0;
+  for (const value of customerMap.values()) {
+    if (value.count > 1) repeatCustomers += 1;
+  }
+
   return {
     range,
     metrics,
@@ -338,6 +344,11 @@ export async function getReportData(
           category: item.category,
         }))
       : [],
+    customerStats: {
+      total: customerMap.size,
+      repeat: repeatCustomers,
+      firstTime: customerMap.size - repeatCustomers,
+    },
   };
 }
 
@@ -357,4 +368,36 @@ export async function getOutstandingTotalPaise(): Promise<number> {
     ])
     .toArray();
   return Number(result[0]?.totalPaise ?? 0);
+}
+
+/**
+ * A short daily revenue/payments/profit series for the dashboard sparkline.
+ * One wave of reads over the window, bucketed by business day.
+ */
+export async function getDashboardTrend(days: number): Promise<ReportSeriesPoint[]> {
+  const to = businessToday();
+  const from = addDays(to, -(days - 1));
+  const docs = await fetchRangeDocs(from, to);
+  return buildReportSeries(docs, from, to);
+}
+
+/** Enquiries submitted in the range and how many became orders. */
+export async function getEnquiryConversion(
+  range: DateRange,
+): Promise<{ total: number; converted: number }> {
+  const db = await getDb();
+  const filter = {
+    submittedAt: {
+      $gte: businessDateStartUtc(range.from).toISOString(),
+      $lte: businessDateEndUtc(range.to).toISOString(),
+    },
+  };
+  const [total, converted] = await Promise.all([
+    db.collection("enquiries").countDocuments(filter),
+    db.collection("enquiries").countDocuments({
+      ...filter,
+      linkedOrderId: { $exists: true, $ne: "" },
+    }),
+  ]);
+  return { total, converted };
 }

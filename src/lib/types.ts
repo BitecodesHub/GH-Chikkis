@@ -821,6 +821,11 @@ export interface ReportData {
     quantity: number;
     category: string;
   }[];
+  customerStats: {
+    total: number;
+    repeat: number;
+    firstTime: number;
+  };
 }
 
 export interface DashboardData {
