@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Permission, Role, User } from "./types";
-import { hashPassword } from "./auth/password";
+import { hashPassword, verifyPassword } from "./auth/password";
 import { getDb } from "./db";
 import { nowIso } from "./dates";
 import { env } from "./env";
@@ -107,6 +107,15 @@ export async function ensureBootstrapAdmin(): Promise<UserDoc | null> {
     if (env.adminPassword && existing.usesDefaultPassword) {
       await setPasswordForUser(existing._id, env.adminPassword);
       return { ...existing, passwordHash: hashPassword(env.adminPassword), usesDefaultPassword: false };
+    }
+    if (existing.usesDefaultPassword && !verifyPassword(BOOTSTRAP_PASSWORD, existing.passwordHash)) {
+      const db = await getDb();
+      const newHash = hashPassword(BOOTSTRAP_PASSWORD);
+      await db.collection<UserDoc>("users").updateOne(
+        { _id: existing._id },
+        { $set: { passwordHash: newHash, updatedAt: nowIso() } },
+      );
+      return { ...existing, passwordHash: newHash };
     }
     return existing;
   }
