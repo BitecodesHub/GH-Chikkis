@@ -283,8 +283,8 @@ export const DEFAULT_CONTENT: Record<ContentPageKey, PageContent> = {
     intro:
       "We work directly with retailers, businesses and families on bulk and festive orders. Tell us the occasion, quantity and date, and we will confirm what is possible.",
     body: [
-      "Gifting orders are planned with you: varieties, packaging, quantities and delivery or collection. We do not publish prices online because every bulk order is different.",
-      "For corporate orders, we can discuss packing and presentation directly. We do not claim certifications or turnaround times we cannot meet — we will confirm both before you commit.",
+      "Every gifting order is planned around the occasion — from the chikki varieties and quantity to the packaging and delivery. Because every order is different, we quote it individually rather than publish fixed bulk prices.",
+      "Lead times and delivery options depend on your order size and date. We’ll confirm what’s possible before you commit.",
     ],
     sections: [
       {

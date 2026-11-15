@@ -33,6 +33,15 @@ const NEXT_STEPS = [
   },
 ];
 
+const CUSTOMISABLE_OPTIONS = [
+  "Chikki varieties",
+  "Pack size / weight",
+  "Gift packaging",
+  "Quantity",
+  "Presentation",
+  "Delivery / collection",
+] as const;
+
 export default async function GiftingPage() {
   const [content, settings] = await Promise.all([
     getPublishedContent("gifting"),
@@ -53,7 +62,7 @@ export default async function GiftingPage() {
       >
         <div className="mt-8 flex flex-wrap gap-3">
           <Link href="/contact#enquiry" className="btn btn-solid">
-            Start a bulk enquiry
+            Start a gifting enquiry
           </Link>
           {whatsappHref ? (
             <a
@@ -62,7 +71,7 @@ export default async function GiftingPage() {
               rel="noopener noreferrer"
               className="btn btn-outline"
             >
-              WhatsApp about gifting
+              WhatsApp us
             </a>
           ) : null}
         </div>
@@ -93,6 +102,25 @@ export default async function GiftingPage() {
             </article>
           ))}
         </div>
+
+        <div className="mt-16 surface p-6 md:p-8">
+          <p className="eyebrow">Options</p>
+          <h3 className="display-s mt-2">What can be customised</h3>
+          <p className="mt-2 text-[0.9375rem] text-ink-soft">
+            Every gifting order is tailored to your brief. These are the elements we can adapt:
+          </p>
+          <ul className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {CUSTOMISABLE_OPTIONS.map((item) => (
+              <li
+                key={item}
+                className="flex items-center gap-2.5 rounded-xl border border-line bg-paper px-3.5 py-3 text-[0.875rem] font-medium text-ink shadow-2xs"
+              >
+                <span className="size-1.5 rounded-full bg-olive shrink-0" aria-hidden="true" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
       </section>
 
       <section className="border-y border-line bg-paper-raised">
@@ -119,7 +147,7 @@ export default async function GiftingPage() {
         <p className="lede mx-auto max-w-xl">{contentText(content, "closing")}</p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link href="/contact#enquiry" className="btn btn-solid">
-            Start an enquiry
+            Start a gifting enquiry
           </Link>
           {whatsappHref ? (
             <a
