@@ -924,6 +924,246 @@
   }
 }
 
+/* ================================================================== */
+/*  GIFTING PAGE — immersive explorer, timeline, occasion cards        */
+/* ================================================================== */
+@layer components {
+  /* ---- Hero CTAs ---- */
+  .gifting-cta-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.5rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--color-paper);
+    background-color: var(--color-terracotta);
+    border-radius: var(--radius-pill);
+    transition: all var(--dur) var(--ease-out);
+    box-shadow: 0 4px 16px -4px rgb(156 68 35 / 0.5);
+  }
+  .gifting-cta-primary:hover {
+    background-color: var(--color-terracotta-soft);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px -6px rgb(156 68 35 / 0.6);
+  }
+
+  .gifting-cta-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.5rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: white;
+    border: 1px solid rgb(255 255 255 / 0.2);
+    border-radius: var(--radius-pill);
+    transition: all var(--dur) var(--ease-out);
+  }
+  .gifting-cta-secondary:hover {
+    background-color: rgb(255 255 255 / 0.1);
+    border-color: rgb(255 255 255 / 0.35);
+  }
+
+  /* ---- Gift Explorer ---- */
+  .gift-explorer {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .gift-explorer__stage {
+    position: relative;
+    aspect-ratio: 16 / 10;
+    width: 100%;
+    overflow: hidden;
+    border-radius: var(--radius-card);
+    background-color: var(--color-paper-deep);
+    box-shadow:
+      0 1px 2px 0 rgb(34 29 22 / 0.06),
+      0 20px 50px -20px rgb(34 29 22 / 0.35);
+  }
+
+  @media (min-width: 640px) {
+    .gift-explorer__stage {
+      aspect-ratio: 16 / 9;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .gift-explorer__stage {
+      aspect-ratio: 21 / 10;
+    }
+  }
+
+  .gift-explorer__image-wrap {
+    position: absolute;
+    inset: 0;
+    transition: opacity 300ms var(--ease-out), transform 400ms var(--ease-out);
+  }
+
+  .gift-explorer__image-wrap--fading {
+    opacity: 0;
+    transform: scale(1.02);
+  }
+
+  /* Auto-rotate progress bar */
+  .gift-explorer__progress {
+    animation: gift-progress 5s linear forwards;
+  }
+
+  @keyframes gift-progress {
+    from { width: 0%; }
+    to { width: 100%; }
+  }
+
+  /* ---- Thumbnail strip ---- */
+  .gift-explorer__strip {
+    display: flex;
+    gap: 0.625rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .gift-explorer__strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .gift-explorer__thumb {
+    position: relative;
+    flex-shrink: 0;
+    width: 5.5rem;
+    height: 4rem;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    cursor: pointer;
+    scroll-snap-align: start;
+    transition: all var(--dur) var(--ease-out);
+  }
+
+  @media (min-width: 640px) {
+    .gift-explorer__thumb {
+      width: 7rem;
+      height: 5rem;
+    }
+  }
+
+  .gift-explorer__thumb--active {
+    transform: scale(1.05);
+  }
+
+  /* ---- Customise cards ---- */
+  .gifting-customise-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.875rem;
+    padding: 1.125rem 1.25rem;
+    border-radius: var(--radius-card);
+    border: 1px solid var(--color-line);
+    background-color: var(--color-paper-raised);
+    transition: all var(--dur) var(--ease-out);
+  }
+
+  .gifting-customise-card:hover {
+    border-color: var(--color-line-strong);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px -16px rgb(34 29 22 / 0.2);
+  }
+
+  /* ---- Occasion cards ---- */
+  .gifting-occasion-card {
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    border-radius: var(--radius-card);
+    border: 1px solid var(--color-line);
+    background-color: var(--color-paper);
+    text-decoration: none;
+    transition: all var(--dur) var(--ease-out);
+    min-height: 10rem;
+  }
+
+  .gifting-occasion-card:hover {
+    border-color: var(--color-terracotta);
+    transform: translateY(-3px);
+    box-shadow: 0 16px 36px -18px rgb(156 68 35 / 0.2);
+  }
+
+  /* ---- Timeline ---- */
+  .gifting-timeline {
+    display: grid;
+    gap: 2rem;
+    max-width: 36rem;
+    margin: 0 auto;
+  }
+
+  @media (min-width: 640px) {
+    .gifting-timeline {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      max-width: none;
+    }
+  }
+
+  .gifting-timeline__step {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1.5rem 1rem;
+    border-radius: var(--radius-card);
+    border: 1px solid var(--color-line);
+    background-color: var(--color-paper-raised);
+    transition: all var(--dur) var(--ease-out);
+  }
+
+  .gifting-timeline__step:hover {
+    border-color: var(--color-olive);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px -16px rgb(70 81 47 / 0.2);
+  }
+
+  .gifting-timeline__connector {
+    display: none;
+  }
+
+  @media (min-width: 640px) {
+    .gifting-timeline__connector {
+      display: block;
+      position: absolute;
+      top: 50%;
+      right: -0.625rem;
+      width: 1.25rem;
+      height: 2px;
+      background: linear-gradient(90deg, var(--color-olive), var(--color-line));
+      z-index: 1;
+    }
+  }
+
+  .gifting-timeline__number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background-color: var(--color-olive);
+    color: var(--color-paper);
+    font-size: 0.875rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 12px -4px rgb(70 81 47 / 0.4);
+  }
+
+  .gifting-timeline__content {
+    max-width: 18rem;
+  }
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
