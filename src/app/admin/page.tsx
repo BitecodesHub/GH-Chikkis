@@ -239,12 +239,12 @@ export default async function AdminDashboardPage({
 
         <nav
           aria-label="Quick actions"
-          className="espresso-inset order-last flex w-full items-center gap-1 rounded-full px-1.5 py-1.5 sm:order-none sm:ml-auto sm:w-auto"
+          className="espresso-inset order-last flex w-full items-center gap-1 rounded-full p-1 sm:order-none sm:ml-auto sm:w-auto"
         >
           {canManageOrders ? (
             <Link
               href="/admin/orders/new"
-              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.8125rem] text-paper/80 transition-colors hover:bg-paper/10 hover:text-paper"
+              className="flex items-center gap-1.5 rounded-full bg-olive px-3 py-1.5 text-[0.8125rem] font-semibold text-paper shadow-2xs transition-colors hover:bg-olive-deep"
             >
               <Plus aria-hidden="true" className="size-3.5" />
               New order
@@ -253,18 +253,18 @@ export default async function AdminDashboardPage({
           {hasPermission(user, "expenses.manage") ? (
             <Link
               href="/admin/expenses/new"
-              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.8125rem] text-paper/80 transition-colors hover:bg-paper/10 hover:text-paper"
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.8125rem] font-medium text-ink transition-colors hover:bg-paper-deep"
             >
-              <ReceiptText aria-hidden="true" className="size-3.5" />
+              <ReceiptText aria-hidden="true" className="size-3.5 text-terracotta" />
               Expense
             </Link>
           ) : null}
           {canViewReports ? (
             <Link
               href="/admin/reports"
-              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.8125rem] text-paper/80 transition-colors hover:bg-paper/10 hover:text-paper"
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.8125rem] font-medium text-ink transition-colors hover:bg-paper-deep"
             >
-              <BarChart3 aria-hidden="true" className="size-3.5" />
+              <BarChart3 aria-hidden="true" className="size-3.5 text-brass" />
               Reports
             </Link>
           ) : null}

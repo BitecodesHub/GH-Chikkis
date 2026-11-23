@@ -252,7 +252,7 @@ export default async function AdminReportsPage({
   const avgOrderValue =
     metrics.salesOrders > 0 ? Math.round(metrics.netRevenuePaise / metrics.salesOrders) : 0;
   const margin =
-    metrics.netRevenuePaise > 0
+    metrics.netRevenuePaise > 0 && metrics.expensesPaise > 0
       ? Math.round((metrics.estimatedProfitPaise / metrics.netRevenuePaise) * 100)
       : null;
   const collection =

@@ -46,7 +46,7 @@ export default async function NewOrderPage({
   const [products, enquiry, recent] = await Promise.all([
     listProducts(),
     enquiryId ? getEnquiry(enquiryId) : Promise.resolve(null),
-    listRepeatCustomers(),
+    customerId ? Promise.resolve([]) : listRepeatCustomers(),
   ]);
   const options = productOptions(products);
 

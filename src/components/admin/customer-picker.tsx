@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LoaderCircle, Search, UserPlus } from "lucide-react";
+import { LoaderCircle, Plus, Search, UserPlus, X } from "lucide-react";
 
 interface SearchResult {
   id: string;
@@ -26,6 +26,12 @@ export function CustomerPicker({
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickName, setQuickName] = useState("");
+  const [quickPhone, setQuickPhone] = useState("");
+  const [quickLoading, setQuickLoading] = useState(false);
+  const [quickError, setQuickError] = useState("");
 
   useEffect(() => {
     const term = query.trim();
@@ -69,6 +75,50 @@ export function CustomerPicker({
     return `/admin/orders/new?${search.toString()}`;
   };
 
+  const handleQuickCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = quickName.trim();
+    const phone = quickPhone.trim();
+    if (!name) {
+      setQuickError("Enter customer name.");
+      return;
+    }
+    if (!phone) {
+      setQuickError("Enter customer phone number.");
+      return;
+    }
+    setQuickLoading(true);
+    setQuickError("");
+    try {
+      const res = await fetch("/api/admin/customers/quick-create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, phone }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        customer?: { id: string };
+        existingId?: string;
+      };
+      if (!res.ok || !data.ok) {
+        if (data.existingId) {
+          window.location.href = hrefFor({ id: data.existingId });
+          return;
+        }
+        setQuickError(data.error ?? "Failed to create customer.");
+        setQuickLoading(false);
+        return;
+      }
+      if (data.customer?.id) {
+        window.location.href = hrefFor({ id: data.customer.id });
+      }
+    } catch {
+      setQuickError("Network error. Try again.");
+      setQuickLoading(false);
+    }
+  };
+
   return (
     <section className="surface p-5 sm:p-6" aria-labelledby="pick-customer">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -84,11 +134,98 @@ export function CustomerPicker({
             Pick who the order is for. The order form opens below as soon as you choose a name.
           </p>
         </div>
-        <Link href={createHref} className="btn btn-outline btn-sm">
-          <UserPlus aria-hidden="true" className="size-4" />
-          New customer
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setShowQuickAdd(true);
+              if (searching) {
+                if (/^\d+$/.test(query.trim())) {
+                  setQuickPhone(query.trim());
+                } else {
+                  setQuickName(query.trim());
+                }
+              }
+            }}
+            className="btn btn-solid btn-sm"
+          >
+            <Plus aria-hidden="true" className="size-4" />
+            Quick add customer
+          </button>
+          <Link href={createHref} className="btn btn-quiet btn-sm">
+            <UserPlus aria-hidden="true" className="size-4" />
+            Full form
+          </Link>
+        </div>
       </div>
+
+      {showQuickAdd ? (
+        <form
+          onSubmit={handleQuickCreate}
+          className="mt-5 rounded-xl border border-brass/50 bg-paper-raised p-4 sm:p-5 shadow-xs"
+        >
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-ink text-[0.9375rem]">Quick Add Customer</h3>
+            <button
+              type="button"
+              onClick={() => setShowQuickAdd(false)}
+              className="text-ink-muted hover:text-ink"
+              aria-label="Close"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div>
+              <label htmlFor="quick-customer-name" className="label text-[0.8125rem]">
+                Customer Name *
+              </label>
+              <input
+                id="quick-customer-name"
+                value={quickName}
+                onChange={(e) => setQuickName(e.target.value)}
+                placeholder="Full Name"
+                className="field"
+                required
+                autoFocus
+              />
+            </div>
+            <div>
+              <label htmlFor="quick-customer-phone" className="label text-[0.8125rem]">
+                Phone Number *
+              </label>
+              <input
+                id="quick-customer-phone"
+                value={quickPhone}
+                onChange={(e) => setQuickPhone(e.target.value)}
+                placeholder="10-digit mobile number"
+                className="field"
+                required
+              />
+            </div>
+          </div>
+          {quickError ? <p className="error-text mt-2 text-[0.8125rem]">{quickError}</p> : null}
+          <div className="mt-4 flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={quickLoading}
+              className="btn btn-solid btn-sm"
+            >
+              {quickLoading ? (
+                <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+              ) : null}
+              Save & Open Order Form
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowQuickAdd(false)}
+              className="btn btn-quiet btn-sm"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : null}
 
       <div className="mt-5">
         <label htmlFor="customer-picker-search" className="label">
@@ -109,7 +246,7 @@ export function CustomerPicker({
             className="field border-l-0"
             placeholder="Start typing a name or phone number"
             autoComplete="off"
-            autoFocus
+            autoFocus={!showQuickAdd}
           />
         </div>
         <p className="help mt-2">
@@ -118,7 +255,7 @@ export function CustomerPicker({
         </p>
       </div>
 
-      {recent.length > 0 && !searching ? (
+      {recent.length > 0 && !searching && !showQuickAdd ? (
         <div className="mt-5">
           <p className="meta">Order again</p>
           <ul className="mt-2 flex flex-wrap gap-2">
@@ -148,14 +285,32 @@ export function CustomerPicker({
         </p>
       ) : null}
 
-      {searching && !loading && visibleResults.length === 0 && !error ? (
-        <p className="mt-4 text-[0.9375rem] text-ink-soft">
-          No customer matches that search.{" "}
-          <Link href={createHref} className="link-underline">
-            Create a new profile
-          </Link>
-          .
-        </p>
+      {searching && !loading && visibleResults.length === 0 && !error && !showQuickAdd ? (
+        <div className="mt-4 rounded-xl border border-line bg-paper-raised p-4">
+          <p className="text-[0.9375rem] text-ink-soft">
+            No customer matches &ldquo;{query}&rdquo;.
+          </p>
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setShowQuickAdd(true);
+                if (/^\d+$/.test(query.trim())) {
+                  setQuickPhone(query.trim());
+                } else {
+                  setQuickName(query.trim());
+                }
+              }}
+              className="btn btn-solid btn-sm"
+            >
+              <Plus aria-hidden="true" className="size-4" />
+              Quick add &ldquo;{query}&rdquo;
+            </button>
+            <Link href={createHref} className="btn btn-quiet btn-sm">
+              Full profile
+            </Link>
+          </div>
+        </div>
       ) : null}
 
       {visibleResults.length > 0 ? (

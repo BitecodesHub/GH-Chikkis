@@ -138,9 +138,67 @@ function normalizeBusinessDate(value: string, field: string, label: string): str
   return cleaned;
 }
 
+export async function resequenceOrderRefs(): Promise<void> {
+  const db = await getDb();
+  const ordersCol = db.collection<OrderDoc>("orders");
+  const invoicesCol = db.collection("invoice_versions");
+  const seqCol = db.collection<SequenceDoc>("invoice_sequences");
+
+  const orders = await ordersCol
+    .find({}, { projection: { _id: 1, ref: 1, orderDate: 1, createdAt: 1 } })
+    .sort({ orderDate: 1, createdAt: 1, _id: 1 })
+    .toArray();
+
+  if (orders.length === 0) {
+    await seqCol.updateOne(
+      { _id: "orders" },
+      { $set: { current: 0, prefix: "GH-", updatedAt: nowIso() } },
+      { upsert: true },
+    );
+    return;
+  }
+
+  const renames: { id: string; oldRef: string; newRef: string }[] = [];
+  for (let i = 0; i < orders.length; i++) {
+    const targetRef = `GH-${i + 1}`;
+    if (orders[i].ref !== targetRef) {
+      renames.push({ id: orders[i]._id, oldRef: orders[i].ref, newRef: targetRef });
+    }
+  }
+
+  if (renames.length > 0) {
+    // Stage 1: assign temporary references to avoid unique key index collision
+    for (const item of renames) {
+      const tempRef = `__TMP_${item.id}__`;
+      await ordersCol.updateOne({ _id: item.id }, { $set: { ref: tempRef, "invoice.ref": tempRef } });
+      await invoicesCol.updateMany({ orderId: item.id }, { $set: { ref: tempRef } });
+    }
+
+    // Stage 2: assign clean contiguous sequential references: GH-1, GH-2, GH-3...
+    for (const item of renames) {
+      await ordersCol.updateOne({ _id: item.id }, { $set: { ref: item.newRef, "invoice.ref": item.newRef } });
+      await invoicesCol.updateMany({ orderId: item.id }, { $set: { ref: item.newRef } });
+    }
+  }
+
+  await seqCol.updateOne(
+    { _id: "orders" },
+    { $set: { current: orders.length, prefix: "GH-", updatedAt: nowIso() } },
+    { upsert: true },
+  );
+}
+
 export async function allocateOrderRef(): Promise<string> {
   const db = await getDb();
   const collection = db.collection<SequenceDoc>("invoice_sequences");
+
+  // Keep sequence strictly continuous starting from GH-1
+  const existingCount = await db.collection("orders").countDocuments({});
+  const seqDoc = await collection.findOne({ _id: "orders" });
+  if (!seqDoc || seqDoc.current !== existingCount) {
+    await resequenceOrderRefs();
+  }
+
   let lastError: unknown = null;
   for (let attempt = 0; attempt < 4; attempt += 1) {
     try {
@@ -166,33 +224,9 @@ export async function allocateOrderRef(): Promise<string> {
     : new Error("Could not allocate the next order reference.");
 }
 
-function highestRefNumber(refs: string[]): number {
-  return refs.reduce((max, ref) => {
-    const match = /^GH-(\d+)$/.exec(ref);
-    return match ? Math.max(max, Number(match[1])) : max;
-  }, 0);
-}
-
-/**
- * Gives the newest number back after its order is deleted, so the next order
- * reuses it. Earlier gaps stay: renumbering other invoices would change records
- * customers already hold. The guard on `current` skips the rollback if another
- * order took a number in the meantime.
- */
-async function releaseOrderRef(ref: string): Promise<void> {
-  const match = /^GH-(\d+)$/.exec(ref);
-  if (!match) return;
-  const released = Number(match[1]);
-  const db = await getDb();
-  const remaining = await db
-    .collection<OrderDoc>("orders")
-    .find({ ref: { $regex: "^GH-\\d+$" } }, { projection: { ref: 1 } })
-    .toArray();
-  const highest = highestRefNumber(remaining.map((doc) => doc.ref));
-  if (highest >= released) return;
-  await db
-    .collection<SequenceDoc>("invoice_sequences")
-    .updateOne({ _id: "orders", current: released }, { $set: { current: highest, updatedAt: nowIso() } });
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function releaseOrderRef(_ref: string): Promise<void> {
+  await resequenceOrderRefs();
 }
 
 const DELIVERY_METHODS: DeliveryMethod[] = ["HOME_COLLECTION", "PORTER", "COURIER", "OTHER"];
@@ -657,11 +691,21 @@ export async function listOrders(options: {
   status?: OrderStatus | "";
   type?: OrderType | "";
   payment?: OrderPaymentFilter;
+  paymentMethod?: PaymentMethod | "";
   customerId?: string;
   limit?: number;
   offset?: number;
 }): Promise<OrderListResult> {
   const db = await getDb();
+
+  // Auto-sync sequence on first page load: if oldest order is not GH-1, sync order refs so sequence starts at GH-1
+  if (!options.offset && !options.query && !options.status && !options.type && !options.payment && !options.paymentMethod) {
+    const oldest = await db.collection<OrderDoc>("orders").find({}).sort({ orderDate: 1, createdAt: 1, _id: 1 }).limit(1).toArray();
+    if (oldest.length > 0 && oldest[0].ref !== "GH-1") {
+      await resequenceOrderRefs();
+    }
+  }
+
   const filter: Record<string, unknown> = {};
   if (options.status === "PENDING") {
     filter.status = { $in: ["PENDING", "NEW", "CONFIRMED"] };
@@ -676,6 +720,12 @@ export async function listOrders(options: {
     filter.paymentStatus = "PARTIALLY_PAID";
   } else if (options.payment === "FULLY_PAID") {
     filter.paymentStatus = "FULLY_PAID";
+  }
+  if (options.paymentMethod) {
+    const matchingOrderIds = await db
+      .collection("payments")
+      .distinct("orderId", { method: options.paymentMethod, voidedAt: { $exists: false } });
+    filter._id = { $in: matchingOrderIds };
   }
   if (options.customerId) filter.customerId = options.customerId;
   const query = (options.query ?? "").trim();
@@ -776,9 +826,19 @@ export async function listRepeatCustomers(
   const db = await getDb();
   const docs = await db
     .collection<OrderDoc>("orders")
-    .find({ customerId: { $type: "string" } })
+    .find(
+      { customerId: { $type: "string" } },
+      {
+        projection: {
+          customerId: 1,
+          "customerSnapshot.name": 1,
+          "customerSnapshot.phone": 1,
+          orderDate: 1,
+        },
+      },
+    )
     .sort({ orderDate: -1 })
-    .limit(Math.min(Math.max(limit, 1), 20) * 12)
+    .limit(Math.min(Math.max(limit, 1), 20) * 4)
     .toArray();
   const seen = new Map<string, { id: string; name: string; phone: string; orders: number }>();
   for (const doc of docs) {

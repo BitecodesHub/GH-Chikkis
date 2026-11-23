@@ -15,6 +15,7 @@ import {
   ORDER_STATUS_LABELS,
   type OrderStatus,
   type OrderType,
+  type PaymentMethod,
 } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Orders" };
@@ -27,7 +28,20 @@ const PAYMENT_FILTERS: { value: OrderPaymentFilter; label: string }[] = [
   { value: "FULLY_PAID", label: "Fully paid" },
 ];
 
-function filterSummary(query: string, status: string, type: string, payment: string): string {
+const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
+  { value: "CASH", label: "Cash" },
+  { value: "UPI", label: "Online (UPI)" },
+  { value: "BANK_TRANSFER", label: "Bank transfer" },
+  { value: "OTHER", label: "Other" },
+];
+
+function filterSummary(
+  query: string,
+  status: string,
+  type: string,
+  payment: string,
+  paymentMethod: string,
+): string {
   const parts: string[] = [];
   if (query) parts.push(`text “${query}”`);
   if (status) {
@@ -38,6 +52,10 @@ function filterSummary(query: string, status: string, type: string, payment: str
   if (payment) {
     const label = PAYMENT_FILTERS.find((filter) => filter.value === payment)?.label;
     parts.push((label ?? payment).toLowerCase());
+  }
+  if (paymentMethod) {
+    const label = PAYMENT_METHOD_OPTIONS.find((opt) => opt.value === paymentMethod)?.label;
+    parts.push(`paid via ${label ?? paymentMethod}`);
   }
   return `Filtered by ${parts.join(", ")}. Try removing a filter to see more orders.`;
 }
@@ -53,10 +71,14 @@ export default async function AdminOrdersPage({
   const rawStatus = typeof params.status === "string" ? params.status : "";
   const rawType = typeof params.type === "string" ? params.type : "";
   const rawPayment = typeof params.payment === "string" ? params.payment : "";
+  const rawMethod = typeof params.method === "string" ? params.method : "";
   const status = ORDER_STATUSES.includes(rawStatus as OrderStatus) ? rawStatus : "";
   const type = rawType === "SALES" || rawType === "GIFT" ? rawType : "";
   const payment = PAYMENT_FILTERS.some((filter) => filter.value === rawPayment)
     ? (rawPayment as OrderPaymentFilter)
+    : "";
+  const paymentMethod = PAYMENT_METHOD_OPTIONS.some((opt) => opt.value === rawMethod)
+    ? (rawMethod as PaymentMethod)
     : "";
   const page = Math.max(Number(params.page ?? 1) || 1, 1);
   const { items, total } = await listOrders({
@@ -64,13 +86,14 @@ export default async function AdminOrdersPage({
     status: status as OrderStatus | "",
     type: type as OrderType | "",
     payment,
+    paymentMethod,
     limit: PAGE_SIZE,
     offset: (page - 1) * PAGE_SIZE,
   });
   const pages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
   const canManage = hasPermission(user, "orders.manage");
   const canPay = hasPermission(user, "payments.manage");
-  const filtersActive = Boolean(query || status || type || payment);
+  const filtersActive = Boolean(query || status || type || payment || paymentMethod);
   const justDeleted = params.deleted === "1";
 
   const pageHref = (nextPage: number) => {
@@ -79,6 +102,7 @@ export default async function AdminOrdersPage({
     if (status) search.set("status", status);
     if (type) search.set("type", type);
     if (payment) search.set("payment", payment);
+    if (paymentMethod) search.set("method", paymentMethod);
     if (nextPage > 1) search.set("page", String(nextPage));
     const suffix = search.toString();
     return `/admin/orders${suffix ? `?${suffix}` : ""}`;
@@ -165,6 +189,24 @@ export default async function AdminOrdersPage({
                 ))}
               </select>
             </div>
+            <div>
+              <label htmlFor="order-payment-method" className="label">
+                Payment type
+              </label>
+              <select
+                id="order-payment-method"
+                name="method"
+                defaultValue={paymentMethod}
+                className="field min-w-36"
+              >
+                <option value="">All payment types</option>
+                {PAYMENT_METHOD_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
             <FilterNav />
             <button type="submit" className="sr-only">
               Apply filters
@@ -192,7 +234,7 @@ export default async function AdminOrdersPage({
               <Search aria-hidden="true" className="mx-auto size-7 text-brass" />
               <p className="display-s mt-4">No orders match these filters.</p>
               <p className="mt-2 text-[0.9375rem] text-ink-soft">
-                {filterSummary(query, status, type, payment)}
+                {filterSummary(query, status, type, payment, paymentMethod)}
               </p>
               <Link href="/admin/orders" className="btn btn-outline mt-6">
                 Clear filters
