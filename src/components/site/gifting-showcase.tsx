@@ -1,295 +1,367 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
+import { Maximize2, X, Sparkles, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-/* ------------------------------------------------------------------ */
-/*  Gift-box data  — visual only, no long descriptions                */
-/* ------------------------------------------------------------------ */
-interface GiftView {
+export interface GiftBoxView {
+  id: string;
+  label: string;
   image: string;
   alt: string;
-  label: string;
 }
 
-interface GiftBox {
+export interface GiftBoxSpec {
+  material: string;
+  capacity: string;
+  centerpiece: string;
+  secondLife: string;
+}
+
+export interface GiftBox {
   id: string;
   name: string;
+  subtitle: string;
   badge: string;
-  views: GiftView[];
+  specs: GiftBoxSpec;
+  views: GiftBoxView[];
 }
 
-const GIFT_BOXES: GiftBox[] = [
+export const GIFT_BOXES: GiftBox[] = [
   {
     id: "royal-octagonal",
     name: "The Royal Octagonal Chest",
-    badge: "Festive & Wedding",
+    subtitle: "Hand-carved wooden keepsake chest with brass diya",
+    badge: "Heirloom Edition",
+    specs: {
+      material: "Hand-carved Sheesham wood & solid brass clasp",
+      capacity: "8 radial wedges of artisan chikki",
+      centerpiece: "Solid fluted brass lotus diya",
+      secondLife: "Cherished keepsake jewelry or tea chest",
+    },
     views: [
       {
-        label: "Imperial Maroon",
+        id: "maroon",
+        label: "Imperial Crimson",
         image: "/gifting/royal-maroon-octagonal-box.jpg",
-        alt: "Imperial Maroon carved octagonal gift box with radial chikkis and brass diya",
+        alt: "Royal Octagonal Chest in Imperial Maroon with brass diya and radial chikkis",
       },
       {
-        label: "Sage Pistachio",
+        id: "sage",
+        label: "Sage Celadon",
         image: "/gifting/sage-green-octagonal-box.jpg",
-        alt: "Sage Pistachio octagonal gift box with sculpted flowers and radial chikkis",
+        alt: "Royal Octagonal Chest in Sage Celadon with sculpted floral lid",
       },
     ],
   },
   {
     id: "signature-blush",
     name: "The Signature Lotus Box",
-    badge: "Artisan Elegance",
+    subtitle: "Textured blush board with gold foil & satin ribbon bow",
+    badge: "Artisan Collection",
+    specs: {
+      material: "800 GSM rigid textured paper board",
+      capacity: "Crisp whole-slab artisan chikkis",
+      centerpiece: "Gold foil embossed lotus & arched jharokha",
+      secondLife: "Lustrous keepsake stationery chest",
+    },
     views: [
       {
-        label: "Ribbon Wrapped",
+        id: "ribbon",
+        label: "Exterior & Ribbon",
         image: "/gifting/lotus-blush-box-ribbon.jpg",
-        alt: "Blush pink gift box with golden satin ribbon and custom tag",
+        alt: "Blush gift box with gold foil lotus and satin ribbon bow beside brass diya",
       },
       {
-        label: "Inside Arrangement",
+        id: "open",
+        label: "Interior Slabs",
         image: "/gifting/lotus-blush-box-open.jpg",
-        alt: "Open blush gift box showing rows of golden peanut chikki slabs",
+        alt: "Open blush box showing rows of golden chikki slabs layered in parchment",
       },
     ],
   },
   {
     id: "executive-compartment",
     name: "The Executive Hamper",
-    badge: "Corporate & Milestones",
+    subtitle: "Matte chocolate presentation chest with brass diya",
+    badge: "Corporate Distinction",
+    specs: {
+      material: "Rigid matte chocolate board & golden mandalas",
+      capacity: "5 distinct artisan chikki varieties in slabs",
+      centerpiece: "Fluted brass lotus diya with marigolds",
+      secondLife: "Executive desk organizer & memory box",
+    },
     views: [
       {
-        label: "Festive Hamper",
+        id: "hamper",
+        label: "Executive Hamper",
         image: "/gifting/royal-chocolate-gift-box.jpg",
-        alt: "Chocolate brown 6-compartment chikki gift box with golden ribbon and diya",
+        alt: "Chocolate brown 6-compartment chikki gift box with golden ribbon and brass diya",
       },
     ],
   },
   {
     id: "peacock-tin",
     name: "The Peacock Heritage Tin",
+    subtitle: "Jewel-toned teal tin with metallic gold plume",
     badge: "Celebration Keepsake",
+    specs: {
+      material: "Airtight seamless embossed lacquer tin",
+      capacity: "6 signature varieties in radial kaleidoscope",
+      centerpiece: "Fragrant dried rose petals",
+      secondLife: "Reusable confectionery & spice canister",
+    },
     views: [
       {
-        label: "Royal Teal",
+        id: "tin",
+        label: "Royal Teal Tin",
         image: "/gifting/peacock-teal-round-box.jpg",
-        alt: "Peacock teal round tin with gold feather lid and assorted chikki wedges",
+        alt: "Peacock teal round tin with gold feather foil lid and radial chikkis",
       },
     ],
   },
 ];
 
-/* ------------------------------------------------------------------ */
-/*  Main showcase — full-screen immersive explorer                    */
-/* ------------------------------------------------------------------ */
-export function GiftingShowcase() {
-  const [activeBox, setActiveBox] = useState(0);
-  const [activeView, setActiveView] = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [userInteracted, setUserInteracted] = useState(false);
-  const autoplayRef = useRef<ReturnType<typeof setInterval> | null>(null);
+export function GiftingShowcase({
+  onSelectBox,
+}: {
+  onSelectBox?: (boxId: string) => void;
+}) {
+  const [activeBoxIndex, setActiveBoxIndex] = useState(0);
+  const [activeViewIndex, setActiveViewIndex] = useState(0);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
-  const box = GIFT_BOXES[activeBox];
-  const view = box.views[activeView] ?? box.views[0];
+  const activeBox = GIFT_BOXES[activeBoxIndex] ?? GIFT_BOXES[0];
+  const activeView = activeBox.views[activeViewIndex] ?? activeBox.views[0];
 
-  /* Auto-rotate boxes every 5s until user interacts */
-  const startAutoplay = useCallback(() => {
-    if (autoplayRef.current) clearInterval(autoplayRef.current);
-    autoplayRef.current = setInterval(() => {
-      setUserInteracted((interacted) => {
-        if (interacted) {
-          if (autoplayRef.current) clearInterval(autoplayRef.current);
-          return true;
-        }
-        setIsTransitioning(true);
-        setTimeout(() => {
-          setActiveBox((prev) => (prev + 1) % GIFT_BOXES.length);
-          setActiveView(0);
-          setIsTransitioning(false);
-        }, 300);
-        return false;
-      });
-    }, 5000);
-  }, []);
+  const handleSelectBox = (index: number) => {
+    setActiveBoxIndex(index);
+    setActiveViewIndex(0);
+  };
 
+  // Close lightbox on Escape key
   useEffect(() => {
-    startAutoplay();
-    return () => {
-      if (autoplayRef.current) clearInterval(autoplayRef.current);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsLightboxOpen(false);
     };
-  }, [startAutoplay]);
-
-  const selectBox = (idx: number) => {
-    setUserInteracted(true);
-    if (idx === activeBox) return;
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setActiveBox(idx);
-      setActiveView(0);
-      setIsTransitioning(false);
-    }, 300);
-  };
-
-  const selectView = (idx: number) => {
-    setUserInteracted(true);
-    if (idx === activeView) return;
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setActiveView(idx);
-      setIsTransitioning(false);
-    }, 200);
-  };
+    if (isLightboxOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [isLightboxOpen]);
 
   return (
-    <div className="gift-explorer">
-      {/* ---- Main Stage ---- */}
-      <div className="gift-explorer__stage">
-        <div
-          className={cn(
-            "gift-explorer__image-wrap",
-            isTransitioning && "gift-explorer__image-wrap--fading",
-          )}
-        >
-          <Image
-            src={view.image}
-            alt={view.alt}
-            fill
-            sizes="(min-width: 1024px) 65vw, 100vw"
-            priority={activeBox < 2}
-            className="object-cover"
-          />
-          {/* Bottom gradient overlay */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/70 via-black/30 to-transparent"
-          />
-        </div>
-
-        {/* Floating name + badge on stage */}
-        <div className="absolute bottom-0 inset-x-0 p-5 sm:p-8 z-10">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <span className="inline-block rounded-full bg-white/20 px-3 py-0.5 text-[0.6875rem] font-bold uppercase tracking-widest text-white/90 backdrop-blur-sm">
-                {box.badge}
-              </span>
-              <h3 className="mt-2 font-display text-xl sm:text-2xl md:text-3xl font-semibold text-white drop-shadow-md tracking-tight">
-                {box.name}
-              </h3>
-            </div>
-
-            {/* View switcher pills (if multi-view) */}
-            {box.views.length > 1 ? (
-              <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-white/15 p-1 backdrop-blur-sm">
-                {box.views.map((v, idx) => (
-                  <button
-                    key={v.label}
-                    type="button"
-                    onClick={() => selectView(idx)}
-                    className={cn(
-                      "rounded-full px-3 py-1 text-[0.75rem] font-medium transition-all duration-200",
-                      idx === activeView
-                        ? "bg-white text-ink shadow-sm font-semibold"
-                        : "text-white/80 hover:text-white hover:bg-white/15",
-                    )}
-                    aria-pressed={idx === activeView}
-                  >
-                    {v.label}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        </div>
-
-        {/* Progress bar auto-rotate indicator */}
-        {!userInteracted ? (
-          <div className="absolute top-0 inset-x-0 z-10 flex gap-1 p-3">
-            {GIFT_BOXES.map((_, idx) => (
-              <div
-                key={idx}
-                className="h-[3px] flex-1 rounded-full bg-white/25 overflow-hidden"
-              >
-                <div
-                  className={cn(
-                    "h-full rounded-full bg-white/90",
-                    idx === activeBox
-                      ? "gift-explorer__progress"
-                      : idx < activeBox
-                        ? "w-full"
-                        : "w-0",
-                  )}
-                />
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </div>
-
-      {/* ---- Thumbnail strip ---- */}
-      <div className="gift-explorer__strip">
-        {GIFT_BOXES.map((b, idx) => (
-          <button
-            key={b.id}
-            type="button"
-            onClick={() => selectBox(idx)}
-            className={cn(
-              "gift-explorer__thumb",
-              idx === activeBox && "gift-explorer__thumb--active",
-            )}
-            aria-pressed={idx === activeBox}
-            aria-label={b.name}
-          >
-            <Image
-              src={b.views[0].image}
-              alt={b.views[0].alt}
-              fill
-              sizes="120px"
-              className="object-cover"
-            />
-            <div
-              aria-hidden="true"
-              className={cn(
-                "absolute inset-0 rounded-xl transition-all duration-300",
-                idx === activeBox
-                  ? "ring-2 ring-terracotta ring-offset-2 ring-offset-paper bg-transparent"
-                  : "bg-black/20 hover:bg-black/5",
-              )}
-            />
-            <span
-              className={cn(
-                "absolute bottom-1.5 inset-x-1.5 text-center text-[0.625rem] font-semibold leading-tight text-white drop-shadow-md truncate",
-                idx !== activeBox && "opacity-0",
-              )}
-            >
-              {b.name.replace("The ", "")}
-            </span>
-          </button>
-        ))}
-
-        {/* Mobile view switcher (below thumbs) */}
-        {box.views.length > 1 ? (
-          <div className="sm:hidden flex items-center gap-1.5 self-center rounded-full bg-paper-deep p-1 w-full justify-center">
-            {box.views.map((v, idx) => (
+    <div className="w-full">
+      {/* ------------------------------------------------------------ */}
+      {/*  Apple-Style Segmented Navigation Bar                         */}
+      {/* ------------------------------------------------------------ */}
+      <div className="flex justify-center mb-8">
+        <div className="inline-flex max-w-full overflow-x-auto rounded-full border border-line-strong/60 bg-paper-raised p-1.5 shadow-xs scrollbar-none">
+          {GIFT_BOXES.map((box, idx) => {
+            const isSelected = idx === activeBoxIndex;
+            return (
               <button
-                key={v.label}
+                key={box.id}
                 type="button"
-                onClick={() => selectView(idx)}
+                onClick={() => handleSelectBox(idx)}
                 className={cn(
-                  "rounded-full px-3 py-1 text-[0.75rem] font-medium transition-all",
-                  idx === activeView
+                  "relative shrink-0 rounded-full px-4 sm:px-5 py-2 text-[0.8125rem] sm:text-[0.875rem] font-medium transition-all duration-200 cursor-pointer",
+                  isSelected
                     ? "bg-olive text-paper shadow-2xs font-semibold"
-                    : "text-ink-soft hover:text-ink",
+                    : "text-ink-soft hover:text-ink hover:bg-paper-deep/60",
                 )}
-                aria-pressed={idx === activeView}
+                aria-pressed={isSelected}
               >
-                {v.label}
+                {box.name.replace("The ", "")}
               </button>
-            ))}
-          </div>
-        ) : null}
+            );
+          })}
+        </div>
       </div>
+
+      {/* ------------------------------------------------------------ */}
+      {/*  Central Staging Stage (3:2 Aspect Ratio)                     */}
+      {/* ------------------------------------------------------------ */}
+      <div className="relative mx-auto max-w-5xl overflow-hidden rounded-2xl sm:rounded-3xl border border-line-strong/40 bg-paper-deep shadow-md transition-all duration-300">
+        <div className="relative aspect-[3/2] w-full overflow-hidden bg-ink/5">
+          {/* Main Product Image with subtle scale on hover */}
+          <Image
+            key={activeView.image}
+            src={activeView.image}
+            alt={activeView.alt}
+            fill
+            priority
+            sizes="(min-width: 1280px) 1024px, 100vw"
+            className="object-cover transition-transform duration-700 ease-out hover:scale-[1.02]"
+          />
+
+          {/* Top Left: Category Badge */}
+          <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-10">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-paper/90 px-3.5 py-1 text-[0.6875rem] sm:text-[0.75rem] font-semibold uppercase tracking-wider text-ink shadow-2xs backdrop-blur-md border border-line/60">
+              <Sparkles className="size-3 text-brass" />
+              {activeBox.badge}
+            </span>
+          </div>
+
+          {/* Top Right: Fullscreen Lightbox Button */}
+          <button
+            type="button"
+            onClick={() => setIsLightboxOpen(true)}
+            className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10 inline-flex items-center gap-1.5 rounded-full bg-paper/90 px-3 py-1.5 text-[0.75rem] font-medium text-ink shadow-2xs backdrop-blur-md border border-line/60 hover:bg-paper transition-all hover:scale-105 cursor-pointer"
+            title="Inspect in full resolution"
+            aria-label="Inspect in full resolution"
+          >
+            <Maximize2 className="size-3.5" />
+            <span className="hidden sm:inline">Inspect Details</span>
+          </button>
+
+          {/* Bottom Left: Angle / Variant Switcher (if > 1 view) */}
+          {activeBox.views.length > 1 ? (
+            <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 z-10 flex items-center gap-1.5 rounded-full bg-paper/95 p-1 shadow-sm backdrop-blur-md border border-line/60">
+              {activeBox.views.map((v, vIdx) => (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => setActiveViewIndex(vIdx)}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-[0.75rem] font-medium transition-all cursor-pointer",
+                    vIdx === activeViewIndex
+                      ? "bg-olive text-paper shadow-2xs font-semibold"
+                      : "text-ink-soft hover:text-ink hover:bg-paper-deep/60",
+                  )}
+                  aria-pressed={vIdx === activeViewIndex}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {/* Bottom Right: Quick Action Pill */}
+          <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 z-10">
+            <a
+              href="#configurator"
+              onClick={(e) => {
+                e.preventDefault();
+                onSelectBox?.(activeBox.id);
+                const el = document.getElementById("configurator");
+                if (el) el.scrollIntoView({ behavior: "smooth" });
+              }}
+              className="inline-flex items-center gap-1.5 rounded-full bg-terracotta px-4 py-2 text-[0.8125rem] font-semibold text-paper shadow-sm hover:bg-terracotta-soft transition-all hover:scale-105 cursor-pointer"
+            >
+              <span>Configure This Box</span>
+              <ChevronRight className="size-4" />
+            </a>
+          </div>
+        </div>
+
+        {/* ---------------------------------------------------------- */}
+        {/*  Apple-Style Specification Bar Beneath Image                */}
+        {/* ---------------------------------------------------------- */}
+        <div className="border-t border-line/80 bg-paper-raised p-6 sm:p-8">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between pb-6 border-b border-line/60">
+            <div>
+              <h3 className="font-display text-xl sm:text-2xl font-semibold text-ink">
+                {activeBox.name}
+              </h3>
+              <p className="mt-1 text-[0.875rem] text-ink-soft">
+                {activeBox.subtitle}
+              </p>
+            </div>
+            <span className="text-[0.75rem] font-medium uppercase tracking-widest text-brass">
+              Bespoke Artisan Finish
+            </span>
+          </div>
+
+          {/* Minimalist 4-Spec Grid */}
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <div className="rounded-xl border border-line/50 bg-paper p-3.5">
+              <p className="text-[0.6875rem] font-bold uppercase tracking-wider text-ink-muted">
+                Crafted Material
+              </p>
+              <p className="mt-1 text-[0.8125rem] font-semibold text-ink leading-snug">
+                {activeBox.specs.material}
+              </p>
+            </div>
+            <div className="rounded-xl border border-line/50 bg-paper p-3.5">
+              <p className="text-[0.6875rem] font-bold uppercase tracking-wider text-ink-muted">
+                Accommodates
+              </p>
+              <p className="mt-1 text-[0.8125rem] font-semibold text-ink leading-snug">
+                {activeBox.specs.capacity}
+              </p>
+            </div>
+            <div className="rounded-xl border border-line/50 bg-paper p-3.5">
+              <p className="text-[0.6875rem] font-bold uppercase tracking-wider text-ink-muted">
+                Centerpiece
+              </p>
+              <p className="mt-1 text-[0.8125rem] font-semibold text-ink leading-snug">
+                {activeBox.specs.centerpiece}
+              </p>
+            </div>
+            <div className="rounded-xl border border-line/50 bg-paper p-3.5">
+              <p className="text-[0.6875rem] font-bold uppercase tracking-wider text-ink-muted">
+                Keepsake Value
+              </p>
+              <p className="mt-1 text-[0.8125rem] font-semibold text-ink leading-snug">
+                {activeBox.specs.secondLife}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ------------------------------------------------------------ */}
+      {/*  Full-Resolution Lightbox Modal                              */}
+      {/* ------------------------------------------------------------ */}
+      {isLightboxOpen ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 sm:p-8 backdrop-blur-md transition-opacity duration-300"
+          onClick={() => setIsLightboxOpen(false)}
+        >
+          <div
+            className="relative max-h-[90vh] max-w-5xl w-full overflow-hidden rounded-2xl bg-paper-deep shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative aspect-[3/2] w-full">
+              <Image
+                src={activeView.image}
+                alt={activeView.alt}
+                fill
+                sizes="(min-width: 1280px) 1200px, 100vw"
+                className="object-contain"
+              />
+            </div>
+            <div className="flex items-center justify-between border-t border-line/60 bg-paper p-4 px-6">
+              <div>
+                <p className="text-[0.875rem] font-semibold text-ink">
+                  {activeBox.name} — {activeView.label}
+                </p>
+                <p className="text-[0.75rem] text-ink-soft">
+                  Handcrafted presentation by GH Chikkis Ahmedabad
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsLightboxOpen(false)}
+                className="inline-flex size-9 items-center justify-center rounded-full bg-paper-deep text-ink hover:bg-line transition-colors cursor-pointer"
+                aria-label="Close modal"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,62 +1,107 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { GiftingShowcase } from "@/components/site/gifting-showcase";
+import { GiftingConfigurator } from "@/components/site/gifting-configurator";
 import {
   contentSections,
-  contentText,
   getPublishedContent,
 } from "@/lib/content";
 import { getSettings } from "@/lib/settings";
 import { pageMeta } from "@/lib/seo";
 import { waLink, WHATSAPP_BULK_MESSAGE } from "@/lib/phone";
+import {
+  Award,
+  Package,
+  Sparkles,
+  Truck,
+  Layers,
+  Stamp,
+  HeartHandshake,
+  Briefcase,
+  Gift,
+  ArrowRight,
+  Flame,
+} from "lucide-react";
 
 export const metadata: Metadata = pageMeta({
-  title: "Bulk & Corporate Gifting",
+  title: "Bulk & Corporate Gifting | GH Chikkis",
   description:
-    "Bulk, festive and corporate chikki gifting from Ahmedabad. Hand-carved wooden chests, gold-embossed keepsake boxes and custom tins, made to order.",
+    "Bespoke festive, wedding and corporate chikki gifting from Ahmedabad. Hand-carved wooden chests, gold-embossed keepsake boxes and jewel tins.",
   path: "/gifting",
 });
 
-/* ------------------------------------------------------------------ */
-/*  Static content                                                     */
-/* ------------------------------------------------------------------ */
+const BENTO_FEATURES = [
+  {
+    icon: Layers,
+    title: "Seven Signature Varieties",
+    detail:
+      "Curate your assortment from classic groundnut, rich dry fruit, black sesame, white til, toasted coconut, roasted daliya, and crispy mamra. Prepared with pure jaggery and zero liquid glucose.",
+    badge: "Pure Ingredients",
+  },
+  {
+    icon: Stamp,
+    title: "Bespoke Corporate Identity",
+    detail:
+      "Enhance each gift with your organization's logo belly bands, metallic foil stamping, wax-sealed satin ribbons, and bespoke calligraphy greeting inserts.",
+    badge: "Custom Branding",
+  },
+  {
+    icon: Package,
+    title: "Heirloom Keepsake Packaging",
+    detail:
+      "Hand-carved solid Sheesham wood chests, solid fluted brass lotus diyas, and jewel-toned lacquer tins designed to be treasured long after the sweets are enjoyed.",
+    badge: "Lasting Value",
+  },
+  {
+    icon: Truck,
+    title: "White-Glove Multi-City Dispatch",
+    detail:
+      "Each batch is sealed in food-grade parchment dividers and shipped in shock-absorbent transit packaging across Ahmedabad, Pan-India, and global destinations.",
+    badge: "Door-to-Door",
+  },
+];
 
 const STEPS = [
   {
     num: "01",
-    title: "Tell us the brief",
-    body: "Occasion, quantity, date and any packaging ideas. A rough number is fine to start.",
-    icon: "✉️",
+    title: "Share Your Brief",
+    body: "Tell us the occasion, approximate box count, desired date, and any packaging or branding ideas. A rough estimate is fine to start.",
   },
   {
     num: "02",
-    title: "We confirm what's possible",
-    body: "Varieties, packaging, pricing and lead time — confirmed before you commit.",
-    icon: "✓",
+    title: "Confirm What is Possible",
+    body: "We respond with available varieties, packaging formats, exact lead times for your date, and an individual quote.",
   },
   {
     num: "03",
-    title: "Handmade & packed",
-    body: "Planned into our kitchen, packed by hand, ready for collection or delivery.",
-    icon: "📦",
+    title: "Fresh Handcrafting",
+    body: "Once confirmed, the chikkis are cooked and hand-cut in our Ahmedabad kitchen within 48 hours of dispatch for optimal crunch.",
+  },
+  {
+    num: "04",
+    title: "Handled Collection or Dispatch",
+    body: "Packed by hand in protective transit containers, ready for direct collection in Ahmedabad or door-to-door courier dispatch.",
   },
 ];
 
-const CUSTOMISE_ITEMS = [
-  { icon: "🍬", title: "Chikki varieties", detail: "7 signature varieties or curated samplers" },
-  { icon: "⚖️", title: "Pack size / weight", detail: "Pocket boxes to 2 kg family assortments" },
-  { icon: "🎁", title: "Gift packaging", detail: "Wooden chests, keepsake tins, foil paper boxes" },
-  { icon: "📐", title: "Quantity", detail: "Intimate family gatherings to 500+ corporate orders" },
-  { icon: "✨", title: "Presentation", detail: "Satin ribbons, logo bands, brass diyas, custom tags" },
-  { icon: "🚚", title: "Delivery / collection", detail: "Ahmedabad pickup, door-to-door, multi-city dispatch" },
-];
-
-const OCCASION_ICONS = ["🪔", "🏢", "💍", "🎉"];
-
-/* ------------------------------------------------------------------ */
-/*  Page                                                               */
-/* ------------------------------------------------------------------ */
+const OCCASION_META: Record<string, { icon: typeof Briefcase; note: string }> = {
+  "Corporate gifting": {
+    icon: Briefcase,
+    note: "Client gratitude, milestone hampers & annual festivities",
+  },
+  "Festive orders": {
+    icon: Flame,
+    note: "Diwali, New Year, Uttarayan & seasonal celebrations",
+  },
+  "Retailers": {
+    icon: Gift,
+    note: "Artisanal confection displays for select retail partners",
+  },
+  "Bulk & custom weights": {
+    icon: Sparkles,
+    note: "Custom weight assortments & tailored family distributions",
+  },
+};
 
 export default async function GiftingPage() {
   const [content, settings] = await Promise.all([
@@ -69,203 +114,236 @@ export default async function GiftingPage() {
     : null;
 
   return (
-    <>
+    <div className="bg-paper min-h-screen text-ink">
       {/* ============================================================ */}
-      {/*  HERO — cinematic split with immersive image                  */}
+      {/*  HERO — Editorial, Spacious & Monumental                     */}
       {/* ============================================================ */}
-      <header className="relative overflow-hidden bg-ink">
-        {/* Background hero image — blurred & dimmed */}
-        <div className="absolute inset-0">
-          <Image
-            src="/gifting/peacock-teal-round-box.jpg"
-            alt=""
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover opacity-30 blur-2xl scale-110"
-            aria-hidden="true"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-ink/80 via-ink/60 to-ink" />
-        </div>
+      <header className="relative border-b border-line/80 overflow-hidden pt-12 pb-16 md:pt-20 md:pb-24">
+        {/* Architectural grid texture & subtle warm vignette */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(184,92,52,0.06),transparent_70%)]"
+        />
 
-        <div className="container-page relative z-10 pb-14 pt-16 md:pb-20 md:pt-24 lg:pb-24 lg:pt-28">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-3.5 py-1 text-[0.8125rem] font-semibold text-white/80 backdrop-blur-sm">
-              <span className="size-2 rounded-full bg-terracotta animate-pulse" />
-              {contentText(content, "eyebrow")}
+        <div className="container-page relative z-10 text-center max-w-4xl mx-auto">
+          {/* Eyebrow Pill */}
+          <div className="inline-flex items-center gap-2 rounded-full border border-line-strong/60 bg-paper-raised px-4 py-1.5 text-[0.8125rem] font-semibold text-olive shadow-2xs">
+            <span className="size-1.5 rounded-full bg-terracotta" />
+            <span>Bespoke Confectionery & Keepsake Packaging</span>
+          </div>
+
+          {/* Monumental Headline */}
+          <h1 className="font-display mt-6 text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight text-ink text-balance leading-[1.1]">
+            Handmade for the moments that matter.
+          </h1>
+
+          {/* Refined Subtitle */}
+          <p className="mt-6 text-lg sm:text-xl text-ink-soft max-w-2xl mx-auto leading-relaxed text-pretty">
+            Every gifting order is planned around your occasion — from our seven signature chikki varieties and custom branding to hand-carved wooden chests and solid brass lotus diyas.
+          </p>
+
+          {/* Apple-Style CTA Buttons */}
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <a
+              href="#configurator"
+              className="inline-flex items-center gap-2 rounded-full bg-olive px-6 py-3 text-[0.9375rem] font-semibold text-paper shadow-xs hover:bg-olive-deep hover:shadow-sm transition-all hover:scale-[1.02] cursor-pointer"
+            >
+              <span>Configure a Gift Order</span>
+              <ArrowRight className="size-4" />
+            </a>
+            {whatsappHref ? (
+              <a
+                href={whatsappHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-line-strong bg-paper-raised px-6 py-3 text-[0.9375rem] font-semibold text-ink hover:bg-paper-deep transition-all cursor-pointer"
+              >
+                <span>WhatsApp Enquiry</span>
+              </a>
+            ) : null}
+          </div>
+
+          {/* Minimalist Trust Ribbon */}
+          <div className="mt-12 pt-8 border-t border-line/60 grid grid-cols-2 sm:grid-cols-4 gap-4 text-left">
+            <div className="flex items-center gap-2.5">
+              <Award className="size-4 shrink-0 text-brass" />
+              <span className="text-[0.8125rem] font-medium text-ink-soft">
+                Handcrafted in Ahmedabad
+              </span>
             </div>
-
-            <h1 className="font-display mt-6 text-3xl sm:text-4xl md:text-5xl font-semibold text-white tracking-tight leading-[1.1]">
-              {contentText(content, "title")}
-            </h1>
-
-            <p className="mt-5 text-[1.0625rem] leading-relaxed text-white/70 max-w-xl">
-              Every gifting order is planned around the occasion — from the chikki varieties and quantity to the packaging and delivery. Because every order is different, we quote it individually.
-            </p>
-
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link href="/contact#enquiry" className="gifting-cta-primary">
-                Start a gifting enquiry
-              </Link>
-              {whatsappHref ? (
-                <a
-                  href={whatsappHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="gifting-cta-secondary"
-                >
-                  WhatsApp us
-                </a>
-              ) : null}
+            <div className="flex items-center gap-2.5">
+              <Package className="size-4 shrink-0 text-olive" />
+              <span className="text-[0.8125rem] font-medium text-ink-soft">
+                Reusable Keepsake Chests
+              </span>
             </div>
-
-            {/* Trust markers */}
-            <div className="mt-10 flex flex-wrap gap-x-6 gap-y-2 text-[0.8125rem] text-white/50">
-              <span>✦ Handcrafted in Ahmedabad</span>
-              <span>✦ Bespoke keepsake packaging</span>
-              <span>✦ Pan-India & global courier</span>
+            <div className="flex items-center gap-2.5">
+              <Stamp className="size-4 shrink-0 text-terracotta" />
+              <span className="text-[0.8125rem] font-medium text-ink-soft">
+                Custom Logo Bands & Seals
+              </span>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <Truck className="size-4 shrink-0 text-ink" />
+              <span className="text-[0.8125rem] font-medium text-ink-soft">
+                Pan-India & Global Express
+              </span>
             </div>
           </div>
         </div>
       </header>
 
       {/* ============================================================ */}
-      {/*  GIFT EXPLORER — immersive tabbed visual showcase             */}
+      {/*  INTERACTIVE GIFT SHOWCASE — Studio Gallery                  */}
       {/* ============================================================ */}
-      <section className="bg-paper-deep border-b border-line">
-        <div className="container-page py-14 md:py-20">
-          <div className="flex items-end justify-between gap-4 mb-10">
-            <div>
-              <p className="eyebrow">Our Gift Boxes</p>
+      <section id="showcase" className="container-page py-16 md:py-24">
+        <div className="text-center max-w-2xl mx-auto mb-12">
+          <p className="eyebrow">The Signature Collection</p>
+          <h2 className="display-m mt-3">
+            Four ways to present your gift.
+          </h2>
+          <p className="mt-3 text-[0.9375rem] text-ink-soft">
+            Explore our curated presentation chests. Switch perspectives, inspect fine craftsmanship details in high definition, and choose the perfect box.
+          </p>
+        </div>
+
+        <GiftingShowcase />
+      </section>
+
+      {/* ============================================================ */}
+      {/*  INTERACTIVE STUDIO CONFIGURATOR                             */}
+      {/* ============================================================ */}
+      <section className="container-page py-8 md:py-16">
+        <GiftingConfigurator whatsappNumber={settings.business.whatsappNumber} />
+      </section>
+
+      {/* ============================================================ */}
+      {/*  BENTO GRID — Tailoring & Craftsmanship Details               */}
+      {/* ============================================================ */}
+      <section className="container-page py-16 md:py-24">
+        <div className="text-center max-w-2xl mx-auto mb-14">
+          <p className="eyebrow">Bespoke Details</p>
+          <h2 className="display-m mt-3">
+            Crafted to the finest millimeter.
+          </h2>
+          <p className="mt-3 text-[0.9375rem] text-ink-soft">
+            We operate as a private family confectionery kitchen, adapting every element from chikki varieties to packaging hardware.
+          </p>
+        </div>
+
+        <div className="grid gap-6 sm:grid-cols-2">
+          {BENTO_FEATURES.map((feat) => {
+            const Icon = feat.icon;
+            return (
+              <div
+                key={feat.title}
+                className="group relative flex flex-col justify-between rounded-3xl border border-line-strong/60 bg-paper-raised p-8 shadow-xs transition-all duration-300 hover:border-line-strong hover:shadow-md"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div className="inline-flex size-11 items-center justify-center rounded-2xl bg-paper-deep text-olive shadow-2xs group-hover:bg-olive group-hover:text-paper transition-colors duration-300">
+                      <Icon className="size-5" />
+                    </div>
+                    <span className="rounded-full border border-line bg-paper px-3 py-1 text-[0.6875rem] font-semibold uppercase tracking-wider text-ink-muted">
+                      {feat.badge}
+                    </span>
+                  </div>
+                  <h3 className="font-display text-xl font-semibold text-ink mt-6">
+                    {feat.title}
+                  </h3>
+                  <p className="mt-2 text-[0.9375rem] leading-relaxed text-ink-soft">
+                    {feat.detail}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* ============================================================ */}
+      {/*  OCCASIONS — Refined Minimalist Cards                        */}
+      {/* ============================================================ */}
+      <section className="border-t border-line/80 bg-paper-raised py-16 md:py-24">
+        <div className="container-page">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+            <div className="max-w-xl">
+              <p className="eyebrow">Curated for Occasions</p>
               <h2 className="display-m mt-3">
-                Four ways to present your gift.
+                A handmade gift says something a catalogue cannot.
               </h2>
             </div>
             <Link
               href="/contact#enquiry"
-              className="btn btn-outline hidden sm:inline-flex text-[0.8125rem] py-2 px-3.5"
+              className="inline-flex items-center gap-1.5 text-[0.875rem] font-semibold text-terracotta hover:text-terracotta-soft transition-colors self-start md:self-end"
             >
-              Enquire about any box
+              <span>Discuss an upcoming date</span>
+              <ArrowRight className="size-4" />
             </Link>
           </div>
 
-          <GiftingShowcase />
-        </div>
-      </section>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {sections.map((sec) => {
+              const meta = OCCASION_META[sec.heading] ?? {
+                icon: Gift,
+                note: "Customised confection arrangements",
+              };
+              const Icon = meta.icon;
 
-      {/* ============================================================ */}
-      {/*  WHAT CAN BE CUSTOMISED — icon grid with hover reveals       */}
-      {/* ============================================================ */}
-      <section className="container-page py-16 md:py-24">
-        <div className="text-center max-w-xl mx-auto mb-12">
-          <p className="eyebrow">Tailored to you</p>
-          <h2 className="display-m mt-3">What can be customised</h2>
-          <p className="mt-3 text-[0.9375rem] text-ink-soft">
-            Every element is adaptable — tell us what you need and we&apos;ll make it happen.
-          </p>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {CUSTOMISE_ITEMS.map((item) => (
-            <div
-              key={item.title}
-              className="gifting-customise-card"
-            >
-              <span className="text-2xl" aria-hidden="true">
-                {item.icon}
-              </span>
-              <div>
-                <h3 className="text-[0.9375rem] font-semibold text-ink">
-                  {item.title}
-                </h3>
-                <p className="mt-0.5 text-[0.8125rem] text-ink-soft leading-snug">
-                  {item.detail}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Custom branding banner */}
-        <div className="mt-6 flex flex-col gap-4 rounded-2xl border border-brass/25 bg-paper-deep/60 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-xl" aria-hidden="true">🏷️</span>
-            <p className="text-[0.875rem] text-ink-soft">
-              <strong className="font-semibold text-ink">Custom branding available</strong> — logo sleeves, greeting inserts, and wax seal ribbons for corporate or wedding orders.
-            </p>
-          </div>
-          <Link
-            href="/contact#enquiry"
-            className="btn btn-outline shrink-0 text-[0.8125rem] py-2 px-3.5 self-start sm:self-center"
-          >
-            Discuss your brief
-          </Link>
-        </div>
-      </section>
-
-      {/* ============================================================ */}
-      {/*  OCCASIONS — compact visual cards                            */}
-      {/* ============================================================ */}
-      <section className="border-y border-line bg-paper-raised">
-        <div className="container-page py-16 md:py-24">
-          <div className="text-center max-w-xl mx-auto mb-12">
-            <p className="eyebrow">Perfect for every occasion</p>
-            <h2 className="display-m mt-3">
-              A handmade gift says something a catalogue cannot.
-            </h2>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {sections.map((section, idx) => (
-              <Link
-                key={section.heading}
-                href="/contact#enquiry"
-                className="gifting-occasion-card group"
-              >
-                <span className="text-3xl mb-3 block" aria-hidden="true">
-                  {OCCASION_ICONS[idx] ?? "🎁"}
-                </span>
-                <h3 className="text-[1rem] font-semibold text-ink group-hover:text-terracotta transition-colors">
-                  {section.heading}
-                </h3>
-                <span className="mt-auto pt-4 inline-flex items-center gap-1 text-[0.8125rem] font-semibold text-terracotta opacity-0 group-hover:opacity-100 transition-opacity">
-                  Enquire &rarr;
-                </span>
-              </Link>
-            ))}
+              return (
+                <div
+                  key={sec.heading}
+                  className="rounded-2xl border border-line/80 bg-paper p-6 shadow-2xs flex flex-col justify-between transition-all duration-300 hover:border-line-strong hover:shadow-xs"
+                >
+                  <div>
+                    <div className="size-9 rounded-xl bg-paper-raised flex items-center justify-center text-brass border border-line/60">
+                      <Icon className="size-4" />
+                    </div>
+                    <h3 className="font-display text-lg font-semibold text-ink mt-4">
+                      {sec.heading}
+                    </h3>
+                    <p className="mt-2 text-[0.8125rem] text-ink-soft leading-relaxed">
+                      {sec.body[0]}
+                    </p>
+                  </div>
+                  <div className="mt-6 pt-4 border-t border-line/60">
+                    <span className="text-[0.75rem] font-medium text-ink-muted">
+                      {meta.note}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
       {/* ============================================================ */}
-      {/*  HOW IT WORKS — connected timeline                           */}
+      {/*  HOW IT WORKS — Clean 4-Step Process                         */}
       {/* ============================================================ */}
       <section className="container-page py-16 md:py-24">
         <div className="text-center max-w-xl mx-auto mb-14">
-          <p className="eyebrow">How it works</p>
+          <p className="eyebrow">The Ordering Process</p>
           <h2 className="display-m mt-3">From brief to box.</h2>
           <p className="mt-3 text-[0.9375rem] text-ink-soft">
-            Transparent and personal, from first message to final delivery.
+            Direct and personal from your first message to the final delivery.
           </p>
         </div>
 
-        <div className="gifting-timeline">
-          {STEPS.map((step, idx) => (
-            <div key={step.num} className="gifting-timeline__step">
-              {/* Connector line (not on last) */}
-              {idx < STEPS.length - 1 ? (
-                <div className="gifting-timeline__connector" aria-hidden="true" />
-              ) : null}
-
-              <div className="gifting-timeline__number">
-                {step.num}
-              </div>
-
-              <div className="gifting-timeline__content">
-                <h3 className="text-[1rem] font-semibold text-ink">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {STEPS.map((step) => (
+            <div
+              key={step.num}
+              className="relative rounded-2xl border border-line bg-paper-raised p-6 shadow-2xs flex flex-col justify-between"
+            >
+              <div>
+                <span className="text-[0.75rem] font-bold tracking-widest text-olive uppercase">
+                  Step {step.num}
+                </span>
+                <h3 className="font-display text-lg font-semibold text-ink mt-2">
                   {step.title}
                 </h3>
-                <p className="mt-1 text-[0.875rem] leading-relaxed text-ink-soft">
+                <p className="mt-2 text-[0.875rem] leading-relaxed text-ink-soft">
                   {step.body}
                 </p>
               </div>
@@ -275,33 +353,21 @@ export default async function GiftingPage() {
       </section>
 
       {/* ============================================================ */}
-      {/*  CLOSING CTA — full-width immersive                          */}
+      {/*  CLOSING CTA — Elegant Editorial Finish                      */}
       {/* ============================================================ */}
-      <section className="relative overflow-hidden bg-ink">
-        <div className="absolute inset-0">
-          <Image
-            src="/gifting/lotus-blush-box-open.jpg"
-            alt=""
-            fill
-            sizes="100vw"
-            className="object-cover opacity-20 blur-xl scale-105"
-            aria-hidden="true"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/70 to-ink/80" />
-        </div>
-
-        <div className="container-narrow relative z-10 py-16 md:py-24 text-center">
-          <p className="text-[0.75rem] font-bold uppercase tracking-widest text-terracotta-soft">
-            Ready to start?
-          </p>
-          <h2 className="font-display mt-4 text-2xl sm:text-3xl md:text-4xl font-semibold text-white tracking-tight">
+      <section className="border-t border-line/80 bg-paper-deep/40 py-16 md:py-24 text-center">
+        <div className="container-narrow">
+          <div className="inline-flex size-12 items-center justify-center rounded-2xl bg-paper-raised text-brass shadow-2xs border border-line mx-auto mb-6">
+            <HeartHandshake className="size-6" />
+          </div>
+          <h2 className="display-m max-w-lg mx-auto">
             Planning an order? Tell us what you need.
           </h2>
-          <p className="mt-4 text-[1rem] leading-relaxed text-white/60 max-w-lg mx-auto">
-            {contentText(content, "closing")}
+          <p className="mt-4 text-[1rem] leading-relaxed text-ink-soft max-w-xl mx-auto">
+            Lead times and delivery options depend on your order size and date. We will confirm what is possible before you commit.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Link href="/contact#enquiry" className="gifting-cta-primary">
+            <Link href="/contact#enquiry" className="btn btn-solid">
               Start a gifting enquiry
             </Link>
             {whatsappHref ? (
@@ -309,7 +375,7 @@ export default async function GiftingPage() {
                 href={whatsappHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="gifting-cta-secondary"
+                className="btn btn-outline"
               >
                 WhatsApp us
               </a>
@@ -317,6 +383,6 @@ export default async function GiftingPage() {
           </div>
         </div>
       </section>
-    </>
+    </div>
   );
 }
