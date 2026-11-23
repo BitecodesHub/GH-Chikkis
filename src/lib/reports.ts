@@ -59,22 +59,52 @@ async function fetchRangeDocs(from: string, to: string): Promise<RangeDocs> {
   const [orders, payments, refunds, expenses] = await Promise.all([
     db
       .collection<OrderDoc>("orders")
-      .find({ orderDate: dateFilter })
+      .find(
+        { orderDate: dateFilter },
+        {
+          projection: {
+            orderDate: 1,
+            type: 1,
+            status: 1,
+            totalPaise: 1,
+            balancePaise: 1,
+            customerId: 1,
+            "customerSnapshot.name": 1,
+            "items.productName": 1,
+            "items.lineTotalPaise": 1,
+            createdAt: 1,
+          },
+        },
+      )
       .sort({ orderDate: 1, createdAt: 1 })
       .toArray(),
     db
       .collection<PaymentDoc>("payments")
-      .find({ date: dateFilter, voidedAt: { $exists: false } })
+      .find(
+        { date: dateFilter, voidedAt: { $exists: false } },
+        { projection: { date: 1, amountPaise: 1, orderId: 1, method: 1 } },
+      )
       .sort({ date: 1, createdAt: 1 })
       .toArray(),
     db
       .collection<RefundDoc>("refunds")
-      .find({ date: dateFilter })
+      .find({ date: dateFilter }, { projection: { date: 1, amountPaise: 1 } })
       .sort({ date: 1, createdAt: 1 })
       .toArray(),
     db
       .collection<ExpenseDoc>("expenses")
-      .find({ date: dateFilter, deletedAt: { $exists: false } })
+      .find(
+        { date: dateFilter, deletedAt: { $exists: false } },
+        {
+          projection: {
+            date: 1,
+            amountPaise: 1,
+            category: 1,
+            giftingOrderId: 1,
+            description: 1,
+          },
+        },
+      )
       .sort({ date: 1, createdAt: 1 })
       .toArray(),
   ]);

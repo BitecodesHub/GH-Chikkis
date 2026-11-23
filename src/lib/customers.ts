@@ -177,7 +177,18 @@ export async function searchCustomers(
   if (!includeArchived) filter.archived = { $ne: true };
   const docs = await db
     .collection<CustomerDoc>("customers")
-    .find(filter)
+    .find(filter, {
+      projection: {
+        _id: 1,
+        name: 1,
+        phone: 1,
+        phoneOriginal: 1,
+        email: 1,
+        company: 1,
+        archived: 1,
+        updatedAt: 1,
+      },
+    })
     .sort({ updatedAt: -1 })
     .limit(Math.min(Math.max(limit, 1), 20))
     .toArray();

@@ -36,11 +36,10 @@ export function getMongoClient(): Promise<MongoClient> {
 export async function getDb(): Promise<Db> {
   const client = await getMongoClient();
   const db = client.db(env.mongodbDb);
-  // Ensure indexes are built in the background once per container without blocking requests.
-  if (!globalForMongo.mongoIndexesPromise) {
-    globalForMongo.mongoIndexesPromise = ensureIndexes(db).catch((err) => {
-      console.warn("Index build background warning:", err);
-    });
+  // In development, ensure indexes are built in the background once per container.
+  // In production, indexes are built during build/migration so requests never pay the 28-trip Atlas penalty.
+  if (!env.isProduction && !globalForMongo.mongoIndexesPromise) {
+    globalForMongo.mongoIndexesPromise = ensureIndexes(db).catch(() => {});
   }
   return db;
 }

@@ -43,14 +43,15 @@ export default async function NewOrderPage({
   const customerId = typeof params.customerId === "string" ? params.customerId : "";
   const enquiryId = typeof params.enquiryId === "string" ? params.enquiryId : "";
 
-  const [products, enquiry, recent] = await Promise.all([
+  const [products, enquiry, recent, initialCustomer] = await Promise.all([
     listProducts(),
     enquiryId ? getEnquiry(enquiryId) : Promise.resolve(null),
     customerId ? Promise.resolve([]) : listRepeatCustomers(),
+    customerId ? getCustomer(customerId) : Promise.resolve(null),
   ]);
   const options = productOptions(products);
 
-  let customer = customerId ? await getCustomer(customerId) : null;
+  let customer = initialCustomer;
   if (!customer && enquiry?.phone) {
     const match = await findCustomerByPhone(enquiry.phone);
     if (match && !match.archived) {

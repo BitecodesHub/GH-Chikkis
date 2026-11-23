@@ -8,6 +8,7 @@ import {
   Upload,
 } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/page-header";
+import { DeleteImportBatch } from "@/components/admin/delete-import-batch";
 import { requirePermission } from "@/lib/auth/session";
 import { hasPermission } from "@/lib/permissions";
 import { listImportBatches, MAX_IMPORT_MB, MAX_IMPORT_ROWS } from "@/lib/imports";
@@ -177,12 +178,19 @@ export default async function AdminImportsPage({
                       ? "Importing"
                       : batch.status.toLowerCase()}
                 </span>
-                <Link
-                  href={`/admin/imports/${batch.id}`}
-                  className="text-[0.8125rem] text-olive-deep hover:underline"
-                >
-                  {batch.status === "UPLOADED" || batch.status === "READY" ? "Review" : "Open"}
-                </Link>
+                <div className="inline-flex items-center gap-3">
+                  <Link
+                    href={`/admin/imports/${batch.id}`}
+                    className="text-[0.8125rem] text-olive-deep hover:underline"
+                  >
+                    {batch.status === "UPLOADED" || batch.status === "READY" ? "Review" : "Open"}
+                  </Link>
+                  <DeleteImportBatch
+                    batchId={batch.id}
+                    filename={batch.filename}
+                    status={batch.status}
+                  />
+                </div>
               </li>
             ))}
           </ul>

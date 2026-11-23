@@ -698,14 +698,6 @@ export async function listOrders(options: {
 }): Promise<OrderListResult> {
   const db = await getDb();
 
-  // Auto-sync sequence on first page load: if oldest order is not GH-1, sync order refs so sequence starts at GH-1
-  if (!options.offset && !options.query && !options.status && !options.type && !options.payment && !options.paymentMethod) {
-    const oldest = await db.collection<OrderDoc>("orders").find({}).sort({ orderDate: 1, createdAt: 1, _id: 1 }).limit(1).toArray();
-    if (oldest.length > 0 && oldest[0].ref !== "GH-1") {
-      await resequenceOrderRefs();
-    }
-  }
-
   const filter: Record<string, unknown> = {};
   if (options.status === "PENDING") {
     filter.status = { $in: ["PENDING", "NEW", "CONFIRMED"] };

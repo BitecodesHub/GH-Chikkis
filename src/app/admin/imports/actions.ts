@@ -16,6 +16,7 @@ import {
   parseSkippedRowNumbers,
   saveImportMapping,
   correctImportRow,
+  deleteImportBatch,
 } from "@/lib/imports";
 import type { ImportBatch, ImportKind, User } from "@/lib/types";
 
@@ -182,4 +183,32 @@ export async function confirmImportAction(formData: FormData): Promise<void> {
   revalidatePath("/admin/customers");
   revalidatePath("/admin/orders");
   redirect(`/admin/imports/${batchId}?notice=imported`);
+}
+
+export async function deleteImportBatchAction(batchId: string): Promise<{ ok: boolean; message?: string }> {
+  const { user } = await requirePermission("orders.manage");
+  if (!batchId) return { ok: false, message: "Import batch ID is required." };
+
+  try {
+    const counts = await deleteImportBatch(batchId, {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+    });
+    revalidateImports();
+    revalidatePath("/admin/customers");
+    revalidatePath("/admin/orders");
+    revalidatePath("/admin/expenses");
+    revalidatePath("/admin/reports");
+    return {
+      ok: true,
+      message: `Deleted import batch. Removed ${counts.ordersDeleted} orders, ${counts.expensesDeleted} expenses, and ${counts.customersDeleted} customers.`,
+    };
+  } catch (error) {
+    console.error("Delete import batch failed", error);
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "Failed to delete the import batch.",
+    };
+  }
 }

@@ -38,7 +38,7 @@ export function DeleteCustomer({
   };
 
   return (
-    <span className="inline-flex flex-col items-end gap-1">
+    <span className="inline-flex items-center gap-1.5">
       <button
         type="button"
         onClick={() => setOpen(true)}

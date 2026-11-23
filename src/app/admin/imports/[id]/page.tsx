@@ -13,6 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/page-header";
+import { DeleteImportBatch } from "@/components/admin/delete-import-batch";
 import { requirePermission } from "@/lib/auth/session";
 import { hasPermission } from "@/lib/permissions";
 import {
@@ -208,10 +209,18 @@ export default async function ImportBatchPage({
           .filter(Boolean)
           .join(" · ")}
         actions={
-          <Link href="/admin/imports" className="btn btn-quiet btn-sm">
-            <ArrowLeft aria-hidden="true" className="size-4" />
-            Imports
-          </Link>
+          <div className="flex items-center gap-3">
+            <DeleteImportBatch
+              batchId={batch.id}
+              filename={batch.filename}
+              status={batch.status}
+              redirectTo="/admin/imports"
+            />
+            <Link href="/admin/imports" className="btn btn-quiet btn-sm">
+              <ArrowLeft aria-hidden="true" className="size-4" />
+              Imports
+            </Link>
+          </div>
         }
       />
 

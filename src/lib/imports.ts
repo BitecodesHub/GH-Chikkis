@@ -6,8 +6,9 @@ import { recordAudit } from "./audit";
 import { getDb } from "./db";
 import { businessToday, nowIso, parseBusinessDate } from "./dates";
 import { parseRupeesToPaise, paymentStatusFor } from "./money";
-import { allocateOrderRef } from "./orders";
+import { allocateOrderRef, resequenceOrderRefs } from "./orders";
 import { formatPhoneDisplay, normalizePhone } from "./phone";
+import { invalidateReads } from "./read-cache";
 import { getSettings } from "./settings";
 import { cleanSingleLine, cleanText } from "./text";
 import type {
@@ -1739,4 +1740,70 @@ export async function executeImport(
   });
 
   return mapBatch(result);
+}
+
+export async function deleteImportBatch(
+  batchId: string,
+  actor: ImportActor,
+): Promise<{
+  ordersDeleted: number;
+  expensesDeleted: number;
+  customersDeleted: number;
+}> {
+  const db = await getDb();
+  const batch = await db.collection<ImportBatchDoc>("import_batches").findOne({ _id: batchId });
+  if (!batch) throw new ImportError("That import batch could not be found.");
+
+  // Find all orders linked to this batch
+  const matchingOrders = await db
+    .collection<OrderDoc>("orders")
+    .find(
+      {
+        $or: [
+          { importBatchId: batchId },
+          { idempotencyKey: { $regex: `^import:${batchId}:` } },
+        ],
+      },
+      { projection: { _id: 1, ref: 1 } },
+    )
+    .toArray();
+  const orderIds = matchingOrders.map((o) => o._id);
+
+  let ordersDeleted = 0;
+  if (orderIds.length > 0) {
+    const ordRes = await db.collection<OrderDoc>("orders").deleteMany({ _id: { $in: orderIds } });
+    await Promise.all([
+      db.collection("payments").deleteMany({ orderId: { $in: orderIds } }),
+      db.collection("refunds").deleteMany({ orderId: { $in: orderIds } }),
+      db.collection("invoice_versions").deleteMany({ orderId: { $in: orderIds } }),
+    ]);
+    ordersDeleted = ordRes.deletedCount;
+    // Resequence order references so order numbers stay contiguous starting from GH-1
+    await resequenceOrderRefs();
+  }
+
+  // Delete all expenses linked to this batch
+  const expRes = await db.collection("expenses").deleteMany({ importBatchId: batchId });
+  const expensesDeleted = expRes.deletedCount;
+
+  // Delete all customers linked to this batch
+  const custRes = await db.collection("customers").deleteMany({ importBatchId: batchId });
+  const customersDeleted = custRes.deletedCount;
+
+  // Delete the import batch itself
+  await db.collection<ImportBatchDoc>("import_batches").deleteOne({ _id: batchId });
+
+  // Record audit log
+  await recordAudit({
+    actor: { id: actor.id, email: actor.email },
+    action: "import.delete",
+    entityType: "import",
+    entityId: batchId,
+    summary: `Deleted batch ${batch.filename} · ${ordersDeleted} orders removed · ${expensesDeleted} expenses removed · ${customersDeleted} customers removed`,
+  });
+
+  // Invalidate read caches
+  invalidateReads();
+
+  return { ordersDeleted, expensesDeleted, customersDeleted };
 }

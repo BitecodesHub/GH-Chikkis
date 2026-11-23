@@ -197,11 +197,11 @@ export default async function AdminCustomersPage({
                       <td className="hidden px-5 py-3 whitespace-nowrap md:table-cell">
                         {stat?.lastOrderDate ? formatDateDDMMYYYY(stat.lastOrderDate) : "—"}
                       </td>
-                      <td className="px-5 py-3 text-right align-top">
-                        <div className="flex flex-col items-end gap-1">
+                      <td className="px-5 py-3 text-right align-middle">
+                        <div className="inline-flex items-center justify-end gap-3 whitespace-nowrap">
                           <Link
                             href={`/admin/customers/${customer.id}`}
-                            className="text-[0.8125rem] text-brass-ink hover:underline"
+                            className="text-[0.8125rem] font-medium text-brass-ink hover:underline py-1"
                           >
                             Open
                           </Link>
