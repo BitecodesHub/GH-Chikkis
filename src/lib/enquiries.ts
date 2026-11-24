@@ -5,6 +5,7 @@ import { getDb } from "./db";
 import { formatDateDDMMYYYY, nowIso } from "./dates";
 import { createAlert } from "./alerts";
 import { recordAudit } from "./audit";
+import { invalidateReads } from "./read-cache";
 import { cleanText } from "./text";
 
 interface EnquiryDoc extends Omit<Enquiry, "id"> {
@@ -64,6 +65,7 @@ export async function createEnquiry(input: CreateEnquiryInput): Promise<Enquiry>
     }),
   ]);
 
+  invalidateReads("reports");
   const { _id, ...enquiry } = doc;
   return { id: _id, ...enquiry };
 }
@@ -166,4 +168,25 @@ export async function updateEnquiryNotes(
     entityId: id,
     summary: "Updated internal enquiry notes",
   });
+}
+
+export async function deleteEnquiry(
+  id: string,
+  actor: { id: string; name: string; email: string },
+): Promise<void> {
+  const db = await getDb();
+  const doc = await db.collection<EnquiryDoc>("enquiries").findOne({ _id: id });
+  if (!doc) throw new Error("That enquiry could not be found.");
+  if (doc.linkedOrderId) {
+    throw new Error("This enquiry is already linked to an order. Delete or unlink the order first.");
+  }
+  await db.collection<EnquiryDoc>("enquiries").deleteOne({ _id: id });
+  await recordAudit({
+    actor: { id: actor.id, email: actor.email },
+    action: "enquiry.delete",
+    entityType: "enquiry",
+    entityId: id,
+    summary: `Deleted enquiry from ${doc.name}`,
+  });
+  invalidateReads("reports");
 }

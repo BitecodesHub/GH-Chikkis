@@ -10,6 +10,7 @@ import {
   monthLabel,
 } from "./dates";
 import { listInventoryItems } from "./inventory";
+import { readThrough } from "./read-cache";
 import { PAYMENT_METHOD_LABELS, type DateRange, type Expense, type Order, type Payment, type Refund, type ReportBreakdown, type ReportData, type ReportMetrics, type ReportSeriesPoint } from "./types";
 
 type OrderDoc = Omit<Order, "id"> & { _id: string };
@@ -63,6 +64,7 @@ async function fetchRangeDocs(from: string, to: string): Promise<RangeDocs> {
         { orderDate: dateFilter },
         {
           projection: {
+            ref: 1,
             orderDate: 1,
             type: 1,
             status: 1,
@@ -70,13 +72,15 @@ async function fetchRangeDocs(from: string, to: string): Promise<RangeDocs> {
             balancePaise: 1,
             customerId: 1,
             "customerSnapshot.name": 1,
+            "customerSnapshot.phone": 1,
             "items.productName": 1,
             "items.lineTotalPaise": 1,
+            gift: 1,
             createdAt: 1,
           },
         },
       )
-      .sort({ orderDate: 1, createdAt: 1 })
+      .sort({ orderDate: 1 })
       .toArray(),
     db
       .collection<PaymentDoc>("payments")
@@ -84,12 +88,12 @@ async function fetchRangeDocs(from: string, to: string): Promise<RangeDocs> {
         { date: dateFilter, voidedAt: { $exists: false } },
         { projection: { date: 1, amountPaise: 1, orderId: 1, method: 1 } },
       )
-      .sort({ date: 1, createdAt: 1 })
+      .sort({ date: 1 })
       .toArray(),
     db
       .collection<RefundDoc>("refunds")
       .find({ date: dateFilter }, { projection: { date: 1, amountPaise: 1 } })
-      .sort({ date: 1, createdAt: 1 })
+      .sort({ date: 1 })
       .toArray(),
     db
       .collection<ExpenseDoc>("expenses")
@@ -100,12 +104,13 @@ async function fetchRangeDocs(from: string, to: string): Promise<RangeDocs> {
             date: 1,
             amountPaise: 1,
             category: 1,
+            source: 1,
             giftingOrderId: 1,
             description: 1,
           },
         },
       )
-      .sort({ date: 1, createdAt: 1 })
+      .sort({ date: 1 })
       .toArray(),
   ]);
   return { orders, payments, refunds, expenses };
@@ -189,14 +194,17 @@ export async function getReportMetricsForWindows(
   windows: DateRange[],
 ): Promise<ReportMetrics[]> {
   if (windows.length === 0) return [];
-  const span = widest(windows);
-  const [docs, enquiryCounts] = await Promise.all([
-    fetchRangeDocs(span.from, span.to),
-    countEnquiriesPerRange(windows),
-  ]);
-  return windows.map((window, index) =>
-    metricsFromDocs(docsInRange(docs, window.from, window.to), enquiryCounts[index]),
-  );
+  const key = `reports:metrics:${windows.map((w) => `${w.preset}:${w.from}:${w.to}`).join("|")}`;
+  return readThrough(key, 20_000, async () => {
+    const span = widest(windows);
+    const [docs, enquiryCounts] = await Promise.all([
+      fetchRangeDocs(span.from, span.to),
+      countEnquiriesPerRange(windows),
+    ]);
+    return windows.map((window, index) =>
+      metricsFromDocs(docsInRange(docs, window.from, window.to), enquiryCounts[index]),
+    );
+  });
 }
 
 export function buildReportSeries(
@@ -252,152 +260,157 @@ export async function getReportData(
   range: DateRange,
   options?: { includeInventory?: boolean },
 ): Promise<ReportData> {
-  const prevRange = previousRange(range);
-  const wide = widest([range, prevRange]);
-  // The screen has no inventory section; only the export files do. Reading the
-  // collection here charged every report view for data it never showed.
-  const [wideDocs, enquiryCounts, inventory] = await Promise.all([
-    fetchRangeDocs(wide.from, wide.to),
-    countEnquiriesPerRange([range, prevRange]),
-    options?.includeInventory ? listInventoryItems({}) : Promise.resolve(null),
-  ]);
-  const docs = docsInRange(wideDocs, range.from, range.to);
-  const prevDocs = docsInRange(wideDocs, prevRange.from, prevRange.to);
+  const cacheKey = `reports:data:${range.preset}:${range.from}:${range.to}:${Boolean(options?.includeInventory)}`;
+  return readThrough(cacheKey, 20_000, async () => {
+    const prevRange = previousRange(range);
+    const wide = widest([range, prevRange]);
+    // The screen has no inventory section; only the export files do. Reading the
+    // collection here charged every report view for data it never showed.
+    const [wideDocs, enquiryCounts, inventory] = await Promise.all([
+      fetchRangeDocs(wide.from, wide.to),
+      countEnquiriesPerRange([range, prevRange]),
+      options?.includeInventory ? listInventoryItems({}) : Promise.resolve(null),
+    ]);
+    const docs = docsInRange(wideDocs, range.from, range.to);
+    const prevDocs = docsInRange(wideDocs, prevRange.from, prevRange.to);
 
-  const metrics = metricsFromDocs(docs, enquiryCounts[0]);
-  const validSales = docs.orders.filter(
-    (order) => order.type === "SALES" && order.status !== "CANCELLED",
-  );
+    const metrics = metricsFromDocs(docs, enquiryCounts[0]);
+    const validSales = docs.orders.filter(
+      (order) => order.type === "SALES" && order.status !== "CANCELLED",
+    );
 
-  const productMap = new Map<string, { amountPaise: number; count: number }>();
-  for (const order of validSales) {
-    for (const item of order.items) {
-      const current = productMap.get(item.productName) ?? { amountPaise: 0, count: 0 };
-      current.amountPaise += item.lineTotalPaise;
-      current.count += 1;
-      productMap.set(item.productName, current);
+    const productMap = new Map<string, { amountPaise: number; count: number }>();
+    for (const order of validSales) {
+      for (const item of order.items) {
+        const current = productMap.get(item.productName) ?? { amountPaise: 0, count: 0 };
+        current.amountPaise += item.lineTotalPaise;
+        current.count += 1;
+        productMap.set(item.productName, current);
+      }
     }
-  }
-  const salesByProduct: ReportBreakdown[] = [...productMap.entries()]
-    .map(([label, value]) => ({ key: label, label, amountPaise: value.amountPaise, count: value.count }))
-    .sort((a, b) => b.amountPaise - a.amountPaise);
+    const salesByProduct: ReportBreakdown[] = [...productMap.entries()]
+      .map(([label, value]) => ({ key: label, label, amountPaise: value.amountPaise, count: value.count }))
+      .sort((a, b) => b.amountPaise - a.amountPaise);
 
-  const expenseMap = new Map<string, { amountPaise: number; count: number }>();
-  for (const expense of docs.expenses) {
-    const current = expenseMap.get(expense.category) ?? { amountPaise: 0, count: 0 };
-    current.amountPaise += expense.amountPaise;
-    current.count += 1;
-    expenseMap.set(expense.category, current);
-  }
-  const expensesByCategory: ReportBreakdown[] = [...expenseMap.entries()]
-    .map(([label, value]) => ({ key: label, label, amountPaise: value.amountPaise, count: value.count }))
-    .sort((a, b) => b.amountPaise - a.amountPaise);
+    const expenseMap = new Map<string, { amountPaise: number; count: number }>();
+    for (const expense of docs.expenses) {
+      const current = expenseMap.get(expense.category) ?? { amountPaise: 0, count: 0 };
+      current.amountPaise += expense.amountPaise;
+      current.count += 1;
+      expenseMap.set(expense.category, current);
+    }
+    const expensesByCategory: ReportBreakdown[] = [...expenseMap.entries()]
+      .map(([label, value]) => ({ key: label, label, amountPaise: value.amountPaise, count: value.count }))
+      .sort((a, b) => b.amountPaise - a.amountPaise);
 
-  const methodMap = new Map<string, { amountPaise: number; count: number }>();
-  for (const payment of docs.payments) {
-    const label = PAYMENT_METHOD_LABELS[payment.method] ?? payment.method;
-    const current = methodMap.get(label) ?? { amountPaise: 0, count: 0 };
-    current.amountPaise += payment.amountPaise;
-    current.count += 1;
-    methodMap.set(label, current);
-  }
-  const paymentsByMethod: ReportBreakdown[] = [...methodMap.entries()]
-    .map(([label, value]) => ({ key: label, label, amountPaise: value.amountPaise, count: value.count }))
-    .sort((a, b) => b.amountPaise - a.amountPaise);
+    const methodMap = new Map<string, { amountPaise: number; count: number }>();
+    for (const payment of docs.payments) {
+      const label = PAYMENT_METHOD_LABELS[payment.method] ?? payment.method;
+      const current = methodMap.get(label) ?? { amountPaise: 0, count: 0 };
+      current.amountPaise += payment.amountPaise;
+      current.count += 1;
+      methodMap.set(label, current);
+    }
+    const paymentsByMethod: ReportBreakdown[] = [...methodMap.entries()]
+      .map(([label, value]) => ({ key: label, label, amountPaise: value.amountPaise, count: value.count }))
+      .sort((a, b) => b.amountPaise - a.amountPaise);
 
-  const customerMap = new Map<string, { label: string; amountPaise: number; count: number }>();
-  for (const order of validSales) {
-    const key = order.customerSnapshot.phone || order.customerSnapshot.name;
-    const current = customerMap.get(key) ?? {
-      label: order.customerSnapshot.name,
-      amountPaise: 0,
-      count: 0,
+    const customerMap = new Map<string, { label: string; amountPaise: number; count: number }>();
+    for (const order of validSales) {
+      const key = order.customerSnapshot.phone || order.customerSnapshot.name;
+      const current = customerMap.get(key) ?? {
+        label: order.customerSnapshot.name,
+        amountPaise: 0,
+        count: 0,
+      };
+      current.amountPaise += order.totalPaise;
+      current.count += 1;
+      customerMap.set(key, current);
+    }
+    const topCustomers: ReportBreakdown[] = [...customerMap.entries()]
+      .map(([key, value]) => ({ key, label: value.label, amountPaise: value.amountPaise, count: value.count }))
+      .sort((a, b) => b.amountPaise - a.amountPaise)
+      .slice(0, 10);
+
+    const outstandingOrders = validSales
+      .filter((order) => order.balancePaise > 0)
+      .sort((a, b) => a.orderDate.localeCompare(b.orderDate))
+      .map((order) => ({
+        orderId: String(order._id),
+        ref: order.ref,
+        customerName: order.customerSnapshot.name,
+        orderDate: order.orderDate,
+        totalPaise: order.totalPaise,
+        balancePaise: order.balancePaise,
+      }));
+
+    const giftOrdersList = docs.orders
+      .filter((order) => order.type === "GIFT")
+      .sort((a, b) => b.orderDate.localeCompare(a.orderDate))
+      .map((order) => ({
+        orderId: String(order._id),
+        ref: order.ref,
+        recipient: order.customerSnapshot.name,
+        orderDate: order.orderDate,
+        costPaise: order.gift?.costPaise ?? 0,
+      }));
+
+    let repeatCustomers = 0;
+    for (const value of customerMap.values()) {
+      if (value.count > 1) repeatCustomers += 1;
+    }
+
+    return {
+      range,
+      metrics,
+      previous: {
+        range: prevRange,
+        metrics: metricsFromDocs(prevDocs, enquiryCounts[1]),
+      },
+      series: buildReportSeries(docs, range.from, range.to),
+      monthly: buildReportSeries(docs, range.from, range.to, true),
+      salesByProduct,
+      expensesByCategory,
+      paymentsByMethod,
+      topCustomers,
+      outstandingOrders,
+      giftOrdersList,
+      inventory: inventory
+        ? inventory.map((item) => ({
+            itemId: item.id,
+            name: item.name,
+            unit: item.unit,
+            quantity: item.currentQuantity,
+            category: item.category,
+          }))
+        : [],
+      customerStats: {
+        total: customerMap.size,
+        repeat: repeatCustomers,
+        firstTime: customerMap.size - repeatCustomers,
+      },
     };
-    current.amountPaise += order.totalPaise;
-    current.count += 1;
-    customerMap.set(key, current);
-  }
-  const topCustomers: ReportBreakdown[] = [...customerMap.entries()]
-    .map(([key, value]) => ({ key, label: value.label, amountPaise: value.amountPaise, count: value.count }))
-    .sort((a, b) => b.amountPaise - a.amountPaise)
-    .slice(0, 10);
-
-  const outstandingOrders = validSales
-    .filter((order) => order.balancePaise > 0)
-    .sort((a, b) => a.orderDate.localeCompare(b.orderDate))
-    .map((order) => ({
-      orderId: String(order._id),
-      ref: order.ref,
-      customerName: order.customerSnapshot.name,
-      orderDate: order.orderDate,
-      totalPaise: order.totalPaise,
-      balancePaise: order.balancePaise,
-    }));
-
-  const giftOrdersList = docs.orders
-    .filter((order) => order.type === "GIFT")
-    .sort((a, b) => b.orderDate.localeCompare(a.orderDate))
-    .map((order) => ({
-      orderId: String(order._id),
-      ref: order.ref,
-      recipient: order.customerSnapshot.name,
-      orderDate: order.orderDate,
-      costPaise: order.gift?.costPaise ?? 0,
-    }));
-
-  let repeatCustomers = 0;
-  for (const value of customerMap.values()) {
-    if (value.count > 1) repeatCustomers += 1;
-  }
-
-  return {
-    range,
-    metrics,
-    previous: {
-      range: prevRange,
-      metrics: metricsFromDocs(prevDocs, enquiryCounts[1]),
-    },
-    series: buildReportSeries(docs, range.from, range.to),
-    monthly: buildReportSeries(docs, range.from, range.to, true),
-    salesByProduct,
-    expensesByCategory,
-    paymentsByMethod,
-    topCustomers,
-    outstandingOrders,
-    giftOrdersList,
-    inventory: inventory
-      ? inventory.map((item) => ({
-          itemId: item.id,
-          name: item.name,
-          unit: item.unit,
-          quantity: item.currentQuantity,
-          category: item.category,
-        }))
-      : [],
-    customerStats: {
-      total: customerMap.size,
-      repeat: repeatCustomers,
-      firstTime: customerMap.size - repeatCustomers,
-    },
-  };
+  });
 }
 
 export async function getOutstandingTotalPaise(): Promise<number> {
-  const db = await getDb();
-  const result = await db
-    .collection("orders")
-    .aggregate<{ _id: null; totalPaise: number }>([
-      {
-        $match: {
-          type: "SALES",
-          status: { $ne: "CANCELLED" },
-          balancePaise: { $gt: 0 },
+  return readThrough("reports:outstanding", 20_000, async () => {
+    const db = await getDb();
+    const result = await db
+      .collection("orders")
+      .aggregate<{ _id: null; totalPaise: number }>([
+        {
+          $match: {
+            type: "SALES",
+            status: { $ne: "CANCELLED" },
+            balancePaise: { $gt: 0 },
+          },
         },
-      },
-      { $group: { _id: null, totalPaise: { $sum: "$balancePaise" } } },
-    ])
-    .toArray();
-  return Number(result[0]?.totalPaise ?? 0);
+        { $group: { _id: null, totalPaise: { $sum: "$balancePaise" } } },
+      ])
+      .toArray();
+    return Number(result[0]?.totalPaise ?? 0);
+  });
 }
 
 /**
@@ -407,27 +420,33 @@ export async function getOutstandingTotalPaise(): Promise<number> {
 export async function getDashboardTrend(days: number): Promise<ReportSeriesPoint[]> {
   const to = businessToday();
   const from = addDays(to, -(days - 1));
-  const docs = await fetchRangeDocs(from, to);
-  return buildReportSeries(docs, from, to);
+  const key = `reports:trend:${from}:${to}`;
+  return readThrough(key, 20_000, async () => {
+    const docs = await fetchRangeDocs(from, to);
+    return buildReportSeries(docs, from, to);
+  });
 }
 
 /** Enquiries submitted in the range and how many became orders. */
 export async function getEnquiryConversion(
   range: DateRange,
 ): Promise<{ total: number; converted: number }> {
-  const db = await getDb();
-  const filter = {
-    submittedAt: {
-      $gte: businessDateStartUtc(range.from).toISOString(),
-      $lte: businessDateEndUtc(range.to).toISOString(),
-    },
-  };
-  const [total, converted] = await Promise.all([
-    db.collection("enquiries").countDocuments(filter),
-    db.collection("enquiries").countDocuments({
-      ...filter,
-      linkedOrderId: { $exists: true, $ne: "" },
-    }),
-  ]);
-  return { total, converted };
+  const key = `reports:conversion:${range.from}:${range.to}`;
+  return readThrough(key, 20_000, async () => {
+    const db = await getDb();
+    const filter = {
+      submittedAt: {
+        $gte: businessDateStartUtc(range.from).toISOString(),
+        $lte: businessDateEndUtc(range.to).toISOString(),
+      },
+    };
+    const [total, converted] = await Promise.all([
+      db.collection("enquiries").countDocuments(filter),
+      db.collection("enquiries").countDocuments({
+        ...filter,
+        linkedOrderId: { $exists: true, $ne: "" },
+      }),
+    ]);
+    return { total, converted };
+  });
 }

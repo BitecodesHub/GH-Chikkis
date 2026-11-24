@@ -21,6 +21,7 @@ import { getOrder } from "@/lib/orders";
 import { hasPermission } from "@/lib/permissions";
 import { ORDER_STATUS_LABELS } from "@/lib/types";
 import { updateEnquiryNotesAction } from "../actions";
+import { DeleteEnquiry } from "../delete-enquiry";
 
 export const metadata: Metadata = { title: "Enquiry" };
 
@@ -84,6 +85,12 @@ export default async function EnquiryDetailPage({
                 Start order
               </Link>
             ) : null}
+            <DeleteEnquiry
+              id={enquiry.id}
+              name={enquiry.name}
+              linkedOrderId={enquiry.linkedOrderId}
+              redirectTo="/admin/enquiries"
+            />
           </>
         }
       />

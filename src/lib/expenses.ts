@@ -5,6 +5,7 @@ import { getDb, getMongoClient } from "./db";
 import { roundQuantity } from "./quantity";
 import { businessToday, isValidBusinessDate, nowIso } from "./dates";
 import { recordAudit } from "./audit";
+import { invalidateReads } from "./read-cache";
 import { getSettings } from "./settings";
 import { cleanSingleLine, cleanText } from "./text";
 import { PAYMENT_METHODS, type AuditEntry, type Expense, type InventoryItem, type InventoryMovement, type PaymentMethod } from "./types";
@@ -132,6 +133,7 @@ export async function createExpense(
     entityId: doc._id,
     summary: `${doc.category} expense of ₹${(amountPaise / 100).toFixed(2)} on ${date}: ${description}`,
   });
+  invalidateReads("reports");
   return mapExpense(doc);
 }
 
@@ -216,6 +218,7 @@ export async function deleteExpense(
         at: now,
       }, { session });
     }, { readConcern: { level: "snapshot" }, writeConcern: { w: "majority" } });
+    invalidateReads("reports");
   } finally {
     await session.endSession();
   }

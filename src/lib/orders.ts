@@ -5,6 +5,7 @@ import { MongoServerError, type ClientSession } from "mongodb";
 import { getDb, getMongoClient } from "./db";
 import { nowIso, businessToday, isValidBusinessDate } from "./dates";
 import { recordAudit } from "./audit";
+import { invalidateReads } from "./read-cache";
 import { createAlert } from "./alerts";
 import { getCustomer } from "./customers";
 import { calculateLineAmount, paymentStatusFor, balanceFor, formatINR } from "./money";
@@ -1106,6 +1107,7 @@ export async function createOrder(input: OrderInput, actor: OrderActor): Promise
       summary: `Created ${input.type === "GIFT" ? "gifting" : "sales"} order ${ref} for ${customer.name}`,
     });
 
+    invalidateReads("reports");
     const saved = await getOrder(id);
     return saved ?? mapOrder(doc);
   }
@@ -1264,6 +1266,7 @@ export async function updateOrder(
     }
   }
 
+  invalidateReads("reports");
   return updated;
 }
 
@@ -1358,6 +1361,7 @@ export async function changeOrderStatus(
     }
   }
 
+  invalidateReads("reports");
   const updated = await getOrder(orderId);
   if (!updated) throw new OrderError("The order could not be updated.");
   return updated;
@@ -1405,6 +1409,7 @@ export async function setOrderCompleted(
     entityId: orderId,
     summary: `Order ${raw.ref} marked ${completed ? "completed" : "pending"}`,
   });
+  invalidateReads("reports");
   const updated = await getOrder(orderId);
   if (!updated) throw new OrderError("The order could not be updated.");
   return updated;
@@ -1543,6 +1548,7 @@ export async function deleteOrder(orderId: string, actor: OrderActor): Promise<v
     entityId: orderId,
     summary: `Deleted order ${order.ref} for ${order.customerSnapshot.name} — ${itemsSummary(order.items)}, ${formatINR(order.totalPaise)}`,
   });
+  invalidateReads("reports");
 }
 
 async function insertPayment(
@@ -1649,6 +1655,7 @@ export async function addPayment(input: PaymentInput, actor: OrderActor): Promis
       summary: `Recorded ${input.method.toLowerCase()} payment on ${order.ref}`,
     });
   }
+  invalidateReads("reports");
   return payment;
 }
 
@@ -1736,6 +1743,7 @@ export async function addRefund(input: RefundInput, actor: OrderActor): Promise<
       summary: `Recorded refund on ${order.ref} · ${reason}`,
     });
   }
+  invalidateReads("reports");
   return refund;
 }
 

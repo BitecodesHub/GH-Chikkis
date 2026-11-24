@@ -6,6 +6,7 @@ import { FilterNav } from "@/components/admin/filter-nav";
 import { requirePermission } from "@/lib/auth/session";
 import { formatDateDDMMYYYY, formatDateTime } from "@/lib/dates";
 import { listEnquiries } from "@/lib/enquiries";
+import { DeleteEnquiry } from "./delete-enquiry";
 
 export const metadata: Metadata = { title: "Enquiries" };
 
@@ -144,7 +145,7 @@ export default async function AdminEnquiriesPage({
                   </div>
                   <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
                     <span className="meta">{formatDateTime(enquiry.submittedAt)}</span>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Link
                         href={`/admin/enquiries/${enquiry.id}`}
                         className="btn btn-outline btn-sm"
@@ -159,6 +160,11 @@ export default async function AdminEnquiriesPage({
                           View order
                         </Link>
                       ) : null}
+                      <DeleteEnquiry
+                        id={enquiry.id}
+                        name={enquiry.name}
+                        linkedOrderId={enquiry.linkedOrderId}
+                      />
                     </div>
                   </div>
                 </div>
