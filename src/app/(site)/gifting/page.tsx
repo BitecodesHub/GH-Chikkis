@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { GiftingShowcase } from "@/components/site/gifting-showcase";
-import { GiftingConfigurator } from "@/components/site/gifting-configurator";
+import { GiftingAtelier } from "@/components/site/gifting-atelier";
 import {
   contentSections,
   getPublishedContent,
@@ -24,9 +23,9 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = pageMeta({
-  title: "Bulk & Corporate Gifting | GH Chikkis",
+  title: "The GH Chikki Gift Atelier | Bespoke Keepsake Gifting",
   description:
-    "Bespoke festive, wedding and corporate chikki gifting from Ahmedabad. Hand-carved wooden chests, gold-embossed keepsake boxes and jewel tins.",
+    "An interactive bespoke gifting experience from Ahmedabad. Curate seven pure jaggery chikki varieties inside hand-carved Sheesham chests, blush lotus boxes, and jewel lacquer tins.",
   path: "/gifting",
 });
 
@@ -145,10 +144,10 @@ export default async function GiftingPage() {
           {/* Apple-Style CTA Buttons */}
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <a
-              href="#configurator"
+              href="#atelier-studio"
               className="inline-flex items-center gap-2 rounded-full bg-olive px-6 py-3 text-[0.9375rem] font-semibold text-paper shadow-xs hover:bg-olive-deep hover:shadow-sm transition-all hover:scale-[1.02] cursor-pointer"
             >
-              <span>Configure a Gift Order</span>
+              <span>Enter The Gift Atelier</span>
               <ArrowRight className="size-4" />
             </a>
             {whatsappHref ? (
@@ -194,27 +193,10 @@ export default async function GiftingPage() {
       </header>
 
       {/* ============================================================ */}
-      {/*  INTERACTIVE GIFT SHOWCASE — Studio Gallery                  */}
+      {/*  THE GH CHIKKI GIFT ATELIER — Living Stage, Constellation, Studio */}
       {/* ============================================================ */}
-      <section id="showcase" className="container-page py-16 md:py-24">
-        <div className="text-center max-w-2xl mx-auto mb-12">
-          <p className="eyebrow">The Signature Collection</p>
-          <h2 className="display-m mt-3">
-            Four ways to present your gift.
-          </h2>
-          <p className="mt-3 text-[0.9375rem] text-ink-soft">
-            Explore our curated presentation chests. Switch perspectives, inspect fine craftsmanship details in high definition, and choose the perfect box.
-          </p>
-        </div>
-
-        <GiftingShowcase />
-      </section>
-
-      {/* ============================================================ */}
-      {/*  INTERACTIVE STUDIO CONFIGURATOR                             */}
-      {/* ============================================================ */}
-      <section className="container-page py-8 md:py-16">
-        <GiftingConfigurator whatsappNumber={settings.business.whatsappNumber} />
+      <section id="atelier" className="w-full">
+        <GiftingAtelier whatsappNumber={settings.business.whatsappNumber} />
       </section>
 
       {/* ============================================================ */}
